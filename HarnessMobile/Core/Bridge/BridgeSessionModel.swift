@@ -259,3 +259,15 @@ struct BridgeStreamFrame: Decodable, Sendable, Equatable {
         case unknown(String)
     }
 }
+
+/// One `GET …/export?since=` answer.
+struct BridgeExportPage: Sendable, Equatable {
+    let data: Data
+    /// Echo of `x-dsh-since`; `nil` when the bridge ignored `since` and sent
+    /// the full log.
+    let since: Int64?
+    /// `x-dsh-through-seq`: the desktop head this page reaches.
+    let throughSeq: Int64?
+
+    var isIncremental: Bool { since != nil }
+}

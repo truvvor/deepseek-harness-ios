@@ -36,7 +36,7 @@ final class BridgeSessionImporterTests: XCTestCase {
         return try Data(contentsOf: url)
     }
 
-    private func makeHarness() throws -> Harness {
+    private func makeHarness(protocolClasses: [AnyClass]? = nil) throws -> Harness {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("bridge-import-\(UUID().uuidString)", isDirectory: true)
         let trajectory = SessionTrajectoryRepository(root: root)
@@ -51,7 +51,8 @@ final class BridgeSessionImporterTests: XCTestCase {
                     isEnabled: true
                 )
             ),
-            tokenProvider: { Self.fixtureToken }
+            tokenProvider: { Self.fixtureToken },
+            protocolClasses: protocolClasses
         )
         let importer = BridgeSessionImporter(
             client: client,
@@ -336,6 +337,96 @@ final class BridgeSessionImporterTests: XCTestCase {
         XCTAssertTrue(session.isDesktopMirror)
     }
 
+    // MARK: - Incremental export
+
+    private static let suffixLines = [
+        #"{"type":"turn/start","seq":10,"time":1735689601000,"data":{"turn":2}}"#,
+        #"{"type":"user/message","seq":11,"time":1735689601100,"data":{"id":"66666666-6666-4666-8666-666666666666","role":"user","content":[{"type":"text","text":"Follow-up"}]}}"#
+    ]
+
+    private static func ndjson(_ request: URLRequest, body: String, headers: [String: String]) -> (HTTPURLResponse, Data) {
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: 200,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Content-Type": "application/x-ndjson"].merging(headers) { $1 }
+        )!
+        return (response, Data(body.utf8))
+    }
+
+    func testRefreshReadsOnlyTheDesktopTailAfterTheStoredCursor() async throws {
+        defer { BridgeExportURLProtocolStub.handler = nil }
+        let harness = try makeHarness(protocolClasses: [BridgeExportURLProtocolStub.self])
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+        let first = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+        XCTAssertEqual(report.lastBridgeSequence, 9)
+
+        let queries = RequestLog()
+        BridgeExportURLProtocolStub.handler = { request in
+            queries.append(request.url?.query ?? "")
+            return Self.ndjson(
+                request,
+                body: Self.suffixLines.joined(separator: "\n") + "\n",
+                headers: ["x-dsh-since": "9", "x-dsh-through-seq": "11"]
+            )
+        }
+
+        let outcome = try await harness.importer.importSession(bridgeSessionID: bridgeSessionID, listTitle: nil)
+
+        XCTAssertEqual(outcome, .refreshed(localSessionID: first.localSessionID, appendedEvents: 2))
+        XCTAssertEqual(queries.values, ["since=9"])
+        let mapping = try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID)
+        XCTAssertEqual(mapping?.importedThroughBridgeSeq, 11)
+        XCTAssertEqual(mapping?.importedEventCount, report.events.count + 2)
+        let events = try await harness.trajectory.allEvents(sessionID: first.localSessionID)
+        XCTAssertEqual(events.map(\.seq), (0...11).map { UInt64($0) })
+        let session = try await harness.sessionStore.session(id: first.localSessionID)
+        XCTAssertEqual(session.messages.last?.content, "Follow-up")
+    }
+
+    func testBridgeWithoutIncrementalExportFallsBackToTheFullLog() async throws {
+        defer { BridgeExportURLProtocolStub.handler = nil }
+        let harness = try makeHarness(protocolClasses: [BridgeExportURLProtocolStub.self])
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let fixture = try fixtureData()
+        let report = try converted(fixture)
+        let first = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+        let fullLog = String(decoding: fixture, as: UTF8.self) + Self.suffixLines.joined(separator: "\n") + "\n"
+        // An older bridge ignores `since`, sends no cursor headers and the full log.
+        BridgeExportURLProtocolStub.handler = { request in
+            Self.ndjson(request, body: fullLog, headers: [:])
+        }
+
+        let outcome = try await harness.importer.importSession(bridgeSessionID: bridgeSessionID, listTitle: nil)
+
+        XCTAssertEqual(outcome, .refreshed(localSessionID: first.localSessionID, appendedEvents: 2))
+        let mapping = try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID)
+        XCTAssertEqual(mapping?.importedThroughBridgeSeq, 11)
+    }
+
+    func testSuffixWithAGapIsRejectedSoTheFullLogIsUsed() {
+        let gap = Data(#"{"type":"turn/start","seq":12,"time":1,"data":{"turn":2}}"#.utf8)
+        XCTAssertThrowsError(try BridgeSessionEventConverter.decodeLog(gap, firstSequence: 10)) { error in
+            XCTAssertEqual(error as? BridgeLogConversionError, .nonContiguousSuffix(expected: 10))
+        }
+        let empty = try? BridgeSessionEventConverter.decodeLog(Data(), firstSequence: 10)
+        XCTAssertEqual(empty?.events.count, 0)
+        XCTAssertEqual(empty?.lastBridgeSequence, 9)
+    }
+
     // MARK: - Failure handling
 
     func testPartialImportIsRolledBackWhenAdmissionFails() async throws {
@@ -449,4 +540,50 @@ final class BridgeSessionImporterTests: XCTestCase {
         )
         XCTAssertLessThanOrEqual(BridgeSessionImporter.maximumEventsPerEnvelope, 512)
     }
+}
+
+private final class RequestLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: [String] = []
+
+    func append(_ value: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        stored.append(value)
+    }
+
+    var values: [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return stored
+    }
+}
+
+private final class BridgeExportURLProtocolStub: URLProtocol, @unchecked Sendable {
+    nonisolated(unsafe) static var handler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let handler = Self.handler else {
+            client?.urlProtocol(self, didFailWithError: URLError(.resourceUnavailable))
+            return
+        }
+        do {
+            let (response, data) = try handler(request)
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {}
 }

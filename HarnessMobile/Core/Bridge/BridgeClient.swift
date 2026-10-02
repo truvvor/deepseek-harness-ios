@@ -159,6 +159,31 @@ actor BridgeClient {
         try await getData(sessionPath(sessionID, "export"), query: [])
     }
 
+    /// Incremental export: only the events with `seq > since`. A bridge that
+    /// supports it answers with `x-dsh-since` / `x-dsh-through-seq`; an older
+    /// bridge ignores the parameter and returns the full log, which the page
+    /// reports as non-incremental.
+    func exportLog(sessionID: String, since: Int64) async throws -> BridgeExportPage {
+        let url = try makeURL(
+            sessionPath(sessionID, "export"),
+            query: [URLQueryItem(name: "since", value: String(since))]
+        )
+        guard let token = await tokenProvider() else {
+            throw BridgeClientError.missingToken
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/x-ndjson", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = configuration.requestTimeoutSeconds
+        let (data, response) = try await performWithResponse(request)
+        return BridgeExportPage(
+            data: data,
+            since: response.value(forHTTPHeaderField: "x-dsh-since").flatMap { Int64($0) },
+            throughSeq: response.value(forHTTPHeaderField: "x-dsh-through-seq").flatMap { Int64($0) }
+        )
+    }
+
     /// Runs one turn of the desktop agent in `sessionID` (D-014). Blocks until
     /// the desktop reports `turn/end`; the durable events arrive through the
     /// mirror (`stream` + `exportLog`), this result is only the turn summary.
@@ -330,6 +355,10 @@ actor BridgeClient {
     }
 
     private func perform(_ request: URLRequest) async throws -> Data {
+        try await performWithResponse(request).data
+    }
+
+    private func performWithResponse(_ request: URLRequest) async throws -> (data: Data, response: HTTPURLResponse) {
         do {
             let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse else {
@@ -339,7 +368,7 @@ actor BridgeClient {
                 throw rejection
             }
             try Self.validate(status: http.statusCode)
-            return data
+            return (data, http)
         } catch is CancellationError {
             throw BridgeClientError.cancelled
         } catch let error as BridgeClientError {

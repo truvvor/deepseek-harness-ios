@@ -131,6 +131,12 @@ actor BridgeSessionImporter {
     @discardableResult
     func importSession(bridgeSessionID: String, listTitle: String?) async throws -> BridgeImportOutcome {
         try await serialized(bridgeSessionID: bridgeSessionID) {
+            if let outcome = try await self.refreshIncrementally(
+                bridgeSessionID: bridgeSessionID,
+                listTitle: listTitle
+            ) {
+                return outcome
+            }
             let log = try await self.client.exportLog(sessionID: bridgeSessionID)
             let report = try BridgeSessionEventConverter.decodeLog(log)
             // A desktop session that carries no user/assistant messages is an empty
@@ -148,6 +154,50 @@ actor BridgeSessionImporter {
                 lastBridgeSequence: report.lastBridgeSequence
             )
         }
+    }
+
+    /// Refreshes an existing mirror from `export?since=<cursor>` instead of the
+    /// full log, so a growing 30 MB session costs only its new tail. Returns
+    /// `nil` when the full export must be used instead: no mapping yet, the
+    /// local session is gone, or the mirror was renumbered (its local head
+    /// differs from the desktop cursor). A bridge that ignores `since` sends the
+    /// full log, which is then imported the normal way.
+    private func refreshIncrementally(
+        bridgeSessionID: String,
+        listTitle: String?
+    ) async throws -> BridgeImportOutcome? {
+        guard let mapping = try await mappings.mapping(bridgeSessionID: bridgeSessionID),
+              mapping.importedThroughBridgeSeq >= 0,
+              (try? await sessionStore.session(id: mapping.localSessionID)) != nil else {
+            return nil
+        }
+        let localEvents = try await trajectory.allEvents(sessionID: mapping.localSessionID)
+        guard let head = localEvents.last?.seq,
+              Int64(exactly: head) == mapping.importedThroughBridgeSeq else {
+            return nil
+        }
+        let page = try await client.exportLog(
+            sessionID: bridgeSessionID,
+            since: mapping.importedThroughBridgeSeq
+        )
+        let report: BridgeSessionEventConverter.Report
+        if page.isIncremental {
+            do {
+                report = try BridgeSessionEventConverter.decodeLog(page.data, firstSequence: head + 1)
+            } catch BridgeLogConversionError.nonContiguousSuffix {
+                return nil
+            }
+        } else {
+            report = try BridgeSessionEventConverter.decodeLog(page.data)
+        }
+        return try await importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: listTitle,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: max(report.lastBridgeSequence, mapping.importedThroughBridgeSeq),
+            isSuffix: page.isIncremental
+        )
     }
 
     /// Runs imports of one desktop session strictly one after another. A manual
@@ -180,7 +230,8 @@ actor BridgeSessionImporter {
         listTitle: String?,
         header: BridgeSessionLogHeader?,
         events: [SessionEvent],
-        lastBridgeSequence: Int64
+        lastBridgeSequence: Int64,
+        isSuffix: Bool = false
     ) async throws -> BridgeImportOutcome {
         var existing = try await mappings.mapping(bridgeSessionID: bridgeSessionID)
         // The mirror's local session may have been deleted from the session list
@@ -236,7 +287,9 @@ actor BridgeSessionImporter {
                     createdAt: existing?.createdAt ?? .now,
                     updatedAt: .now,
                     importedThroughBridgeSeq: lastBridgeSequence,
-                    importedEventCount: events.count
+                    importedEventCount: isSuffix
+                        ? (existing?.importedEventCount ?? 0) + appended.count
+                        : events.count
                 )
             )
 

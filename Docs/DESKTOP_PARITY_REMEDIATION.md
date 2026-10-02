@@ -9,6 +9,7 @@
 - **镜像列表清理**：设置页 Import 改为 Sync——导入/刷新桥接列出的会话，并删除本地已不在列表中的镜像（归档、删除或被桥接侧边栏规则隐藏）；新增 Forget All Mirrors（可选随后重新 Sync），连同无映射的孤儿镜像一起删除，只删手机副本；映射存在但本地会话已被删除时重新完整导入，不再永久失败。桥接侧 `/sessions` 默认隐藏 archived/subagent/blank（rev-2026-10-02-l，用户提交）；Windows `cwd` 标题与空会话拒绝导入来自用户提交 e1838e9。
 - **长会话完整显示**：镜像改用 `SessionTrajectoryConversationProjection.transcriptMessages`（忽略 `surfaceOp.replace`），桌面压缩过的长会话不再只显示摘要 + 尾部；模型面投影 `messages(from:)` 不变。
 - **镜像 append-only**（移植自用户提交 1c5b96e）：转换器不再在镜像事件上安装 `surfaceOp.replace`（范围仍解析校验并计入 `droppedSurfaceOperations`），镜像与桌面 GUI 一样显示完整日志，包括被修正前的草稿；导入测试期望 4 → 5。
+- **增量导出**：桥接 rev-2026-10-02-m 支持 `GET …/export?since=<seq>`（响应头 `x-dsh-since`/`x-dsh-through-seq`）。已映射且本地头部等于桌面游标的镜像只拉取尾部（实测 30.8 MB → 214 KB）；后缀必须从 `since+1` 连续，否则（或桥接忽略 `since`）回退全量导出。首次导入仍需全量，受 128 MiB / 200 000 事件上限约束。
 - **健康探针**：`BridgeSessionHealth.displayStatus`，无 `status` 字段的 200 响应显示为 `reachable`（此前误显示 `unavailable`）。
 - **测试命令**：`swift test --build-path $RUNNER_TEMP/hm-build --filter Bridge`（CI `bridge-tests.yml`），新增 `BridgeClientPromptTests`。
 - **剩余真机边界**：真实桌面回合/取消/排队与 steer；后台超过 iOS 宽限期时桥接因客户端断开而中止回合（需桥接侧支持断开后继续）；超大会话导入的内存峰值。
