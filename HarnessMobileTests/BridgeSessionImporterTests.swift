@@ -202,7 +202,8 @@ final class BridgeSessionImporterTests: XCTestCase {
             lastBridgeSequence: report.lastBridgeSequence
         )
 
-        let mapping = try XCTUnwrap(try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID))
+        let recorded = try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID)
+        let mapping = try XCTUnwrap(recorded)
         XCTAssertEqual(mapping.localSessionID, outcome.localSessionID)
         XCTAssertEqual(mapping.bridgeSessionID, bridgeSessionID)
         XCTAssertEqual(mapping.importedThroughBridgeSeq, report.lastBridgeSequence)
@@ -212,7 +213,8 @@ final class BridgeSessionImporterTests: XCTestCase {
         let reloaded = BridgeSessionMirrorStore(
             fileURL: harness.root.appendingPathComponent("bridge-sessions.json")
         )
-        XCTAssertEqual(try await reloaded.mapping(localSessionID: outcome.localSessionID)?.bridgeSessionID, bridgeSessionID)
+        let reloadedMapping = try await reloaded.mapping(localSessionID: outcome.localSessionID)
+        XCTAssertEqual(reloadedMapping?.bridgeSessionID, bridgeSessionID)
     }
 
     func testSecondImportOfTheSameLogIsIdempotentAndCreatesNoSecondSession() async throws {
@@ -332,7 +334,8 @@ final class BridgeSessionImporterTests: XCTestCase {
 
         let summaries = try await harness.sessionStore.listSessions()
         XCTAssertTrue(summaries.isEmpty, "A failed import must not leave a half-written session")
-        XCTAssertNil(try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID))
+        let leftover = try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID)
+        XCTAssertNil(leftover)
     }
 
     func testTitleFallsBackToTheFirstUserMessageThenToTheBridgeListTitle() async throws {

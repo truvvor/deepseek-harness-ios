@@ -114,6 +114,7 @@ final class LocalStateServerTests: XCTestCase {
             revision: 0,
             archivedAt: nil,
             forkedFromSessionID: nil,
+            bridgeMirror: nil,
             queuedInputCount: 1,
             isResumable: true
         )

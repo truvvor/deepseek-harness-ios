@@ -262,9 +262,8 @@ final class BridgeSessionSyncTests: XCTestCase {
         )
 
         let reloaded = makeStore(root)
-        let mapping = try XCTUnwrap(
-            try await reloaded.mapping(localSessionID: localSessionID)
-        )
+        let reloadedMapping = try await reloaded.mapping(localSessionID: localSessionID)
+        let mapping = try XCTUnwrap(reloadedMapping)
         XCTAssertEqual(mapping.importedThroughBridgeSeq, 9)
         XCTAssertEqual(mapping.importedEventCount, 10)
         // `since = throughSeq` is what a reconnect passes back to the bridge.
@@ -321,8 +320,10 @@ final class BridgeSessionSyncTests: XCTestCase {
 
         try await store.forget(bridgeSessionID: "session-a")
 
-        XCTAssertNil(try await store.mapping(bridgeSessionID: "session-a"))
-        XCTAssertNotNil(try await store.mapping(bridgeSessionID: "session-b"))
+        let forgotten = try await store.mapping(bridgeSessionID: "session-a")
+        let kept = try await store.mapping(bridgeSessionID: "session-b")
+        XCTAssertNil(forgotten)
+        XCTAssertNotNil(kept)
     }
 
     func testUnreadableMappingFileFailsClosed() async throws {
