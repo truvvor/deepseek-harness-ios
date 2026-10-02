@@ -94,7 +94,9 @@ final class BridgeSessionImporterTests: XCTestCase {
 
         let session = try await harness.sessionStore.session(id: localSessionID)
         XCTAssertEqual(session.title, "Fixture desktop session")
-        XCTAssertEqual(session.messages.count, 4)
+        // Append-only mirror: the fixture's draft answer stays next to the final
+        // one, exactly as the desktop log (and its GUI) holds it.
+        XCTAssertEqual(session.messages.count, 5)
         XCTAssertEqual(session.messages.first?.content, "Summarise the fixture file.")
         XCTAssertEqual(session.messages.last?.content, "Final answer.")
 
@@ -274,7 +276,7 @@ final class BridgeSessionImporterTests: XCTestCase {
         }
         XCTAssertNotEqual(localSessionID, first.localSessionID)
         let session = try await harness.sessionStore.session(id: localSessionID)
-        XCTAssertEqual(session.messages.count, 4)
+        XCTAssertEqual(session.messages.count, 5)
         let mapping = try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID)
         XCTAssertEqual(mapping?.localSessionID, localSessionID)
     }

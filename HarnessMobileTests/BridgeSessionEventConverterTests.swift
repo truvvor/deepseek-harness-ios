@@ -28,7 +28,7 @@ final class BridgeSessionEventConverterTests: XCTestCase {
 
     // MARK: - Fixture contract
 
-    func testFixtureExportConvertsHeaderEventsAndReplacementRange() throws {
+    func testFixtureExportConvertsHeaderEventsAndDropsTheHeaderLine() throws {
         let report = try BridgeSessionEventConverter.decodeLog(try fixtureData())
 
         XCTAssertEqual(report.header?.id, "session-3f1c9a54-6b2e-4d77-9a10-8c5e2b7d4411")
@@ -41,6 +41,7 @@ final class BridgeSessionEventConverterTests: XCTestCase {
         XCTAssertFalse(report.renumberedSequences)
         XCTAssertEqual(report.lastBridgeSequence, 9)
         XCTAssertEqual(report.unknownEventTypes, ["fixture/telemetry-note"])
+        // The fixture's replacement is well formed, so nothing is rejected.
         XCTAssertEqual(report.droppedSurfaceOperations, 0)
 
         XCTAssertEqual(report.events.map(\.seq), Array(0..<10).map(UInt64.init))
@@ -48,24 +49,24 @@ final class BridgeSessionEventConverterTests: XCTestCase {
         XCTAssertEqual(report.events.last?.type, "turn/end")
     }
 
-    func testFixtureReplacementUsesLocalStartEndSpelling() throws {
+    /// The desktop is the master and its GUI renders the whole log, so a mirror
+    /// must not carry `surfaceOp.replace`: otherwise a compaction on the desktop
+    /// hides everything it replaced and the phone shows a fraction of the
+    /// conversation.
+    func testFixtureReplacementIsParsedButNotAppliedToTheMirror() throws {
         let report = try BridgeSessionEventConverter.decodeLog(try fixtureData())
-        let replacement = try XCTUnwrap(report.events.first(where: { $0.seq == 7 }))
+        let replacementSource = try XCTUnwrap(report.events.first(where: { $0.seq == 7 }))
 
-        // The desktop sends `{op, startSeq, endSeq}`; the app's own
-        // `SessionSurfaceOperation` wire form is `{op, start, end}` and is not
-        // changed by this converter.
-        XCTAssertEqual(replacement.surfaceOp, .replace(start: 6, end: 6))
-        let encoded = try JSONEncoder().encode(replacement)
+        XCTAssertEqual(replacementSource.surfaceOp, .append)
+        let encoded = try JSONEncoder().encode(replacementSource)
         let object = try XCTUnwrap(
             JSONSerialization.jsonObject(with: encoded) as? [String: Any]
         )
-        let surfaceOp = try XCTUnwrap(object["surfaceOp"] as? [String: Any])
-        XCTAssertEqual(surfaceOp["op"] as? String, "replace")
-        XCTAssertEqual(surfaceOp["start"] as? Int, 6)
-        XCTAssertEqual(surfaceOp["end"] as? Int, 6)
-        XCTAssertNil(surfaceOp["startSeq"])
-        XCTAssertNil(surfaceOp["endSeq"])
+        XCTAssertNil(object["surfaceOp"])
+
+        // Every mirrored event is append-only, so the desktop's history survives
+        // in log order.
+        XCTAssertTrue(report.events.allSatisfy { $0.surfaceOp == .append })
     }
 
     func testFixtureUnknownTypeIsAdmittedAsIgnorable() throws {
@@ -105,14 +106,15 @@ final class BridgeSessionEventConverterTests: XCTestCase {
         let messages = SessionTrajectoryConversationProjection.messages(from: persisted)
 
         // The fixture has five message events (user, assistant with a tool
-        // call, tool result, draft, final); the replacement at seq 7 removes
-        // the draft at seq 6 from the surface, so four messages remain.
-        XCTAssertEqual(messages.count, 4)
+        // call, tool result, draft, final). A mirror is append-only, so the
+        // desktop's replacement at seq 7 does not remove the draft: the phone
+        // must show the same history the desktop GUI shows.
+        XCTAssertEqual(messages.count, 5)
         XCTAssertEqual(messages.first?.content, "Summarise the fixture file.")
         XCTAssertEqual(messages.last?.content, "Final answer.")
-        XCTAssertFalse(
+        XCTAssertTrue(
             messages.contains { $0.content.contains("replaces") },
-            "The replaced assistant message must not survive the projection."
+            "A compacted desktop message must survive into the mirror."
         )
     }
 
@@ -146,11 +148,10 @@ final class BridgeSessionEventConverterTests: XCTestCase {
         }
     }
 
-    func testSparseSequenceLogIsRenumberedAndReplacementIsRemapped() throws {
+    func testSparseSequenceLogIsRenumberedAndStaysAppendOnly() throws {
         // A sparse log cannot enter the local append-only store, so the converter
-        // renumbers in file order and remaps surviving replacements. The
-        // replacement sits on a later event than the range it removes, which is the
-        // invariant a DSH `surfaceOp` always satisfies (`endSeq < seq`).
+        // renumbers in file order. Replacements are never installed on a mirror,
+        // so a compacted desktop session keeps every message.
         let payload = line(#"{"type":"turn/start","seq":5,"time":1,"data":{"turn":1}}"#)
             + line(#"{"type":"user/message","seq":9,"time":2,"data":{"content":[{"type":"text","text":"hello"}]}}"#)
             + line(#"{"type":"assistant/message","seq":20,"time":3,"data":{"message":{"content":[{"type":"text","text":"hi"}]}}}"#)
@@ -162,8 +163,7 @@ final class BridgeSessionEventConverterTests: XCTestCase {
         XCTAssertTrue(report.renumberedSequences)
         XCTAssertEqual(report.events.map(\.seq), [0, 1, 2, 3, 4])
         XCTAssertEqual(report.lastBridgeSequence, 47)
-        // Original 31 -> local 3, and it still points at original 20 -> local 2.
-        XCTAssertEqual(report.events[3].surfaceOp, .replace(start: 2, end: 2))
+        XCTAssertEqual(report.events[3].surfaceOp, .append)
         XCTAssertEqual(report.droppedSurfaceOperations, 0)
     }
 
@@ -198,7 +198,9 @@ final class BridgeSessionEventConverterTests: XCTestCase {
 
         let report = try BridgeSessionEventConverter.decodeLog(payload)
 
-        XCTAssertEqual(report.events.last?.surfaceOp, .replace(start: 0, end: 1))
+        // The older spelling parses without being rejected, and — like every
+        // replacement — is still not installed on a mirror.
+        XCTAssertEqual(report.events.last?.surfaceOp, .append)
         XCTAssertEqual(report.droppedSurfaceOperations, 0)
     }
 
