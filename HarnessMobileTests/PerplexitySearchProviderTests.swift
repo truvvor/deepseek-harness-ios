@@ -68,7 +68,7 @@ final class PerplexitySearchProviderTests: XCTestCase {
             _ = try await provider.search(query: "swift", maximumResults: 3)
             XCTFail("expected 401")
         } catch let error as PerplexitySearchError {
-            XCTAssertEqual(error, .endpoint(status: 401, detail: "端点 https://perplexity.test 返回 401：unauthorized"))
+            XCTAssertEqual(error, .endpoint(status: 401, detail: "Endpoint https://perplexity.test returned 401: unauthorized"))
         }
     }
 

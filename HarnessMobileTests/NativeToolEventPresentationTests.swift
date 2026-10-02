@@ -85,15 +85,15 @@ final class NativeToolEventPresentationTests: XCTestCase {
           "goal": null,
           "plan": [],
           "todos": [
-            {"id":"11111111-1111-1111-1111-111111111111","title":"完成项","status":"completed"},
-            {"id":"22222222-2222-2222-2222-222222222222","title":"当前项","status":"active"},
-            {"id":"33333333-3333-3333-3333-333333333333","title":"并行项","status":"active"}
+            {"id":"11111111-1111-1111-1111-111111111111","title":"Done item","status":"completed"},
+            {"id":"22222222-2222-2222-2222-222222222222","title":"Current item","status":"active"},
+            {"id":"33333333-3333-3333-3333-333333333333","title":"Parallel item","status":"active"}
           ]
         }
         """#
         let presentation = NativeToolEventPresentation.derive(
             name: "work_state_replace_todos",
-            arguments: #"{"items":[{"title":"旧值","status":"pending"}]}"#,
+            arguments: #"{"items":[{"title":"Old value","status":"pending"}]}"#,
             result: result,
             status: .succeeded
         )
@@ -103,7 +103,7 @@ final class NativeToolEventPresentationTests: XCTestCase {
         }
         XCTAssertEqual(items.kind, .todos)
         XCTAssertEqual(items.completedCount, 1)
-        XCTAssertEqual(items.activeItems.map(\.title), ["当前项", "并行项"])
+        XCTAssertEqual(items.activeItems.map(\.title), ["Current item", "Parallel item"])
         XCTAssertEqual(items.items.count, 3)
     }
 
@@ -122,7 +122,7 @@ final class NativeToolEventPresentationTests: XCTestCase {
     func testPlanUsesTheSameNativeWorkItemProjection() {
         let presentation = NativeToolEventPresentation.derive(
             name: "work_state_replace_plan",
-            arguments: #"{"steps":[{"title":"读取","status":"completed"},{"title":"实现","status":"active"}]}"#,
+            arguments: #"{"steps":[{"title":"Read","status":"completed"},{"title":"Implement","status":"active"}]}"#,
             result: nil,
             status: .running
         )
@@ -132,7 +132,7 @@ final class NativeToolEventPresentationTests: XCTestCase {
         }
         XCTAssertEqual(items.kind, .plan)
         XCTAssertEqual(items.completedCount, 1)
-        XCTAssertEqual(items.activeItems.first?.title, "实现")
+        XCTAssertEqual(items.activeItems.first?.title, "Implement")
     }
 
     func testTerminalPrefersStreamedOrderingAndCarriesExitMetadata() {
@@ -183,12 +183,12 @@ final class NativeToolEventPresentationTests: XCTestCase {
     }
 
     func testWorkflowBuildsDedicatedPhaseAndChildProjection() {
-        let arguments = #"{"meta":{"name":"并行研究","description":"汇总资料","phases":[{"title":"搜索","detail":"抓取来源"},{"title":"汇总"}]}}"#
+        let arguments = #"{"meta":{"name":"Parallel research","description":"Summarize sources","phases":[{"title":"Search","detail":"Fetch sources"},{"title":"Summarize"}]}}"#
         let output = [
-            AgentToolOutputChunk(channel: .progress, text: "Workflow phase: 搜索\n"),
-            AgentToolOutputChunk(channel: .progress, text: "Workflow child 1 started: 来源 A\n"),
-            AgentToolOutputChunk(channel: .progress, text: "Workflow child 1 completed: 来源 A [duration_ms=1250]\n"),
-            AgentToolOutputChunk(channel: .progress, text: "Workflow child 2 started: 来源 B\n")
+            AgentToolOutputChunk(channel: .progress, text: "Workflow phase: Search\n"),
+            AgentToolOutputChunk(channel: .progress, text: "Workflow child 1 started: Source A\n"),
+            AgentToolOutputChunk(channel: .progress, text: "Workflow child 1 completed: Source A [duration_ms=1250]\n"),
+            AgentToolOutputChunk(channel: .progress, text: "Workflow child 2 started: Source B\n")
         ]
         let presentation = NativeToolEventPresentation.derive(
             name: "workflow",
@@ -201,7 +201,7 @@ final class NativeToolEventPresentationTests: XCTestCase {
         guard case let .workflow(workflow) = presentation else {
             return XCTFail("Expected a workflow presentation")
         }
-        XCTAssertEqual(workflow.name, "并行研究")
+        XCTAssertEqual(workflow.name, "Parallel research")
         XCTAssertEqual(workflow.phases.count, 2)
         XCTAssertTrue(workflow.phases[0].isCurrent)
         XCTAssertFalse(workflow.phases[1].isCompleted)
