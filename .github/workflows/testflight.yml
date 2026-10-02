@@ -3,12 +3,14 @@ name: TestFlight
 # Archives HarnessMobile on a self-hosted Apple Silicon Mac runner and uploads
 # the build to App Store Connect / TestFlight.
 #
-# Required repository secrets:
+# Optional repository secrets (without them the Apple ID signed in to Xcode on
+# the runner is used for signing and upload):
 #   ASC_KEY_ID      App Store Connect API key ID
 #   ASC_ISSUER_ID   App Store Connect API issuer ID
 #   ASC_KEY_P8      Contents of the AuthKey_<id>.p8 file (raw PEM or base64)
 # Optional repository variables:
-#   APPLE_TEAM_ID   Team that signs the app (default: team in project.yml)
+#   APPLE_TEAM_ID   Team that signs the app (default: team of the first Apple
+#                   Development/Distribution certificate in the runner keychain)
 #   BUNDLE_ID       Main app bundle ID; extensions and the app group derive
 #                   from it (default: com.llf.harnessmobile)
 #   DEVELOPER_DIR   Xcode to use (default: newest of Xcode.app / Xcode-beta.app)
@@ -45,8 +47,8 @@ jobs:
     env:
       ORIGINAL_BUNDLE_ID: com.llf.harnessmobile
       ORIGINAL_TEAM_ID: 2SH3TUR2JL
-      BUNDLE_ID: ${{ vars.BUNDLE_ID || 'com.llf.harnessmobile' }}
-      APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID || '2SH3TUR2JL' }}
+      BUNDLE_ID: ${{ vars.BUNDLE_ID || 'com.truvvor.harnessmobile' }}
+      APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -108,6 +110,15 @@ jobs:
       - name: Retarget signing identity
         run: |
           set -euo pipefail
+          if [ -z "$APPLE_TEAM_ID" ]; then
+            for cert in "Apple Distribution" "Apple Development"; do
+              APPLE_TEAM_ID="$(security find-certificate -c "$cert" -p 2>/dev/null | openssl x509 -noout -subject 2>/dev/null | sed -nE 's/.*OU ?= ?([A-Z0-9]{10}).*/\1/p' | head -1 || true)"
+              [ -z "$APPLE_TEAM_ID" ] || break
+            done
+            [ -n "$APPLE_TEAM_ID" ] || { echo "::error::Set the APPLE_TEAM_ID variable or sign in to Xcode on the runner"; exit 1; }
+            echo "APPLE_TEAM_ID=$APPLE_TEAM_ID" >> "$GITHUB_ENV"
+          fi
+          echo "Team: $APPLE_TEAM_ID  Bundle ID: $BUNDLE_ID"
           if [ "$BUNDLE_ID" != "$ORIGINAL_BUNDLE_ID" ]; then
             grep -rlF "$ORIGINAL_BUNDLE_ID" project.yml HarnessMobile.xcodeproj HarnessMobile HarnessMobileShare HarnessMobileLiveActivity \
               | while IFS= read -r file; do
@@ -125,7 +136,10 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           set -euo pipefail
-          [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_KEY_P8" ] || { echo "::error::ASC_KEY_ID / ASC_KEY_P8 secrets are not set"; exit 1; }
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_KEY_P8" ]; then
+            echo "No App Store Connect API key secrets; using the Xcode account on the runner."
+            exit 0
+          fi
           mkdir -p "$BUILD_ROOT"
           key_path="$BUILD_ROOT/AuthKey_$ASC_KEY_ID.p8"
           if printf '%s' "$ASC_KEY_P8" | grep -q "BEGIN PRIVATE KEY"; then
@@ -143,6 +157,10 @@ jobs:
         run: |
           set -euo pipefail
           build_number="$(( ${{ github.run_number }} + 100 ))$(printf '.%s' "${{ github.run_attempt }}" | sed 's/^\.1$//')"
+          auth_args=()
+          if [ -n "${ASC_KEY_PATH:-}" ]; then
+            auth_args=(-authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          fi
           version_args=()
           if [ -n "${{ inputs.marketing_version }}" ]; then
             version_args+=("MARKETING_VERSION=${{ inputs.marketing_version }}")
@@ -155,9 +173,7 @@ jobs:
             -archivePath "$BUILD_ROOT/HarnessMobile.xcarchive" \
             -derivedDataPath "$BUILD_ROOT/DerivedData" \
             -allowProvisioningUpdates \
-            -authenticationKeyPath "$ASC_KEY_PATH" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            ${auth_args[@]+"${auth_args[@]}"} \
             ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CODE_SIGN_STYLE=Automatic \
@@ -171,6 +187,10 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
           set -euo pipefail
+          auth_args=()
+          if [ -n "${ASC_KEY_PATH:-}" ]; then
+            auth_args=(-authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          fi
           cat > "$BUILD_ROOT/ExportOptions.plist" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -191,9 +211,7 @@ jobs:
             -exportPath "$BUILD_ROOT/export" \
             -exportOptionsPlist "$BUILD_ROOT/ExportOptions.plist" \
             -allowProvisioningUpdates \
-            -authenticationKeyPath "$ASC_KEY_PATH" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+            ${auth_args[@]+"${auth_args[@]}"}
 
       - name: Clean up
         if: always()
