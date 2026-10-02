@@ -248,9 +248,9 @@ private struct SettingsLinkLabel: View {
 
 /// Desktop DeepSeek Harness bridge (mirror + desktop turns, D-014).
 ///
-/// This screen can only *read* desktop sessions. It deliberately offers no
-/// prompt, cancel or chat-completions entry point, because the product boundary
-/// forbids sending this app's prompts, tools or agent loop to another machine.
+/// This screen configures the bridge and syncs the mirror list. Desktop turns
+/// are started from a mirror's chat (D-014), never from here, and the app never
+/// sends its own tools or agent loop to another machine.
 private struct DesktopBridgeSettingsView: View {
     @Environment(AppModel.self) private var model
 
@@ -267,6 +267,8 @@ private struct DesktopBridgeSettingsView: View {
     @State private var errorMessage: String?
     @State private var importSummary: String?
     @State private var mirrorSessions: [ConversationSessionSummary] = []
+    @State private var isConfirmingForgetAll = false
+    @State private var isForgetting = false
 
     var body: some View {
         Form {
@@ -318,7 +320,7 @@ private struct DesktopBridgeSettingsView: View {
                 Button {
                     importSessions()
                 } label: {
-                    Label("Import Desktop Sessions", systemImage: "arrow.down.circle")
+                    Label("Sync Desktop Sessions", systemImage: "arrow.triangle.2.circlepath")
                 }
                 .disabled(isImporting || !isEnabled)
 
@@ -350,7 +352,7 @@ private struct DesktopBridgeSettingsView: View {
             } header: {
                 Text("Import")
             } footer: {
-                Text("Importing copies the desktop session log into this app as a local trajectory plus a search index entry. Nothing is written back by the import; the imported session is marked as a desktop mirror.")
+                Text("Sync imports every session the desktop sidebar shows, refreshes mirrors that already exist, and removes local mirrors whose desktop session is no longer listed (archived, deleted or hidden). Each mirror is a local copy of the desktop log; sync never writes anything back to the desktop.")
             }
 
             Section {
@@ -385,6 +387,28 @@ private struct DesktopBridgeSettingsView: View {
                         Button("Forget", role: .destructive) {
                             Task { await model.removeDesktopMirrorSession(session.id) }
                         }
+                    }
+                }
+
+                if !mirrorSessions.isEmpty {
+                    Button(role: .destructive) {
+                        isConfirmingForgetAll = true
+                    } label: {
+                        Label("Forget All Mirrors", systemImage: "trash")
+                    }
+                    .disabled(isForgetting || isImporting)
+                    .confirmationDialog(
+                        "Forget all \(mirrorSessions.count) mirrored sessions?",
+                        isPresented: $isConfirmingForgetAll,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Forget All", role: .destructive) { forgetAllMirrors(thenSync: false) }
+                        if isEnabled {
+                            Button("Forget All and Sync Again") { forgetAllMirrors(thenSync: true) }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("Only the copies on this iPhone are deleted. The desktop sessions stay as they are and can be synced again.")
                     }
                 }
             } header: {
@@ -482,12 +506,26 @@ private struct DesktopBridgeSettingsView: View {
         importSummary = nil
         Task {
             let result = await model.importDesktopMirrorSessions()
-            importSummary = "Created \(result.created), refreshed \(result.refreshed), failed \(result.failures.count)."
+            importSummary = "Created \(result.created), refreshed \(result.refreshed), removed \(result.removed), failed \(result.failures.count)."
             if !result.failures.isEmpty {
                 errorMessage = result.failures.values.sorted().first
             }
             isImporting = false
             await reloadMirrorSessions()
+        }
+    }
+
+    private func forgetAllMirrors(thenSync: Bool) {
+        isForgetting = true
+        importSummary = nil
+        Task {
+            let removed = await model.forgetAllDesktopMirrors()
+            importSummary = "Removed \(removed) mirrored sessions."
+            isForgetting = false
+            await reloadMirrorSessions()
+            if thenSync {
+                importSessions()
+            }
         }
     }
 

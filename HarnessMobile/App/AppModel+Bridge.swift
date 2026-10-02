@@ -246,12 +246,21 @@ extension AppModel {
         }
     }
 
-    /// Imports every desktop session the bridge lists. Local sessions that are
-    /// already mapped are refreshed with the desktop suffix only.
+    /// Result of syncing the mirror list with the desktop.
+    struct DesktopMirrorSyncSummary: Sendable, Equatable {
+        var created = 0
+        var refreshed = 0
+        var removed = 0
+        var failures: [String: String] = [:]
+    }
+
+    /// Syncs the local mirrors with the sessions the bridge lists: imports new
+    /// ones, refreshes mapped ones with the desktop suffix, and removes local
+    /// mirrors whose desktop session is no longer listed.
     @discardableResult
-    func importDesktopMirrorSessions() async -> (created: Int, refreshed: Int, failures: [String: String]) {
+    func importDesktopMirrorSessions() async -> DesktopMirrorSyncSummary {
         guard let coordinator = desktopBridgeCoordinator else {
-            return (0, 0, [:])
+            return DesktopMirrorSyncSummary()
         }
         desktopMirrorProgress = BridgeImportProgress(completed: 0, total: 0, currentTitle: nil)
         defer { desktopMirrorProgress = nil }
@@ -259,26 +268,64 @@ extension AppModel {
             let result = try await coordinator.importAll { [weak self] progress in
                 await MainActor.run { self?.desktopMirrorProgress = progress }
             }
-            var created = 0
-            var refreshed = 0
+            var summary = DesktopMirrorSyncSummary(removed: result.pruned.count, failures: result.failures)
             for outcome in result.outcomes {
                 switch outcome {
-                case .created: created += 1
-                case .refreshed: refreshed += 1
+                case .created: summary.created += 1
+                case .refreshed: summary.refreshed += 1
                 case .unchanged: break
                 }
             }
             desktopMirrorLastError = result.failures.isEmpty
                 ? nil
                 : result.failures.values.sorted().first
-            await refreshSessionSummaries()
-            await refreshDesktopMirrorProjection()
-            return (created, refreshed, result.failures)
+            await finishMirrorRemoval(result.pruned)
+            return summary
         } catch {
             desktopMirrorLastError = error.localizedDescription
             presentError(error)
-            return (0, 0, [:])
+            return DesktopMirrorSyncSummary()
         }
+    }
+
+    /// Deletes every local desktop mirror, including mirror sessions whose
+    /// mapping was lost, so a following import starts from a clean list. The
+    /// desktop sessions are never modified. Returns the number removed.
+    @discardableResult
+    func forgetAllDesktopMirrors() async -> Int {
+        var removed = Set<UUID>()
+        if let coordinator = desktopBridgeCoordinator {
+            await coordinator.stopAllFollowing()
+            do {
+                removed.formUnion(try await coordinator.removeAllMirrors())
+            } catch {
+                desktopMirrorLastError = error.localizedDescription
+                presentError(error)
+            }
+        }
+        await refreshSessionSummaries()
+        // Mirror sessions without a mapping (for example after a failed import)
+        // are ordinary rows to the coordinator; delete them like any session.
+        for orphan in sessions where orphan.isDesktopMirror && !removed.contains(orphan.id) {
+            await deleteConversation(id: orphan.id)
+            removed.insert(orphan.id)
+        }
+        desktopMirrorTurns = [:]
+        await finishMirrorRemoval(Array(removed))
+        return removed.count
+    }
+
+    private func finishMirrorRemoval(_ removed: [UUID]) async {
+        for id in removed {
+            followedMirrorSessionIDs.remove(id)
+            desktopMirrorTurns[id] = nil
+        }
+        if let activeSessionID, removed.contains(activeSessionID) {
+            await reconcileActiveSessionAfterMirrorRemoval()
+        } else {
+            await refreshSessionSummaries()
+        }
+        await refreshDesktopMirrorProjection()
     }
 
     func desktopMirrorMappings() async -> [BridgeSessionMapping] {
@@ -321,9 +368,7 @@ extension AppModel {
     func removeDesktopMirrorSession(_ localSessionID: UUID) async {
         do {
             try await desktopBridgeCoordinator?.removeMirror(localSessionID: localSessionID)
-            followedMirrorSessionIDs.remove(localSessionID)
-            await refreshSessionSummaries()
-            await refreshDesktopMirrorProjection()
+            await finishMirrorRemoval([localSessionID])
         } catch {
             desktopMirrorLastError = error.localizedDescription
             presentError(error)

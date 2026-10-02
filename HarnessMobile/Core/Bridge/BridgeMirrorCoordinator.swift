@@ -133,13 +133,40 @@ actor BridgeMirrorCoordinator {
         try await activeClient().listSessions(includeArchived: includeArchived)
     }
 
+    /// Brings the local mirrors in line with the desktop session list: imports
+    /// or refreshes every listed session, then removes the local mirrors whose
+    /// desktop session is no longer listed (archived, deleted, or hidden by the
+    /// bridge's sidebar rules). Pruning only drops local copies; the desktop is
+    /// never touched, and a later import restores anything listed again.
     func importAll(
         progress: @Sendable (BridgeImportProgress) async -> Void = { _ in }
-    ) async throws -> (outcomes: [BridgeImportOutcome], failures: [String: String]) {
+    ) async throws -> (outcomes: [BridgeImportOutcome], failures: [String: String], pruned: [UUID]) {
         let importer = try activeImporter()
         let entries = try await activeClient()
             .listSessions(includeArchived: settings.includesArchivedSessions)
-        return await importer.importSessions(entries, progress: progress)
+        let result = await importer.importSessions(entries, progress: progress)
+        let listed = Set(entries.map(\.sessionID))
+        var pruned: [UUID] = []
+        for mapping in try await mappings.allMappings() where !listed.contains(mapping.bridgeSessionID) {
+            do {
+                try await removeMirror(localSessionID: mapping.localSessionID)
+                pruned.append(mapping.localSessionID)
+            } catch {
+                continue
+            }
+        }
+        return (result.outcomes, result.failures, pruned)
+    }
+
+    /// Removes every local mirror and its correspondence, including mappings
+    /// whose local session was already deleted. The desktop is never touched.
+    func removeAllMirrors() async throws -> [UUID] {
+        var removed: [UUID] = []
+        for mapping in try await mappings.allMappings() {
+            try await removeMirror(localSessionID: mapping.localSessionID)
+            removed.append(mapping.localSessionID)
+        }
+        return removed
     }
 
     func importOne(_ entry: BridgeSessionListEntry) async throws -> BridgeImportOutcome {

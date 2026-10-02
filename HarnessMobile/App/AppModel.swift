@@ -3604,6 +3604,30 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         }
     }
 
+    /// Re-selects a valid active session after sessions were deleted outside
+    /// `deleteConversation`, such as desktop mirrors removed by a bridge sync.
+    func reconcileActiveSessionAfterMirrorRemoval() async {
+        do {
+            var state = try await sessionStore.loadState()
+            if state.activeSession == nil {
+                _ = try await sessionStore.createSession(
+                    title: "New Session",
+                    controlState: defaultConversationControlState()
+                )
+                state = try await sessionStore.loadState()
+            }
+            if state.activeSession?.id != activeSessionID {
+                applySessionState(state)
+                await projectFeedbackSidecar()
+                await workStateCoordinator.replace(with: workState)
+                await refreshTrajectory()
+            }
+            await refreshSessionSummaries()
+        } catch {
+            presentError(error)
+        }
+    }
+
     func renameConversation(id: UUID, title: String) async {
         do {
             let renamed = try await sessionStore.renameSession(id: id, title: title)

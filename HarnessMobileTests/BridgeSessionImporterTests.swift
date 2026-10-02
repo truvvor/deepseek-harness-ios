@@ -245,6 +245,40 @@ final class BridgeSessionImporterTests: XCTestCase {
         XCTAssertEqual(events.count, report.events.count)
     }
 
+    func testMirrorDeletedFromTheSessionListIsReimportedFromScratch() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+
+        let first = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+        // Deleting the conversation from the session list leaves the mapping.
+        _ = try await harness.sessionStore.deleteSession(id: first.localSessionID)
+        try await harness.trajectory.delete(sessionID: first.localSessionID)
+
+        let second = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+
+        guard case let .created(localSessionID) = second else {
+            return XCTFail("Expected a fresh mirror, got \(second)")
+        }
+        XCTAssertNotEqual(localSessionID, first.localSessionID)
+        let session = try await harness.sessionStore.session(id: localSessionID)
+        XCTAssertEqual(session.messages.count, 4)
+        let mapping = try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID)
+        XCTAssertEqual(mapping?.localSessionID, localSessionID)
+    }
+
     func testReimportWithNewDesktopSuffixAppendsOnlyTheSuffix() async throws {
         let harness = try makeHarness()
         defer { try? FileManager.default.removeItem(at: harness.root) }

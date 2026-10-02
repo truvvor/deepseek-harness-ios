@@ -182,7 +182,18 @@ actor BridgeSessionImporter {
         events: [SessionEvent],
         lastBridgeSequence: Int64
     ) async throws -> BridgeImportOutcome {
-        let existing = try await mappings.mapping(bridgeSessionID: bridgeSessionID)
+        var existing = try await mappings.mapping(bridgeSessionID: bridgeSessionID)
+        // The mirror's local session may have been deleted from the session list
+        // while its mapping survived. Re-import such a desktop session from
+        // scratch instead of failing on the missing session forever.
+        if let stale = existing, (try? await sessionStore.session(id: stale.localSessionID)) == nil {
+            try? await trajectory.delete(sessionID: stale.localSessionID)
+            if let queryModel {
+                try? await queryModel.remove(sessionID: stale.localSessionID)
+            }
+            try await mappings.forget(bridgeSessionID: bridgeSessionID)
+            existing = nil
+        }
         let localSessionID = existing?.localSessionID ?? UUID()
         let isNew = existing == nil
 
