@@ -166,44 +166,50 @@ actor BridgeSessionSync {
         var pending = false
         var lastRefresh: Date?
 
-        func refresh() async throws {
-            try await refresher.refreshMirror(bridgeSessionID: bridgeSessionID)
-            pending = false
-            pass.refreshed = true
-            lastRefresh = now()
-        }
-
         for try await frame in frames {
             try Task.checkCancellation()
+            var shouldRefresh = false
+            var isFinal = false
             switch frame.kind {
             case .snapshot:
                 // The desktop is already ahead of the mirror (for example after a
                 // reconnect gap): catch up from the export immediately.
                 if let through = frame.throughSeq, through > importedThrough {
                     pass.sawEvents = true
-                    try await refresh()
+                    shouldRefresh = true
                 }
             case .event:
                 pass.sawEvents = true
                 pending = true
-                if let lastRefresh, now().timeIntervalSince(lastRefresh) < Self.minimumRefreshInterval {
-                    continue
+                if let lastRefresh {
+                    shouldRefresh = now().timeIntervalSince(lastRefresh) >= Self.minimumRefreshInterval
+                } else {
+                    shouldRefresh = true
                 }
-                try await refresh()
             case .turnEnd:
-                if pending { try await refresh() }
+                shouldRefresh = pending
             case .closed:
-                if pending { try await refresh() }
-                return pass
+                shouldRefresh = pending
+                isFinal = true
             case .error:
                 throw BridgeClientError.streamEnded(frame.message)
             case .unknown, .delta, .reasoning, .usage:
                 // Token deltas are transient; durable history arrives as `event`
                 // frames and is read from the export.
-                continue
+                break
             }
+            if shouldRefresh {
+                try await refresher.refreshMirror(bridgeSessionID: bridgeSessionID)
+                pending = false
+                pass.refreshed = true
+                lastRefresh = now()
+            }
+            if isFinal { return pass }
         }
-        if pending { try await refresh() }
+        if pending {
+            try await refresher.refreshMirror(bridgeSessionID: bridgeSessionID)
+            pass.refreshed = true
+        }
         return pass
     }
 }
