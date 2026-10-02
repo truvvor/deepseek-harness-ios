@@ -71,6 +71,7 @@ actor BridgeSessionImporter {
     private let trajectory: SessionTrajectoryRepository
     private let queryModel: SessionQueryReadModel?
     private let mappings: BridgeSessionMirrorStore
+    private var inFlight: [String: Task<BridgeImportOutcome, Error>] = [:]
 
     init(
         client: BridgeClient,
@@ -120,15 +121,48 @@ actor BridgeSessionImporter {
 
     @discardableResult
     func importSession(_ entry: BridgeSessionListEntry) async throws -> BridgeImportOutcome {
-        let log = try await client.exportLog(sessionID: entry.sessionID)
-        let report = try BridgeSessionEventConverter.decodeLog(log)
-        return try await importConverted(
-            bridgeSessionID: entry.sessionID,
-            listTitle: entry.title,
-            header: report.header,
-            events: report.events,
-            lastBridgeSequence: report.lastBridgeSequence
-        )
+        try await importSession(bridgeSessionID: entry.sessionID, listTitle: entry.title)
+    }
+
+    /// Re-reads the canonical desktop export and appends whatever the local
+    /// mirror does not hold yet. The live follow calls this when the stream
+    /// reports new events, so live history is always the lossless export and
+    /// never a reconstruction of the lossy SSE `event` frame.
+    @discardableResult
+    func importSession(bridgeSessionID: String, listTitle: String?) async throws -> BridgeImportOutcome {
+        try await serialized(bridgeSessionID: bridgeSessionID) {
+            let log = try await self.client.exportLog(sessionID: bridgeSessionID)
+            let report = try BridgeSessionEventConverter.decodeLog(log)
+            return try await self.importConverted(
+                bridgeSessionID: bridgeSessionID,
+                listTitle: listTitle,
+                header: report.header,
+                events: report.events,
+                lastBridgeSequence: report.lastBridgeSequence
+            )
+        }
+    }
+
+    /// Runs imports of one desktop session strictly one after another. A manual
+    /// import and the live follow may both refresh the same mirror; without this
+    /// the actor's suspension points would let them interleave and race on the
+    /// local log head.
+    private func serialized(
+        bridgeSessionID: String,
+        _ operation: @escaping @Sendable () async throws -> BridgeImportOutcome
+    ) async throws -> BridgeImportOutcome {
+        let previous = inFlight[bridgeSessionID]
+        let task = Task<BridgeImportOutcome, Error> {
+            _ = await previous?.result
+            return try await operation()
+        }
+        inFlight[bridgeSessionID] = task
+        defer {
+            if inFlight[bridgeSessionID] == task {
+                inFlight[bridgeSessionID] = nil
+            }
+        }
+        return try await task.value
     }
 
     /// Applies an already-converted desktop log. Split out so the conversion and
@@ -205,32 +239,38 @@ actor BridgeSessionImporter {
 
     /// Admits the converted desktop events through the audited sync seam.
     ///
-    /// `baseSequence` uses `UInt64.max` for the virtual "before seq 0" position
-    /// exactly as `HarnessSyncEnvelope` documents, then advances by the admitted
-    /// suffix. A local log that is already ahead is skipped rather than rewritten,
-    /// which keeps a re-import idempotent.
+    /// The converter numbers desktop events densely from 0, and a mirror log is
+    /// only ever written by this importer, so local sequence `n` always holds
+    /// desktop event `n`. Only the suffix past the local head is admitted,
+    /// chunked to `HarnessSyncEnvelope.maximumEvents`. `UInt64.max` is the
+    /// virtual "before seq 0" base for an empty log, as `HarnessSyncEnvelope`
+    /// documents. A local log that is already at or past the desktop head is
+    /// left untouched, which keeps a re-import idempotent.
     private func admit(_ events: [SessionEvent], sessionID: UUID) async throws -> [SessionEvent] {
-        var admitted: [SessionEvent] = []
-        var baseSequence = UInt64.max
-        var startIndex = 0
+        let localEvents = try await trajectory.allEvents(sessionID: sessionID)
+        let localNext = localEvents.last.map { $0.seq &+ 1 } ?? 0
+        let suffix = events.filter { $0.seq >= localNext }
+        guard !suffix.isEmpty else { return [] }
+        guard suffix[0].seq == localNext else {
+            throw BridgeImportError.notMirrorable(
+                "the desktop log does not continue the local mirror at sequence \(localNext)"
+            )
+        }
 
-        while startIndex < events.count {
-            let endIndex = min(startIndex + Self.maximumEventsPerEnvelope, events.count)
-            let chunk = Array(events[startIndex..<endIndex])
+        var admitted: [SessionEvent] = []
+        var baseSequence = localNext == 0 ? UInt64.max : localNext - 1
+        var startIndex = 0
+        while startIndex < suffix.count {
+            let endIndex = min(startIndex + Self.maximumEventsPerEnvelope, suffix.count)
+            let chunk = Array(suffix[startIndex..<endIndex])
             let envelope = try HarnessSyncEnvelope(
                 sessionID: sessionID,
                 baseSequence: baseSequence,
                 events: chunk,
                 metadata: ["transport": "dsh-api-bridge"]
             )
-            do {
-                let result = try await trajectory.admitSyncEnvelope(envelope)
-                admitted.append(contentsOf: result)
-                baseSequence = chunk[chunk.count - 1].seq
-            } catch SessionTrajectoryRepositoryError.syncBaseMismatch {
-                // This mirror already holds that range; continue from the next one.
-                baseSequence = chunk[chunk.count - 1].seq
-            }
+            admitted.append(contentsOf: try await trajectory.admitSyncEnvelope(envelope))
+            baseSequence = chunk[chunk.count - 1].seq
             startIndex = endIndex
         }
         return admitted

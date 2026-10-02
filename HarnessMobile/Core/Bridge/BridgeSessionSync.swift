@@ -1,11 +1,5 @@
 import Foundation
 
-/// Outcome of one follow connection.
-enum BridgeFollowOutcome: Sendable, Equatable {
-    /// The desktop session stream ended normally (`closed` frame or socket EOF).
-    case ended
-}
-
 enum BridgeFollowError: Error, LocalizedError, Sendable, Equatable {
     case mirrorNotFound(UUID)
     case notConfigured
@@ -20,38 +14,58 @@ enum BridgeFollowError: Error, LocalizedError, Sendable, Equatable {
     }
 }
 
+/// Refreshes one mirror from the canonical desktop export. Implemented by
+/// `BridgeSessionImporter`; a protocol so the follow loop can be tested without
+/// a live bridge.
+protocol BridgeMirrorRefreshing: Sendable {
+    func refreshMirror(bridgeSessionID: String) async throws
+}
+
+extension BridgeSessionImporter: BridgeMirrorRefreshing {
+    func refreshMirror(bridgeSessionID: String) async throws {
+        _ = try await importSession(bridgeSessionID: bridgeSessionID, listTitle: nil)
+    }
+}
+
+/// What one follow connection observed, which drives the reconnect pacing.
+struct BridgeFollowPass: Sendable, Equatable {
+    /// Durable desktop events were announced during this connection.
+    var sawEvents = false
+    /// The mirror was refreshed from the export at least once.
+    var refreshed = false
+}
+
 /// Live, read-only follow of one mirrored desktop session.
 ///
-/// New events are appended to the local trajectory idempotently by sequence
-/// number: an event at or below the highest admitted sequence is skipped, so a
-/// reconnect with `since=<last>` can never duplicate or reorder history. Nothing
-/// is ever sent to the desktop host from here — this type owns no request other
-/// than `GET …/stream`.
+/// The SSE stream is used only as a change signal. Its `event` frames carry a
+/// flattened `{role, content: String}` projection that cannot reproduce the
+/// canonical event (content blocks, tool calls, reasoning), so this type never
+/// writes frames into the trajectory. Whenever the desktop reports new durable
+/// events, the mirror is refreshed through `BridgeSessionImporter`, which reads
+/// `/export` and appends exactly the missing suffix. History is therefore
+/// always lossless, dense and identical to an import, and a reconnect can
+/// neither duplicate nor skip events.
+///
+/// Nothing is ever sent to the desktop host from here: the only requests are
+/// `GET …/stream` and, through the importer, `GET …/export`.
 actor BridgeSessionSync {
-    private struct FollowPosition {
-        /// Highest desktop sequence number already represented locally.
-        var throughSequence: Int64
-        /// Sequences that exist in the local log, so a replacement can be
-        /// checked against events this device actually holds.
-        var retainedSequences: Set<UInt64>
-    }
+    /// Refresh at most this often while a long desktop turn keeps producing
+    /// events, so the mirror stays live without re-reading the export per frame.
+    static let minimumRefreshInterval: TimeInterval = 3
 
     private let client: BridgeClient
-    private let trajectory: SessionTrajectoryRepository
-    private let queryModel: SessionQueryReadModel?
+    private let refresher: any BridgeMirrorRefreshing
     private let mappings: BridgeSessionMirrorStore
 
     private var rootTasks: [UUID: Task<Void, Never>] = [:]
 
     init(
         client: BridgeClient,
-        trajectory: SessionTrajectoryRepository,
-        queryModel: SessionQueryReadModel?,
+        refresher: any BridgeMirrorRefreshing,
         mappings: BridgeSessionMirrorStore
     ) {
         self.client = client
-        self.trajectory = trajectory
-        self.queryModel = queryModel
+        self.refresher = refresher
         self.mappings = mappings
     }
 
@@ -70,10 +84,7 @@ actor BridgeSessionSync {
         let bridgeSessionID = mapping.bridgeSessionID
         rootTasks[localSessionID] = Task { [weak self] in
             guard let self else { return }
-            await self.runSupervised(
-                localSessionID: localSessionID,
-                bridgeSessionID: bridgeSessionID
-            )
+            await self.runSupervised(bridgeSessionID: bridgeSessionID)
         }
     }
 
@@ -88,15 +99,30 @@ actor BridgeSessionSync {
 
     // MARK: - Supervision
 
-    private func runSupervised(localSessionID: UUID, bridgeSessionID: String) async {
+    /// Delay before the next connection.
+    ///
+    /// Failures back off from 1 s to 16 s. A connection that ended cleanly
+    /// without any new event (an idle or finished desktop session, which the
+    /// bridge closes after the snapshot) backs off from 2 s to 32 s, so an idle
+    /// mirror is not polled in a tight loop. Any announced event resets both.
+    static func reconnectDelay(consecutiveFailures: Int, consecutiveIdlePasses: Int) -> TimeInterval {
+        if consecutiveFailures > 0 {
+            return pow(2, Double(min(consecutiveFailures, 5) - 1))
+        }
+        if consecutiveIdlePasses > 0 {
+            return 2 * pow(2, Double(min(consecutiveIdlePasses, 5) - 1))
+        }
+        return 0.5
+    }
+
+    private func runSupervised(bridgeSessionID: String) async {
         var consecutiveFailures = 0
+        var consecutiveIdlePasses = 0
         while !Task.isCancelled {
             do {
-                try await followOnce(
-                    localSessionID: localSessionID,
-                    bridgeSessionID: bridgeSessionID
-                )
+                let pass = try await followOnce(bridgeSessionID: bridgeSessionID)
                 consecutiveFailures = 0
+                consecutiveIdlePasses = pass.sawEvents ? 0 : consecutiveIdlePasses + 1
             } catch is CancellationError {
                 return
             } catch BridgeClientError.cancelled {
@@ -105,10 +131,10 @@ actor BridgeSessionSync {
                 consecutiveFailures += 1
             }
             if Task.isCancelled { return }
-            // Bounded reconnect backoff. A disconnect is an expected state
-            // (tunnel drops, desktop sleep), so the mirror resumes with `since`
-            // instead of failing permanently.
-            let delay = min(30, 0.5 * pow(2, Double(min(consecutiveFailures, 6))))
+            let delay = Self.reconnectDelay(
+                consecutiveFailures: consecutiveFailures,
+                consecutiveIdlePasses: consecutiveIdlePasses
+            )
             do {
                 try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             } catch {
@@ -118,136 +144,66 @@ actor BridgeSessionSync {
     }
 
     /// One follow connection. Returns when the stream ends.
-    func followOnce(localSessionID: UUID, bridgeSessionID: String) async throws {
-        var position = try await currentPosition(
-            localSessionID: localSessionID,
-            bridgeSessionID: bridgeSessionID
-        )
+    func followOnce(bridgeSessionID: String) async throws -> BridgeFollowPass {
+        let mapping = try await mappings.mapping(bridgeSessionID: bridgeSessionID)
+        let importedThrough = mapping?.importedThroughBridgeSeq ?? -1
         let stream = await client.stream(
             sessionID: bridgeSessionID,
-            since: position.throughSequence >= 0 ? position.throughSequence : nil
+            since: importedThrough >= 0 ? importedThrough : nil
         )
+        return try await consume(stream, bridgeSessionID: bridgeSessionID, importedThrough: importedThrough)
+    }
 
-        for try await frame in stream {
+    /// Applies one stream's frames. Split out so the pacing and refresh rules can
+    /// be exercised with an in-process frame sequence.
+    func consume(
+        _ frames: AsyncThrowingStream<BridgeStreamFrame, Error>,
+        bridgeSessionID: String,
+        importedThrough: Int64,
+        now: @Sendable () -> Date = { .now }
+    ) async throws -> BridgeFollowPass {
+        var pass = BridgeFollowPass()
+        var pending = false
+        var lastRefresh: Date?
+
+        func refresh() async throws {
+            try await refresher.refreshMirror(bridgeSessionID: bridgeSessionID)
+            pending = false
+            pass.refreshed = true
+            lastRefresh = now()
+        }
+
+        for try await frame in frames {
             try Task.checkCancellation()
             switch frame.kind {
             case .snapshot:
-                if let through = frame.throughSeq, through > position.throughSequence {
-                    position.throughSequence = through
+                // The desktop is already ahead of the mirror (for example after a
+                // reconnect gap): catch up from the export immediately.
+                if let through = frame.throughSeq, through > importedThrough {
+                    pass.sawEvents = true
+                    try await refresh()
                 }
             case .event:
-                if let sequence = frame.seq, let eventType = frame.eventType {
-                    try await apply(
-                        eventType: eventType,
-                        sequence: sequence,
-                        time: frame.time,
-                        content: frame.content,
-                        role: frame.role,
-                        localSessionID: localSessionID,
-                        position: &position
-                    )
+                pass.sawEvents = true
+                pending = true
+                if let lastRefresh, now().timeIntervalSince(lastRefresh) < Self.minimumRefreshInterval {
+                    continue
                 }
+                try await refresh()
+            case .turnEnd:
+                if pending { try await refresh() }
             case .closed:
-                try await persistPosition(position, bridgeSessionID: bridgeSessionID)
-                try await refreshIndex(localSessionID: localSessionID)
-                return
+                if pending { try await refresh() }
+                return pass
             case .error:
                 throw BridgeClientError.streamEnded(frame.message)
-            case .unknown, .delta, .reasoning, .usage, .turnEnd:
-                // Streaming deltas are already carried by durable
-                // `assistant/chunk` events; only durable `event` frames change
-                // the mirrored history.
+            case .unknown, .delta, .reasoning, .usage:
+                // Token deltas are transient; durable history arrives as `event`
+                // frames and is read from the export.
                 continue
             }
         }
-        try await persistPosition(position, bridgeSessionID: bridgeSessionID)
-        try await refreshIndex(localSessionID: localSessionID)
-    }
-
-    private func currentPosition(
-        localSessionID: UUID,
-        bridgeSessionID: String
-    ) async throws -> FollowPosition {
-        let events = try await trajectory.allEvents(sessionID: localSessionID)
-        let mapping = try await mappings.mapping(bridgeSessionID: bridgeSessionID)
-        if let mapping {
-            return FollowPosition(
-                throughSequence: mapping.importedThroughBridgeSeq,
-                retainedSequences: Set(events.map(\.seq))
-            )
-        }
-        return FollowPosition(
-            throughSequence: Int64(events.last?.seq ?? 0) - 1,
-            retainedSequences: Set(events.map(\.seq))
-        )
-    }
-
-    private func apply(
-        eventType: String,
-        sequence: UInt64,
-        time: Int64?,
-        content: String?,
-        role: String?,
-        localSessionID: UUID,
-        position: inout FollowPosition
-    ) async throws {
-        guard Int64(sequence) > position.throughSequence else { return }
-        let event = try BridgeSessionEventConverter.makeEvent(
-            type: eventType,
-            seq: sequence,
-            time: time.map { max(0, $0) } ?? SessionEventTimestamp.nowMilliseconds(),
-            data: Self.eventData(content: content, role: role, eventType: eventType),
-            isKnown: BridgeSessionEventConverter.isKnownEventType(eventType),
-            surfaceStart: nil,
-            surfaceEnd: nil
-        )
-        try await appendIdempotently(event, sessionID: localSessionID)
-        position.throughSequence = Int64(sequence)
-        position.retainedSequences.insert(sequence)
-    }
-
-    /// Appends one live event without ever duplicating or reordering history.
-    ///
-    /// Live frames carry no `surfaceOp`, so a live mirror grows strictly
-    /// append-only: a mid-turn desktop replacement cannot make an already-shown
-    /// message disappear on this device. The authoritative replacement is applied
-    /// by the next `importSession` pass, which reads the full canonical export.
-    /// `invalidSequence` therefore means "already present", not a failure.
-    private func appendIdempotently(_ event: SessionEvent, sessionID: UUID) async throws {
-        do {
-            _ = try await trajectory.append(event, sessionID: sessionID)
-        } catch SessionEventLogError.invalidSequence {
-            return
-        }
-    }
-
-    private func persistPosition(
-        _ position: FollowPosition,
-        bridgeSessionID: String
-    ) async throws {
-        try await mappings.updateFollowPosition(
-            bridgeSessionID: bridgeSessionID,
-            importedThroughBridgeSeq: position.throughSequence,
-            importedEventCount: position.retainedSequences.count
-        )
-    }
-
-    private func refreshIndex(localSessionID: UUID) async throws {
-        guard let queryModel else { return }
-        try await queryModel.refresh(sessionID: localSessionID, persistence: trajectory)
-    }
-
-    private static func eventData(
-        content: String?,
-        role: String?,
-        eventType: String
-    ) -> JSONValue {
-        var object: [String: JSONValue] = [:]
-        if let role { object["role"] = .string(role) }
-        if let content { object["content"] = .string(content) }
-        if eventType == SessionEventVocabulary.turnEnd, let content {
-            object["reason"] = .object(["kind": .string(content)])
-        }
-        return .object(object)
+        if pending { try await refresh() }
+        return pass
     }
 }

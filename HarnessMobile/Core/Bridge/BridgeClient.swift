@@ -69,6 +69,9 @@ actor BridgeClient {
     private let sessionConfiguration: URLSessionConfiguration
     private var session: URLSession
 
+    /// Upper bound for one request, including a long-lived SSE follow.
+    static let maximumResourceLifetimeSeconds: TimeInterval = 24 * 60 * 60
+
     init(
         configuration: BridgeClientConfiguration,
         tokenProvider: @escaping BridgeTokenProvider
@@ -77,7 +80,10 @@ actor BridgeClient {
         self.tokenProvider = tokenProvider
         let sessionConfiguration = URLSessionConfiguration.ephemeral
         sessionConfiguration.timeoutIntervalForRequest = configuration.requestTimeoutSeconds
-        sessionConfiguration.timeoutIntervalForResource = configuration.streamIdleTimeoutSeconds
+        // `timeoutIntervalForResource` caps a request's whole lifetime, so it must
+        // not be the stream idle timeout: a healthy SSE follow lives for hours.
+        // Inactivity is bounded per request through `URLRequest.timeoutInterval`.
+        sessionConfiguration.timeoutIntervalForResource = Self.maximumResourceLifetimeSeconds
         sessionConfiguration.waitsForConnectivity = false
         sessionConfiguration.requestCachePolicy = .reloadIgnoringLocalCacheData
         sessionConfiguration.urlCache = nil
@@ -169,7 +175,10 @@ actor BridgeClient {
                     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
                     request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
                     request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
-                    request.timeoutInterval = requestTimeout
+                    // For a streaming request URLSession applies this as the
+                    // maximum silence between received bytes, which is exactly
+                    // the stream idle timeout.
+                    request.timeoutInterval = max(requestTimeout, idleTimeout)
 
                     let (bytes, response) = try await session.bytes(for: request)
                     guard let http = response as? HTTPURLResponse else {
@@ -177,10 +186,8 @@ actor BridgeClient {
                     }
                     try Self.validate(status: http.statusCode)
 
-                    var idle = IdleDeadline(seconds: idleTimeout)
                     for try await byte in bytes {
                         try Task.checkCancellation()
-                        try idle.touch()
                         guard let payload = try decoder.consume(byte: byte) else { continue }
                         guard let data = payload.data(using: .utf8),
                               let frame = try? JSONDecoder().decode(BridgeStreamFrame.self, from: data) else {
@@ -323,26 +330,5 @@ struct BridgeClientConfiguration: Sendable, Equatable {
         self.baseURL = baseURL
         self.requestTimeoutSeconds = validated.requestTimeoutSeconds
         self.streamIdleTimeoutSeconds = validated.streamIdleTimeoutSeconds
-    }
-}
-
-/// Bounded idle watchdog for the SSE read loop: a silent socket is treated as a
-/// disconnect instead of hanging the mirror until the app is killed.
-private struct IdleDeadline {
-    private let limit: TimeInterval
-    private var started = Date()
-
-    init(seconds: TimeInterval) {
-        limit = seconds
-    }
-
-    mutating func touch() throws {
-        let now = Date()
-        if now.timeIntervalSince(started) > limit {
-            throw BridgeClientError.streamEnded("no frames received within the idle timeout")
-        }
-        if now.timeIntervalSince(started) > limit / 4 {
-            started = now
-        }
     }
 }

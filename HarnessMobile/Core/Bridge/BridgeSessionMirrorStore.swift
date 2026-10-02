@@ -102,7 +102,9 @@ actor BridgeSessionMirrorStore {
     private func load() throws -> Snapshot {
         guard fileManager.fileExists(atPath: fileURL.path) else { return .empty }
         do {
-            let snapshot = try JSONDecoder().decode(Snapshot.self, from: Data(contentsOf: fileURL))
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let snapshot = try decoder.decode(Snapshot.self, from: Data(contentsOf: fileURL))
             guard snapshot.version == Self.currentVersion else {
                 throw BridgeSessionMappingError.unsupportedVersion(snapshot.version)
             }

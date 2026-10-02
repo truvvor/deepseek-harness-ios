@@ -25,6 +25,14 @@
   - `./Scripts/verify-capability-manifest.sh` → 通过（该脚本在补丁开发过程中曾捕获一次真实回归：`Docs/CAPABILITY_MANIFEST.json` 中单元素数组被压成字符串，已修复）。
   - `git diff --check` 干净；`bash -n` 覆盖 `Scripts/*`；`Info.plist` 为合法 XML；敏感内容门禁（bridge token、凭据字面量、私有地址、真实会话文本）无命中。
   - 仍无法在此环境运行：`./Scripts/audit-no-remote-execution.sh`（需要 vendored `HarnessISH.xcframework.zip`）与 `./Scripts/check-upstream-parity.sh`（需要 upstream checkout），以及 `swift test` / `xcodebuild` / 真机验证。
+- **审查修复（2026-10-02）**：
+  - 编译：`AppModel+Bridge.swift` 依赖的 `settingsStore`/`credentialStore`/`sessionStore`/`sessionQueryReadModel`/`desktopBridgeCoordinator`/`refreshSessionSummaries()` 改为 internal；补齐 `try`/`await`；`BridgeSessionSync` 不再把 `SessionEvent` 传给只接受 `SessionEventDraft` 的 `append`。
+  - 映射表：`BridgeSessionMirrorStore` 解码改用 `.iso8601`，与编码一致（此前首次保存后即 `unreadableStore`）。
+  - 导入：`admit` 以本地日志头为准，只提交 `seq >= localNext` 的后缀（转换器保证从 0 开始的密集序号），不再依赖 512 分块边界；同一桌面会话的导入串行执行。
+  - 跟随：SSE 只作为变更信号；收到 `event`（≥3 s 节流）、`turn/end`、`closed` 或领先的 `snapshot` 时通过导入器重读 `/export` 追加后缀，不再把有损的 `{role, content}` 帧写入轨迹；空闲连接 2→32 s、失败 1→16 s 退避，不再 0.5 s 轮询。
+  - 传输：`timeoutIntervalForResource` 改为 24 h 上限，静默由请求级 `timeoutInterval` 控制，SSE 不再每 120 s 被强制断开；启动时 `connectIfConfigured()` 构建客户端。
+  - 只读门禁：`submit()`（含斜杠命令与 `@subagent`）、`startRun`、`appendCommandRun`、`hasResumableRun` 计算统一拒绝镜像会话（D-012）。
+
 ### PARITY-023 · file-upload binary route + staged receipt（2026-09-04）
 
 - **状态**：VERIFY

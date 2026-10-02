@@ -31,6 +31,7 @@ extension AppModel {
         )
         desktopBridgeCoordinator = coordinator
         followedMirrorSessionIDs = []
+        await coordinator.connectIfConfigured()
         await refreshDesktopMirrorProjection()
     }
 
@@ -57,7 +58,7 @@ extension AppModel {
             try settingsStore.saveBridgeSettings(validated)
             desktopMirrorSettings = validated
             desktopMirrorLastError = nil
-            await desktopBridgeCoordinator?.update(settings: validated)
+            try await desktopBridgeCoordinator?.update(settings: validated)
             return true
         } catch {
             desktopMirrorLastError = error.localizedDescription
@@ -80,8 +81,19 @@ extension AppModel {
     }
 
     func deleteDesktopMirrorToken() async {
-        await desktopBridgeCoordinator?.deleteToken()
+        do {
+            try await desktopBridgeCoordinator?.deleteToken()
+            desktopMirrorLastError = nil
+        } catch {
+            desktopMirrorLastError = error.localizedDescription
+            presentError(error)
+        }
         followedMirrorSessionIDs = []
+    }
+
+    /// The single read-only refusal used by every local agent-loop entry point.
+    func refuseDesktopMirrorMutation() {
+        presentError(DesktopMirrorReadOnlyError())
     }
 
     func checkDesktopMirrorHealth() async -> BridgeSessionHealth? {
@@ -182,5 +194,13 @@ extension AppModel {
     private func refreshDesktopMirrorProjection() async {
         let followed = await desktopBridgeCoordinator?.followedSessionIDs() ?? []
         followedMirrorSessionIDs = Set(followed)
+    }
+}
+
+/// Raised when a local agent-loop or trajectory write is attempted on a desktop
+/// mirror (DECISIONS D-012).
+struct DesktopMirrorReadOnlyError: Error, LocalizedError, Sendable {
+    var errorDescription: String? {
+        "This session mirrors the desktop DeepSeek Harness and is read-only on this iPhone. Open a local session to run the on-device agent."
     }
 }

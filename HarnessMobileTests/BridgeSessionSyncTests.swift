@@ -8,11 +8,37 @@ import XCTest
 
 /// Contracts for the live (follow) half of the mirror.
 ///
-/// The network itself is not exercised here: the follow loop reads from
-/// `BridgeClient`, and the assertions below cover the two properties that make a
-/// reconnect safe — idempotent appends by sequence, and the conversion applied to
-/// a live `event` frame.
+/// The network itself is not exercised here. The follow loop treats SSE frames
+/// only as a change signal and refreshes the mirror from the lossless export,
+/// so the assertions cover when a refresh happens, how reconnects are paced,
+/// and the frame conversion helpers.
 final class BridgeSessionSyncTests: XCTestCase {
+    private static let bridgeSessionID = "session-3f1c9a54-6b2e-4d77-9a10-8c5e2b7d4411"
+
+    private actor CountingRefresher: BridgeMirrorRefreshing {
+        private(set) var refreshedSessionIDs: [String] = []
+
+        func refreshMirror(bridgeSessionID: String) async throws {
+            refreshedSessionIDs.append(bridgeSessionID)
+        }
+    }
+
+    /// Advances only when told to, so the refresh rate limit is deterministic.
+    private final class ManualClock: @unchecked Sendable {
+        private let lock = NSLock()
+        private var current = Date(timeIntervalSince1970: 1_735_689_600)
+
+        func now() -> Date {
+            lock.lock(); defer { lock.unlock() }
+            return current
+        }
+
+        func advance(_ seconds: TimeInterval) {
+            lock.lock(); defer { lock.unlock() }
+            current = current.addingTimeInterval(seconds)
+        }
+    }
+
     private func makeRoot() -> URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent("bridge-sync-\(UUID().uuidString)", isDirectory: true)
@@ -22,48 +48,133 @@ final class BridgeSessionSyncTests: XCTestCase {
         BridgeSessionMirrorStore(fileURL: root.appendingPathComponent("bridge-sessions.json"))
     }
 
-    private func makeEvent(
-        type: String,
-        seq: UInt64,
-        content: String
-    ) throws -> SessionEvent {
-        try SessionEvent(
-            type: type,
-            seq: seq,
-            time: 1_735_689_600_000 + Int64(seq),
-            data: .object([
-                "content": .array([.object(["type": .string("text"), "text": .string(content)])])
-            ])
+    private func makeSync(
+        refresher: CountingRefresher,
+        root: URL
+    ) throws -> BridgeSessionSync {
+        let client = BridgeClient(
+            configuration: try BridgeClientConfiguration(
+                settings: BridgeSettings(
+                    baseURL: try XCTUnwrap(URL(string: "http://127.0.0.1:19387")),
+                    isEnabled: true
+                )
+            ),
+            tokenProvider: { "bridge-sync-test-token" }
         )
+        return BridgeSessionSync(client: client, refresher: refresher, mappings: makeStore(root))
     }
 
-    // MARK: - Idempotency
+    private func frames(_ json: [String]) throws -> AsyncThrowingStream<BridgeStreamFrame, Error> {
+        let decoded = try json.map {
+            try JSONDecoder().decode(BridgeStreamFrame.self, from: Data($0.utf8))
+        }
+        return AsyncThrowingStream { continuation in
+            for frame in decoded { continuation.yield(frame) }
+            continuation.finish()
+        }
+    }
 
-    func testRepeatedAppendOfTheSameSequenceNeverDuplicatesHistory() async throws {
+    private func eventFrame(_ seq: Int) -> String {
+        #"{"type":"event","sessionId":"s","seq":"# + String(seq)
+            + #","time":1735689600200,"eventType":"assistant/chunk","role":"assistant","content":"x"}"#
+    }
+
+    // MARK: - Refresh signalling
+
+    func testDurableEventsRefreshFromTheExportAndARefreshIsRateLimitedWithinATurn() async throws {
         let root = makeRoot()
         defer { try? FileManager.default.removeItem(at: root) }
-        let repository = SessionTrajectoryRepository(root: root)
-        let sessionID = UUID()
-        let first = try makeEvent(type: SessionEventVocabulary.userMessage, seq: 0, content: "one")
-        let second = try makeEvent(type: SessionEventVocabulary.assistantMessage, seq: 1, content: "two")
+        let refresher = CountingRefresher()
+        let sync = try makeSync(refresher: refresher, root: root)
+        let clock = ManualClock()
 
-        _ = try await repository.append(first, sessionID: sessionID)
-        _ = try await repository.append(second, sessionID: sessionID)
+        let pass = try await sync.consume(
+            try frames([
+                #"{"type":"snapshot","sessionId":"s","throughSeq":9}"#,
+                eventFrame(10),
+                eventFrame(11),
+                eventFrame(12),
+                #"{"type":"turn/end","sessionId":"s","reason":"stop"}"#,
+                #"{"type":"closed","sessionId":"s"}"#
+            ]),
+            bridgeSessionID: Self.bridgeSessionID,
+            importedThrough: 9,
+            now: { clock.now() }
+        )
 
-        // A reconnect replays the same frames from `since`; the store rejects a
-        // re-used sequence instead of reordering or duplicating the log.
+        XCTAssertTrue(pass.sawEvents)
+        XCTAssertTrue(pass.refreshed)
+        // Seq 10 refreshes at once; 11 and 12 fall inside the rate limit and are
+        // flushed together by `turn/end`.
+        let refreshed = await refresher.refreshedSessionIDs
+        XCTAssertEqual(refreshed, [Self.bridgeSessionID, Self.bridgeSessionID])
+    }
+
+    func testSnapshotAheadOfTheMirrorCatchesUpButACurrentSnapshotDoesNot() async throws {
+        let root = makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let refresher = CountingRefresher()
+        let sync = try makeSync(refresher: refresher, root: root)
+
+        let current = try await sync.consume(
+            try frames([
+                #"{"type":"snapshot","sessionId":"s","throughSeq":9}"#,
+                #"{"type":"closed","sessionId":"s"}"#
+            ]),
+            bridgeSessionID: Self.bridgeSessionID,
+            importedThrough: 9
+        )
+        XCTAssertFalse(current.sawEvents)
+        let afterCurrent = await refresher.refreshedSessionIDs
+        XCTAssertTrue(afterCurrent.isEmpty)
+
+        let behind = try await sync.consume(
+            try frames([#"{"type":"snapshot","sessionId":"s","throughSeq":14}"#]),
+            bridgeSessionID: Self.bridgeSessionID,
+            importedThrough: 9
+        )
+        XCTAssertTrue(behind.sawEvents)
+        let afterBehind = await refresher.refreshedSessionIDs
+        XCTAssertEqual(afterBehind.count, 1)
+    }
+
+    func testTransientFramesNeverRefreshAndAnErrorFrameFailsTheConnection() async throws {
+        let root = makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let refresher = CountingRefresher()
+        let sync = try makeSync(refresher: refresher, root: root)
+
         do {
-            _ = try await repository.append(first, sessionID: sessionID)
-            XCTFail("A duplicate sequence must be refused by the canonical log")
-        } catch let error as SessionEventLogError {
-            guard case .invalidSequence = error else {
-                return XCTFail("Unexpected store error: \(error)")
-            }
+            _ = try await sync.consume(
+                try frames([
+                    #"{"type":"delta","sessionId":"s","text":"partial"}"#,
+                    #"{"type":"usage","sessionId":"s"}"#,
+                    #"{"type":"error","sessionId":"s","message":"session closed on desktop"}"#
+                ]),
+                bridgeSessionID: Self.bridgeSessionID,
+                importedThrough: 3
+            )
+            XCTFail("An error frame must end the connection with an error")
+        } catch {
+            XCTAssertEqual(
+                error as? BridgeClientError,
+                .streamEnded("session closed on desktop")
+            )
         }
+        let refreshed = await refresher.refreshedSessionIDs
+        XCTAssertTrue(refreshed.isEmpty)
+    }
 
-        let events = try await repository.allEvents(sessionID: sessionID)
-        XCTAssertEqual(events.map(\.seq), [0, 1])
-        XCTAssertEqual(events.count, 2)
+    // MARK: - Reconnect pacing
+
+    func testIdleAndFailingConnectionsBackOffInsteadOfPollingInATightLoop() {
+        XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 0, consecutiveIdlePasses: 0), 0.5)
+        XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 0, consecutiveIdlePasses: 1), 2)
+        XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 0, consecutiveIdlePasses: 3), 8)
+        XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 0, consecutiveIdlePasses: 50), 32)
+        XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 1, consecutiveIdlePasses: 0), 1)
+        XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 4, consecutiveIdlePasses: 9), 8)
+        XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 50, consecutiveIdlePasses: 0), 16)
     }
 
     // MARK: - Live frame conversion

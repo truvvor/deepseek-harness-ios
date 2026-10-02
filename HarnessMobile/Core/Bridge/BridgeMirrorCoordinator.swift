@@ -90,6 +90,14 @@ actor BridgeMirrorCoordinator {
         try await makeClientIfPossible()
     }
 
+    /// Builds the client from the persisted settings and Keychain token. Called
+    /// once at launch; without it a configured mirror would report
+    /// `notConfigured` until the user re-saved the settings.
+    func connectIfConfigured() async {
+        guard client == nil else { return }
+        try? await makeClientIfPossible()
+    }
+
     func tokenConfigured() async -> Bool {
         await tokenStore.bridgeTokenConfigured()
     }
@@ -133,7 +141,7 @@ actor BridgeMirrorCoordinator {
     }
 
     func importOne(_ entry: BridgeSessionListEntry) async throws -> BridgeImportOutcome {
-        try activeImporter().importSession(entry)
+        try await activeImporter().importSession(entry)
     }
 
     func mirrorMappings() async throws -> [BridgeSessionMapping] {
@@ -200,18 +208,18 @@ actor BridgeMirrorCoordinator {
             configuration: try BridgeClientConfiguration(settings: settings),
             tokenProvider: { try? await store.readBridgeToken() }
         )
-        self.client = client
-        self.importer = BridgeSessionImporter(
+        let importer = BridgeSessionImporter(
             client: client,
             sessionStore: sessionStore,
             trajectory: trajectory,
             queryModel: queryModel,
             mappings: mappings
         )
+        self.client = client
+        self.importer = importer
         self.sync = BridgeSessionSync(
             client: client,
-            trajectory: trajectory,
-            queryModel: queryModel,
+            refresher: importer,
             mappings: mappings
         )
     }

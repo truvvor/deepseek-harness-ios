@@ -42,7 +42,7 @@ struct BridgeSessionMirror: Codable, Sendable, Equatable {
 struct BridgeSessionMapping: Codable, Sendable, Equatable {
     let bridgeSessionID: String
     let localSessionID: UUID
-    let title: String
+    var title: String
     let createdAt: Date
     var updatedAt: Date
     var importedThroughBridgeSeq: Int64
