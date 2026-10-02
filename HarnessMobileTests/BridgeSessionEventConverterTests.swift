@@ -57,7 +57,7 @@ final class BridgeSessionEventConverterTests: XCTestCase {
         let report = try BridgeSessionEventConverter.decodeLog(try fixtureData())
         let replacementSource = try XCTUnwrap(report.events.first(where: { $0.seq == 7 }))
 
-        XCTAssertEqual(replacementSource.surfaceOp, .append)
+        XCTAssertNil(replacementSource.surfaceOp)
         let encoded = try JSONEncoder().encode(replacementSource)
         let object = try XCTUnwrap(
             JSONSerialization.jsonObject(with: encoded) as? [String: Any]
@@ -66,7 +66,7 @@ final class BridgeSessionEventConverterTests: XCTestCase {
 
         // Every mirrored event is append-only, so the desktop's history survives
         // in log order.
-        XCTAssertTrue(report.events.allSatisfy { $0.surfaceOp == .append })
+        XCTAssertTrue(report.events.allSatisfy { $0.surfaceOp == nil })
     }
 
     func testFixtureUnknownTypeIsAdmittedAsIgnorable() throws {
@@ -163,7 +163,7 @@ final class BridgeSessionEventConverterTests: XCTestCase {
         XCTAssertTrue(report.renumberedSequences)
         XCTAssertEqual(report.events.map(\.seq), [0, 1, 2, 3, 4])
         XCTAssertEqual(report.lastBridgeSequence, 47)
-        XCTAssertEqual(report.events[3].surfaceOp, .append)
+        XCTAssertNil(report.events[3].surfaceOp)
         XCTAssertEqual(report.droppedSurfaceOperations, 0)
     }
 
@@ -200,7 +200,7 @@ final class BridgeSessionEventConverterTests: XCTestCase {
 
         // The older spelling parses without being rejected, and — like every
         // replacement — is still not installed on a mirror.
-        XCTAssertEqual(report.events.last?.surfaceOp, .append)
+        XCTAssertNil(report.events.last?.surfaceOp)
         XCTAssertEqual(report.droppedSurfaceOperations, 0)
     }
 
