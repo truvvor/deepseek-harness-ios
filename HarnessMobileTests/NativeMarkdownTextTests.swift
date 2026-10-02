@@ -238,7 +238,7 @@ final class NativeMarkdownTextTests: XCTestCase {
 
     func testMarkdownRenderCacheIsBoundedAndPreservesCompleteSource() {
         let cache = MarkdownRenderCache(capacity: 8)
-        let source = String(repeating: "完整正文 ", count: 200)
+        let source = String(repeating: "Complete body text ", count: 200)
         XCTAssertEqual(cache.blocks(for: source), NativeMarkdownBlock.parse(source))
 
         for index in 0..<1000 {

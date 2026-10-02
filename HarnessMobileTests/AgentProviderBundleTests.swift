@@ -38,7 +38,7 @@ final class AgentProviderBundleTests: XCTestCase {
             AgentProviderBundleCapability.allCases
         )
         XCTAssertTrue(
-            bundle.capabilityFailureMessage(for: request)?.contains("父会话上下文") == true
+            bundle.capabilityFailureMessage(for: request)?.contains("Parent session context") == true
         )
     }
 
