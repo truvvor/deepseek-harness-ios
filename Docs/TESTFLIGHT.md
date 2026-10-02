@@ -5,7 +5,7 @@
 ## One-time setup
 
 1. **Runner.** On the Mac: GitHub repo → Settings → Actions → Runners → New self-hosted runner → macOS / ARM64. Install it as a service (`./svc.sh install && ./svc.sh start`). It gets the default labels `self-hosted, macOS, ARM64`.
-2. **Mac toolchain.** Xcode 27 in `/Applications` (the workflow picks the newest of `Xcode.app` / `Xcode-beta.app`, or set the `DEVELOPER_DIR` variable). Open Xcode once to accept the license. The first run builds the iSH sandbox and needs Homebrew `llvm`, `lld`, `libarchive`, and `ninja`: `brew install llvm lld libarchive ninja` (Meson is downloaded by the script). The result is cached in `~/Library/Caches/harness-mobile-ci`.
+2. **Mac toolchain.** Xcode 27 in `/Applications` (the workflow picks the newest of `Xcode.app` / `Xcode-beta.app`, or set the `DEVELOPER_DIR` variable). Open Xcode once to accept the license. The first run builds the iSH sandbox and needs Homebrew `llvm`, `lld`, `libarchive`, and `ninja`: `brew install llvm lld libarchive ninja ripgrep` (Meson is downloaded by the script). The result is cached in `~/Library/Caches/harness-mobile-ci`.
 3. **Signing account.** Simplest: sign in to your Apple ID in Xcode on the runner Mac (Settings → Accounts). The workflow then signs and uploads through that account and detects the team from the keychain certificate. As an alternative for headless use, an **App Store Connect API key**: App Store Connect → Users and Access → Integrations → App Store Connect API → Team key with the **App Manager** (or Admin) role. Add these repository secrets:
    - `ASC_KEY_ID`: the key ID
    - `ASC_ISSUER_ID`: the issuer ID

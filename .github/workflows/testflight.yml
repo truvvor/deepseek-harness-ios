@@ -83,7 +83,7 @@ jobs:
           set -euo pipefail
           command -v brew >/dev/null || { echo "::error::Homebrew is required on the runner (https://brew.sh)"; exit 1; }
           missing=()
-          for formula in ninja llvm lld libarchive jq; do
+          for formula in ninja llvm lld libarchive jq ripgrep; do
             brew list --formula "$formula" >/dev/null 2>&1 || missing+=("$formula")
           done
           if [ "${#missing[@]}" -gt 0 ]; then
