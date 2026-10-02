@@ -150,6 +150,19 @@ jobs:
           chmod 600 "$key_path"
           echo "ASC_KEY_PATH=$key_path" >> "$GITHUB_ENV"
 
+      - name: Compile check (unsigned, only without an API key)
+        if: env.ASC_KEY_PATH == ''
+        run: |
+          set -euo pipefail
+          xcodebuild build \
+            -project HarnessMobile.xcodeproj \
+            -scheme HarnessMobile \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$BUILD_ROOT/DerivedData" \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+
       - name: Archive
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
