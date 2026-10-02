@@ -133,6 +133,13 @@ actor BridgeSessionImporter {
         try await serialized(bridgeSessionID: bridgeSessionID) {
             let log = try await self.client.exportLog(sessionID: bridgeSessionID)
             let report = try BridgeSessionEventConverter.decodeLog(log)
+            // A desktop session that carries no user/assistant messages is an empty
+            // shell; mirroring it produced a conversation with zero messages in the
+            // app list. Refreshing an existing mirror stays allowed.
+            if try await self.mappings.mapping(bridgeSessionID: bridgeSessionID) == nil,
+               SessionTrajectoryConversationProjection.messages(from: report.events).isEmpty {
+                throw BridgeImportError.notMirrorable("the desktop session has no messages yet")
+            }
             return try await self.importConverted(
                 bridgeSessionID: bridgeSessionID,
                 listTitle: listTitle,
@@ -332,7 +339,14 @@ actor BridgeSessionImporter {
             if !trimmed.isEmpty { return String(trimmed.prefix(80)) }
         }
         if let cwd = header?.cwd, !cwd.isEmpty {
-            return "Desktop · " + String(cwd.split(separator: "/").last ?? "Session")
+            // The desktop host may be Windows: split on both separators so a
+            // backslash-only path yields its last component instead of the whole
+            // path ("Desktop · C:\Users\…").
+            let leaf = cwd
+                .split(whereSeparator: { $0 == "/" || $0 == "\\" })
+                .last
+                .map(String.init)
+            return "Desktop · " + (leaf.flatMap { $0.isEmpty ? nil : $0 } ?? "Session")
         }
         return nil
     }
