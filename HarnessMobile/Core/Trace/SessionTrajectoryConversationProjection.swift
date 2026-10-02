@@ -11,15 +11,26 @@ enum SessionTrajectoryConversationProjection {
         surfaceNodes(from: events).map(\.message)
     }
 
-    /// Every final message in log order, ignoring `surfaceOp.replace`.
+    /// The conversation a person reads: like `messages(from:)`, except that a
+    /// compaction does not remove the messages it summarised.
     ///
-    /// A replacement (compaction) shortens the *model-facing* history; the
-    /// messages it covers are still part of the conversation a person reads.
-    /// Desktop mirrors are never sent to a local model (D-014), so they show
-    /// this full transcript, with the compaction summary at the point where
-    /// the desktop compacted.
+    /// A compaction replacement shortens the *model-facing* history only; the
+    /// covered messages stay in the transcript and the summary appears where
+    /// the compaction happened. Other replacements (a draft answer replaced by
+    /// the final one) are still applied. Desktop mirrors are never sent to a
+    /// local model (D-014), so they use this projection.
     static func transcriptMessages(from events: [SessionEvent]) -> [AgentMessage] {
-        surfaceNodes(from: events, honorsReplacements: false).map(\.message)
+        surfaceNodes(from: events, keepsCompactedMessages: true).map(\.message)
+    }
+
+    /// A replacement written by a compaction: inside a `compaction/start` …
+    /// `compaction/end` block, or the checkpoint user message that cites its
+    /// source events (the shape `AgentRuntime` and the desktop write).
+    private static func isCompactionReplacement(_ event: SessionEvent, inCompaction: Bool) -> Bool {
+        guard case .replace = event.surfaceOp else { return false }
+        if inCompaction { return true }
+        return event.type == SessionEventVocabulary.userMessage
+            && !(event.sourceEventSeqs ?? []).isEmpty
     }
 
     /// The balanced model-visible prefix that an in-process fork child may
@@ -60,12 +71,23 @@ enum SessionTrajectoryConversationProjection {
 
     private static func surfaceNodes(
         from events: [SessionEvent],
-        honorsReplacements: Bool = true
+        keepsCompactedMessages: Bool = false
     ) -> [SurfaceNode] {
         var result: [SurfaceNode] = []
         var toolNames: [String: String] = [:]
+        var inCompaction = false
 
         for event in events.sorted(by: { $0.seq < $1.seq }) {
+            switch event.type {
+            case "compaction/start", "compaction/summary":
+                inCompaction = true
+            case "compaction/end":
+                inCompaction = false
+            default:
+                break
+            }
+            let honorsReplacements = !(keepsCompactedMessages
+                && isCompactionReplacement(event, inCompaction: inCompaction))
             if let user = event.userMessageData,
                let message = decodeUserMessage(user) {
                 apply(event: event, message: message, to: &result, honorsReplacements: honorsReplacements)
