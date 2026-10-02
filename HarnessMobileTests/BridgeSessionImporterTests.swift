@@ -425,6 +425,38 @@ final class BridgeSessionImporterTests: XCTestCase {
         let empty = try? BridgeSessionEventConverter.decodeLog(Data(), firstSequence: 10)
         XCTAssertEqual(empty?.events.count, 0)
         XCTAssertEqual(empty?.lastBridgeSequence, 9)
+        // The bridge answers an up-to-date cursor with the header line only.
+        let headerOnly = Data(#"{"type":"session","version":4,"id":"session-3f1c9a54-6b2e-4d77-9a10-8c5e2b7d4411"}"#.utf8 + "\n".utf8)
+        let caughtUp = try? BridgeSessionEventConverter.decodeLog(headerOnly, firstSequence: 10)
+        XCTAssertEqual(caughtUp?.events.count, 0)
+        XCTAssertNotNil(caughtUp?.header)
+    }
+
+    func testUpToDateCursorAnsweredWithTheHeaderOnlyIsUnchanged() async throws {
+        defer { BridgeExportURLProtocolStub.handler = nil }
+        let harness = try makeHarness(protocolClasses: [BridgeExportURLProtocolStub.self])
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+        let first = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+        BridgeExportURLProtocolStub.handler = { request in
+            Self.ndjson(
+                request,
+                body: #"{"type":"session","version":4,"id":"session-3f1c9a54-6b2e-4d77-9a10-8c5e2b7d4411"}"# + "\n",
+                headers: ["x-dsh-since": "9", "x-dsh-through-seq": "9", "x-dsh-event-count": "0"]
+            )
+        }
+
+        let outcome = try await harness.importer.importSession(bridgeSessionID: bridgeSessionID, listTitle: nil)
+
+        XCTAssertEqual(outcome, .unchanged(localSessionID: first.localSessionID))
+        let mapping = try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID)
+        XCTAssertEqual(mapping?.importedThroughBridgeSeq, 9)
     }
 
     // MARK: - Failure handling
