@@ -36,6 +36,7 @@ enum BridgeMirrorAvailability: Error, LocalizedError, Sendable, Equatable {
 actor BridgeMirrorCoordinator {
     private let tokenStore: CredentialStore
     private let mappings: BridgeSessionMirrorStore
+    private let transcripts: BridgeMirrorTranscriptStore
     private let sessionStore: SessionStore
     private let trajectory: SessionTrajectoryRepository?
     private let queryModel: SessionQueryReadModel?
@@ -52,11 +53,13 @@ actor BridgeMirrorCoordinator {
         mappings: BridgeSessionMirrorStore,
         sessionStore: SessionStore,
         trajectory: SessionTrajectoryRepository?,
-        queryModel: SessionQueryReadModel?
+        queryModel: SessionQueryReadModel?,
+        transcripts: BridgeMirrorTranscriptStore = BridgeMirrorTranscriptStore()
     ) {
         self.settings = settings
         self.tokenStore = tokenStore
         self.mappings = mappings
+        self.transcripts = transcripts
         self.sessionStore = sessionStore
         self.trajectory = trajectory
         self.queryModel = queryModel
@@ -139,12 +142,13 @@ actor BridgeMirrorCoordinator {
     /// bridge's sidebar rules). Pruning only drops local copies; the desktop is
     /// never touched, and a later import restores anything listed again.
     func importAll(
+        indexesSearch: Bool = true,
         progress: @Sendable (BridgeImportProgress) async -> Void = { _ in }
     ) async throws -> (outcomes: [BridgeImportOutcome], failures: [String: String], pruned: [UUID]) {
         let importer = try activeImporter()
         let entries = try await activeClient()
             .listSessions(includeArchived: settings.includesArchivedSessions)
-        let result = await importer.importSessions(entries, progress: progress)
+        let result = await importer.importSessions(entries, indexesSearch: indexesSearch, progress: progress)
         let listed = Set(entries.map(\.sessionID))
         var pruned: [UUID] = []
         for mapping in try await mappings.allMappings() where !listed.contains(mapping.bridgeSessionID) {
@@ -191,6 +195,7 @@ actor BridgeMirrorCoordinator {
         if let trajectory {
             try await trajectory.delete(sessionID: mapping.localSessionID)
         }
+        try await transcripts.delete(sessionID: mapping.localSessionID)
         if let queryModel {
             try? await queryModel.remove(sessionID: mapping.localSessionID)
         }
@@ -270,6 +275,14 @@ actor BridgeMirrorCoordinator {
         }
     }
 
+    // MARK: - Transcript paging
+
+    /// Up to `limit` transcript messages before position `before` (log
+    /// order), for the chat scrolling back past the session's inline tail.
+    func transcriptPage(localSessionID: UUID, before: Int, limit: Int) async throws -> [AgentMessage] {
+        try await transcripts.page(sessionID: localSessionID, before: before, limit: limit)
+    }
+
     // MARK: - Follow
 
     func startFollowing(localSessionID: UUID) async throws {
@@ -314,7 +327,8 @@ actor BridgeMirrorCoordinator {
             sessionStore: sessionStore,
             trajectory: trajectory,
             queryModel: queryModel,
-            mappings: mappings
+            mappings: mappings,
+            transcripts: transcripts
         )
         self.client = client
         self.importer = importer
@@ -351,7 +365,7 @@ private struct NotifyingMirrorRefresher: BridgeMirrorRefreshing {
     weak var coordinator: BridgeMirrorCoordinator?
 
     func refreshMirror(bridgeSessionID: String) async throws {
-        let outcome = try await importer.importSession(bridgeSessionID: bridgeSessionID, listTitle: nil)
+        let outcome = try await importer.importSession(bridgeSessionID: bridgeSessionID, listTitle: nil, indexesSearch: false)
         await coordinator?.notifyIfChanged(outcome)
     }
 }

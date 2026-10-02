@@ -215,7 +215,8 @@ struct ConversationSession: Codable, Sendable, Equatable, Identifiable {
         ConversationSessionSummary(
             id: id,
             title: title,
-            messageCount: messages.lazy.filter(\.isChatVisible).count,
+            messageCount: bridgeMirror?.transcriptMessageCount
+                ?? messages.lazy.filter(\.isChatVisible).count,
             createdAt: createdAt,
             updatedAt: updatedAt,
             revision: revision,

@@ -766,6 +766,16 @@ private struct ConversationBottomPreferenceKey: PreferenceKey {
     }
 }
 
+/// `minY` of the conversation's first row in the scroll coordinate space:
+/// 0 when the top is at the viewport top, negative while scrolled down.
+private struct ConversationTopPreferenceKey: PreferenceKey {
+    static let defaultValue: CGFloat = -.greatestFiniteMagnitude
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 private struct ConversationScroller: View {
     let model: AppModel
     let onStartInput: () -> Void
@@ -778,8 +788,14 @@ private struct ConversationScroller: View {
     @State private var followsConversationTail = true
     @State private var automaticScrollTask: Task<Void, Never>?
     @State private var scrollViewportHeight: CGFloat = 0
+    @State private var isLoadingEarlier = false
+    @State private var lastTopSample: (y: CGFloat, at: TimeInterval)?
+    @State private var scrollVelocity: CGFloat = 0
 
     private let bottomID = "conversation-bottom"
+    /// Rows added per load, from the in-memory window first, then from the
+    /// mirror's transcript store.
+    private let earlierPageSize = 80
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -789,7 +805,8 @@ private struct ConversationScroller: View {
                     isRunning: model.isChatBusy,
                     omittedContextMessages: model.omittedContextMessages,
                     messages: renderedMessages,
-                    hiddenMessageCount: hiddenMessageCount,
+                    hiddenMessageCount: hiddenMessageCount
+                        + (model.activeDesktopMirrorHasOlderMessages ? model.desktopMirrorLoadedStart : 0),
                     contextInjections: model.activeContextInjections,
                     activeRunID: model.activeRunID,
                     streamingReasoning: model.streamingReasoning,
@@ -802,7 +819,7 @@ private struct ConversationScroller: View {
                     metrics: model.trajectoryMetrics,
                     bottomID: bottomID,
                     onResume: model.resumePendingRun,
-                    onLoadEarlierMessages: loadEarlierMessages,
+                    onLoadEarlierMessages: { loadEarlierMessages(proxy) },
                     onStartInput: onStartInput,
                     onRetryUserMessage: model.retryFromUserMessage,
                     onEditUserMessage: onEditUserMessage,
@@ -833,6 +850,9 @@ private struct ConversationScroller: View {
             .onPreferenceChange(ConversationViewportHeightPreferenceKey.self) {
                 scrollViewportHeight = $0
             }
+            .onPreferenceChange(ConversationTopPreferenceKey.self) { top in
+                handleTopOffset(top, proxy: proxy)
+            }
             .onPreferenceChange(ConversationBottomPreferenceKey.self) { bottom in
                 guard !followsConversationTail,
                       scrollViewportHeight > 0,
@@ -861,9 +881,59 @@ private struct ConversationScroller: View {
         }
     }
 
-    private func loadEarlierMessages() {
-        renderedMessageLimit = min(availableMessageCount, renderedMessageLimit + 80)
-        refreshRenderedMessages()
+    /// Prefetches earlier rows while the user scrolls back. The trigger
+    /// distance grows with the upward scroll velocity, so a fast flick has
+    /// the next page in place before the top of the loaded rows is reached.
+    private func handleTopOffset(_ top: CGFloat, proxy: ScrollViewProxy) {
+        let now = ProcessInfo.processInfo.systemUptime
+        if let sample = lastTopSample, now > sample.at {
+            // Positive while the content moves down, i.e. scrolling toward
+            // older rows.
+            let instantaneous = (top - sample.y) / CGFloat(now - sample.at)
+            scrollVelocity = scrollVelocity * 0.5 + instantaneous * 0.5
+        }
+        lastTopSample = (top, now)
+        guard !followsConversationTail, !isLoadingEarlier, scrollViewportHeight > 0 else { return }
+        let hasEarlier = hiddenMessageCount > 0 || model.activeDesktopMirrorHasOlderMessages
+        guard hasEarlier else { return }
+        let lead = 1 + min(3, max(0, scrollVelocity) / 1_000)
+        let threshold = max(scrollViewportHeight, 400) * lead
+        guard top > -threshold else { return }
+        loadEarlierMessages(proxy)
+    }
+
+    private func loadEarlierMessages(_ proxy: ScrollViewProxy) {
+        guard !isLoadingEarlier else { return }
+        isLoadingEarlier = true
+        followsConversationTail = false
+        let anchorID = renderedMessages.first.map { ConversationPresentationItem.message($0).id }
+        Task { @MainActor in
+            defer {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(150))
+                    isLoadingEarlier = false
+                }
+            }
+            if hiddenMessageCount > 0 {
+                renderedMessageLimit = min(availableMessageCount, renderedMessageLimit + earlierPageSize)
+            } else if model.activeDesktopMirrorHasOlderMessages {
+                let added = await model.loadOlderDesktopMirrorMessages(limit: earlierPageSize)
+                guard added > 0 else { return }
+                renderedMessageLimit += added
+            } else {
+                return
+            }
+            refreshRenderedMessages()
+            // Keep the previously first row where it was so the prepended rows
+            // appear above it instead of shifting the viewport.
+            if let anchorID {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    proxy.scrollTo(anchorID, anchor: .top)
+                }
+            }
+        }
     }
 
     private func refreshRenderedMessages() {
@@ -925,6 +995,17 @@ private struct ConversationTimeline: View {
 
     var body: some View {
         LazyVStack(spacing: 14) {
+            Color.clear
+                .frame(height: 1)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear.preference(
+                            key: ConversationTopPreferenceKey.self,
+                            value: proxy.frame(in: .named("conversation-scroll")).minY
+                        )
+                    }
+                }
+
             if hiddenMessageCount > 0 {
                 Button(action: onLoadEarlierMessages) {
                     Label(

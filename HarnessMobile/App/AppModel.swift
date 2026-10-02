@@ -261,6 +261,9 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     var followedMirrorSessionIDs: Set<UUID> = []
     /// Desktop turns started from this iPhone that have not ended yet (D-014).
     var desktopMirrorTurns: [UUID: DesktopMirrorTurn] = [:]
+    /// Transcript position of `messages.first` for the open mirror; the number
+    /// of older messages still in the transcript store.
+    var desktopMirrorLoadedStart = 0
     @ObservationIgnored var desktopMirrorLastCatchUp: Date?
     @ObservationIgnored var desktopMirrorCatchUpInFlight = false
     @ObservationIgnored var desktopBridgeCoordinator: BridgeMirrorCoordinator?
@@ -9437,6 +9440,10 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             resetTrajectoryProjection()
         }
         messages = session.messages
+        desktopMirrorLoadedStart = max(
+            0,
+            (session.bridgeMirror?.transcriptMessageCount ?? session.messages.count) - session.messages.count
+        )
         workState = session.workState
         controlState = session.controlState
         selectedRunPresentation = nil

@@ -21,6 +21,7 @@ $(SRCROOT)/HarnessMobile/Core/Agent/ConversationControls.swift
 $(SRCROOT)/HarnessMobile/Core/Agent/HarnessReferenceSyntax.swift
 $(SRCROOT)/HarnessMobile/Core/Bridge/BridgeClient.swift
 $(SRCROOT)/HarnessMobile/Core/Bridge/BridgeMirrorCoordinator.swift
+$(SRCROOT)/HarnessMobile/Core/Bridge/BridgeMirrorTranscriptStore.swift
 $(SRCROOT)/HarnessMobile/Core/Bridge/BridgeSessionEventConverter.swift
 $(SRCROOT)/HarnessMobile/Core/Bridge/BridgeSessionImporter.swift
 $(SRCROOT)/HarnessMobile/Core/Bridge/BridgeSessionMirrorStore.swift

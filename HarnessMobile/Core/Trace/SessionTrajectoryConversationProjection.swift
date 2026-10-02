@@ -23,6 +23,27 @@ enum SessionTrajectoryConversationProjection {
         surfaceNodes(from: events, keepsCompactedMessages: true).map(\.message)
     }
 
+    /// Transcript projection of a log *suffix*. `knownToolNames` carries the
+    /// `callId → tool name` pairs of the already projected prefix, so a tool
+    /// result whose call was in an earlier page still gets its name.
+    static func transcriptMessages(
+        from events: [SessionEvent],
+        knownToolNames: [String: String]
+    ) -> [AgentMessage] {
+        surfaceNodes(from: events, keepsCompactedMessages: true, toolNames: knownToolNames)
+            .map(\.message)
+    }
+
+    /// The seed for `transcriptMessages(from:knownToolNames:)`, taken from the
+    /// assistant tool calls of already projected messages.
+    static func toolNames(in messages: [AgentMessage]) -> [String: String] {
+        var names: [String: String] = [:]
+        for message in messages where message.role == .assistant {
+            for call in message.toolCalls { names[call.id] = call.name }
+        }
+        return names
+    }
+
     /// A replacement written by a compaction: inside a `compaction/start` …
     /// `compaction/end` block, or the checkpoint user message that cites its
     /// source events (the shape `AgentRuntime` and the desktop write).
@@ -71,10 +92,11 @@ enum SessionTrajectoryConversationProjection {
 
     private static func surfaceNodes(
         from events: [SessionEvent],
-        keepsCompactedMessages: Bool = false
+        keepsCompactedMessages: Bool = false,
+        toolNames seedToolNames: [String: String] = [:]
     ) -> [SurfaceNode] {
         var result: [SurfaceNode] = []
-        var toolNames: [String: String] = [:]
+        var toolNames = seedToolNames
         var inCompaction = false
 
         for event in events.sorted(by: { $0.seq < $1.seq }) {

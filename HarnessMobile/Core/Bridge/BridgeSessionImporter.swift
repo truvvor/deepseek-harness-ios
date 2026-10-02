@@ -71,6 +71,7 @@ actor BridgeSessionImporter {
     private let trajectory: SessionTrajectoryRepository
     private let queryModel: SessionQueryReadModel?
     private let mappings: BridgeSessionMirrorStore
+    private let transcripts: BridgeMirrorTranscriptStore
     private var inFlight: [String: Task<BridgeImportOutcome, Error>] = [:]
 
     init(
@@ -78,13 +79,15 @@ actor BridgeSessionImporter {
         sessionStore: SessionStore,
         trajectory: SessionTrajectoryRepository,
         queryModel: SessionQueryReadModel?,
-        mappings: BridgeSessionMirrorStore
+        mappings: BridgeSessionMirrorStore,
+        transcripts: BridgeMirrorTranscriptStore = BridgeMirrorTranscriptStore()
     ) {
         self.client = client
         self.sessionStore = sessionStore
         self.trajectory = trajectory
         self.queryModel = queryModel
         self.mappings = mappings
+        self.transcripts = transcripts
     }
 
     /// Imports (or refreshes) every listed desktop session.
@@ -93,6 +96,7 @@ actor BridgeSessionImporter {
     /// the remaining sessions, so one unmappable session cannot block the rest.
     func importSessions(
         _ entries: [BridgeSessionListEntry],
+        indexesSearch: Bool = true,
         progress: @Sendable (BridgeImportProgress) async -> Void = { _ in }
     ) async -> (outcomes: [BridgeImportOutcome], failures: [String: String]) {
         var outcomes: [BridgeImportOutcome] = []
@@ -108,7 +112,7 @@ actor BridgeSessionImporter {
                 )
             )
             do {
-                outcomes.append(try await importSession(entry))
+                outcomes.append(try await importSession(entry, indexesSearch: indexesSearch))
             } catch {
                 failures[entry.sessionID] = error.localizedDescription
             }
@@ -120,8 +124,8 @@ actor BridgeSessionImporter {
     }
 
     @discardableResult
-    func importSession(_ entry: BridgeSessionListEntry) async throws -> BridgeImportOutcome {
-        try await importSession(bridgeSessionID: entry.sessionID, listTitle: entry.title)
+    func importSession(_ entry: BridgeSessionListEntry, indexesSearch: Bool = true) async throws -> BridgeImportOutcome {
+        try await importSession(bridgeSessionID: entry.sessionID, listTitle: entry.title, indexesSearch: indexesSearch)
     }
 
     /// Re-reads the canonical desktop export and appends whatever the local
@@ -129,10 +133,32 @@ actor BridgeSessionImporter {
     /// reports new events, so live history is always the lossless export and
     /// never a reconstruction of the lossy SSE `event` frame.
     @discardableResult
-    func importSession(bridgeSessionID: String, listTitle: String?) async throws -> BridgeImportOutcome {
+    /// `indexesSearch` refreshes the SQLite search projection after the
+    /// import. That reads the whole local log, so the live follow and the
+    /// silent foreground catch-up skip it; a manual Sync indexes.
+    func importSession(
+        bridgeSessionID: String,
+        listTitle: String?,
+        indexesSearch: Bool = true
+    ) async throws -> BridgeImportOutcome {
         try await serialized(bridgeSessionID: bridgeSessionID) {
-            try await self.importPaged(bridgeSessionID: bridgeSessionID, listTitle: listTitle)
+            let outcome = try await self.importPaged(bridgeSessionID: bridgeSessionID, listTitle: listTitle)
+            if indexesSearch, let queryModel = self.queryModel {
+                switch outcome {
+                case .created, .refreshed:
+                    try await queryModel.refresh(sessionID: outcome.localSessionID, persistence: self.trajectory)
+                case .unchanged:
+                    break
+                }
+            }
+            return outcome
         }
+    }
+
+    /// Removes the mirror's projected transcript (the local log is the
+    /// coordinator's concern).
+    func forgetTranscript(sessionID: UUID) async throws {
+        try await transcripts.delete(sessionID: sessionID)
     }
 
     /// Events per `export?since=&limit=` page.
@@ -289,6 +315,7 @@ actor BridgeSessionImporter {
     private func resetMirrorLog(_ mapping: BridgeSessionMapping) async throws {
         try await trajectory.delete(sessionID: mapping.localSessionID)
         try await trajectory.markAppendOnlyMirror(sessionID: mapping.localSessionID)
+        try await transcripts.delete(sessionID: mapping.localSessionID)
         var reset = mapping
         reset.importedThroughBridgeSeq = -1
         reset.importedEventCount = 0
@@ -364,6 +391,8 @@ actor BridgeSessionImporter {
             let appended = try await admit(events, sessionID: localSessionID)
             try await refreshDerivedState(
                 sessionID: localSessionID,
+                appended: appended,
+                isNew: isNew,
                 events: events,
                 header: header,
                 listTitle: listTitle,
@@ -445,37 +474,69 @@ actor BridgeSessionImporter {
         return admitted
     }
 
+    /// Projects only the admitted suffix into the mirror's transcript store and
+    /// hands the session its newest tail plus the total count. Nothing here
+    /// re-reads the local log: a refresh costs the page it imported.
     private func refreshDerivedState(
         sessionID: UUID,
+        appended: [SessionEvent],
+        isNew: Bool,
         events: [SessionEvent],
         header: BridgeSessionLogHeader?,
         listTitle: String?,
         bridgeSessionID: String,
         titleIsFinal: Bool
     ) async throws {
-        let persisted = try await trajectory.allEvents(sessionID: sessionID)
-        // A mirror shows the whole desktop conversation. The model-facing
-        // projection would drop everything a desktop compaction replaced, so a
-        // long thread would arrive as its summary plus the tail.
-        let messages = SessionTrajectoryConversationProjection.transcriptMessages(from: persisted)
-        _ = try await sessionStore.checkpointSession(
-            id: sessionID,
-            checkpoint: ConversationCheckpoint(
-                messages: messages,
-                workState: ConversationWorkState(),
-                bridgeMirror: BridgeSessionMirror(bridgeSessionID: bridgeSessionID)
+        if isNew {
+            try await transcripts.delete(sessionID: sessionID)
+        }
+        let session = try await sessionStore.session(id: sessionID)
+        var total = try await transcripts.count(sessionID: sessionID)
+        var tailChanged = isNew
+        // A mirror written before the transcript store existed holds its whole
+        // transcript in the session; seed the store from it once.
+        if !isNew, total == 0, session.bridgeMirror?.transcriptMessageCount == nil, !session.messages.isEmpty {
+            total = try await transcripts.append(session.messages, sessionID: sessionID)
+            tailChanged = true
+        }
+        if !appended.isEmpty {
+            let seedTail = try await transcripts.tail(
+                sessionID: sessionID,
+                limit: BridgeMirrorTranscriptStore.sessionTailLimit
             )
-        )
+            let fresh = SessionTrajectoryConversationProjection.transcriptMessages(
+                from: appended,
+                knownToolNames: SessionTrajectoryConversationProjection.toolNames(in: seedTail)
+            )
+            if !fresh.isEmpty {
+                total = try await transcripts.append(fresh, sessionID: sessionID)
+                tailChanged = true
+            }
+        }
+        if tailChanged || session.bridgeMirror?.transcriptMessageCount != total {
+            let tail = try await transcripts.tail(
+                sessionID: sessionID,
+                limit: BridgeMirrorTranscriptStore.sessionTailLimit
+            )
+            _ = try await sessionStore.checkpointSession(
+                id: sessionID,
+                checkpoint: ConversationCheckpoint(
+                    messages: tail,
+                    workState: ConversationWorkState(),
+                    bridgeMirror: BridgeSessionMirror(
+                        bridgeSessionID: bridgeSessionID,
+                        transcriptMessageCount: total
+                    )
+                )
+            )
+        }
         // A new mirror takes its title from the first page; an existing one
         // follows a desktop rename, which arrives through the list title.
         if let title = titleIsFinal ? listTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
             : Self.resolvedTitle(events: events, listTitle: listTitle, header: header, bridgeSessionID: bridgeSessionID),
            !title.isEmpty,
-           title != (try await sessionStore.session(id: sessionID)).title {
+           title != session.title {
             _ = try await sessionStore.renameSession(id: sessionID, title: title, source: .user)
-        }
-        if let queryModel {
-            try await queryModel.refresh(sessionID: sessionID, persistence: trajectory)
         }
     }
 

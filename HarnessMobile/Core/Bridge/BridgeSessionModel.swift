@@ -18,10 +18,16 @@ struct BridgeSessionMirror: Codable, Sendable, Equatable {
     let bridgeSessionID: String
     /// When this app last pulled the desktop log for this mirror.
     let importedAt: Date
+    /// Messages in the full mirrored transcript. The session itself keeps only
+    /// the newest `BridgeMirrorTranscriptStore.sessionTailLimit` of them; the
+    /// rest are paged in from the transcript store while scrolling. `nil` for
+    /// a mirror written before the transcript store existed.
+    var transcriptMessageCount: Int?
 
-    init(bridgeSessionID: String, importedAt: Date = .now) {
+    init(bridgeSessionID: String, importedAt: Date = .now, transcriptMessageCount: Int? = nil) {
         self.bridgeSessionID = bridgeSessionID
         self.importedAt = importedAt
+        self.transcriptMessageCount = transcriptMessageCount
     }
 }
 

@@ -98,7 +98,7 @@ extension AppModel {
         defer { desktopMirrorCatchUpInFlight = false }
         desktopMirrorLastCatchUp = .now
         do {
-            let result = try await coordinator.importAll()
+            let result = try await coordinator.importAll(indexesSearch: false)
             await finishMirrorRemoval(result.pruned)
             if let activeSessionID, activeSessionIsDesktopMirror {
                 await reloadDesktopMirrorIfActive(activeSessionID)
@@ -257,12 +257,52 @@ extension AppModel {
     }
 
     /// Reloads the open mirror after the bridge admitted new desktop events.
+    ///
+    /// The session holds only the newest tail of the transcript. When the
+    /// on-screen conversation already ends inside that tail, only the messages
+    /// after it are appended, so older pages the user scrolled into stay
+    /// loaded and the scroll position does not jump.
     func reloadDesktopMirrorIfActive(_ sessionID: UUID) async {
         await refreshSessionSummaries()
         guard sessionID == activeSessionID, activeSessionIsDesktopMirror else { return }
         guard let session = try? await sessionStore.session(id: sessionID) else { return }
-        messages = session.messages
+        let tail = session.messages
+        let total = session.bridgeMirror?.transcriptMessageCount ?? tail.count
+        if let lastID = messages.last?.id,
+           let index = tail.firstIndex(where: { $0.id == lastID }) {
+            let fresh = tail[(index + 1)...]
+            if !fresh.isEmpty { messages.append(contentsOf: fresh) }
+        } else {
+            messages = tail
+            desktopMirrorLoadedStart = max(0, total - tail.count)
+        }
         await refreshTrajectory()
+    }
+
+    var activeDesktopMirrorHasOlderMessages: Bool {
+        activeSessionIsDesktopMirror && desktopMirrorLoadedStart > 0
+    }
+
+    /// Prepends up to `limit` older transcript messages to the open mirror.
+    /// Returns how many were added.
+    func loadOlderDesktopMirrorMessages(limit: Int) async -> Int {
+        guard let sessionID = activeSessionID, activeSessionIsDesktopMirror,
+              desktopMirrorLoadedStart > 0,
+              let coordinator = desktopBridgeCoordinator else { return 0 }
+        do {
+            let page = try await coordinator.transcriptPage(
+                localSessionID: sessionID,
+                before: desktopMirrorLoadedStart,
+                limit: limit
+            )
+            guard !page.isEmpty, sessionID == activeSessionID else { return 0 }
+            messages.insert(contentsOf: page, at: 0)
+            desktopMirrorLoadedStart = max(0, desktopMirrorLoadedStart - page.count)
+            return page.count
+        } catch {
+            desktopMirrorLastError = error.localizedDescription
+            return 0
+        }
     }
 
     private func finishDesktopTurn(_ sessionID: UUID, error: Error?) {

@@ -23,7 +23,7 @@ protocol BridgeMirrorRefreshing: Sendable {
 
 extension BridgeSessionImporter: BridgeMirrorRefreshing {
     func refreshMirror(bridgeSessionID: String) async throws {
-        _ = try await importSession(bridgeSessionID: bridgeSessionID, listTitle: nil)
+        _ = try await importSession(bridgeSessionID: bridgeSessionID, listTitle: nil, indexesSearch: false)
     }
 }
 

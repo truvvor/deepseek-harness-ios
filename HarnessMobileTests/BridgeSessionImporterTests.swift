@@ -25,6 +25,7 @@ final class BridgeSessionImporterTests: XCTestCase {
         let sessionStore: SessionStore
         let trajectory: SessionTrajectoryRepository
         let mappings: BridgeSessionMirrorStore
+        let transcripts: BridgeMirrorTranscriptStore
         let root: URL
     }
 
@@ -54,18 +55,23 @@ final class BridgeSessionImporterTests: XCTestCase {
             tokenProvider: { Self.fixtureToken },
             protocolClasses: protocolClasses
         )
+        let transcripts = BridgeMirrorTranscriptStore(
+            directory: root.appendingPathComponent("transcripts", isDirectory: true)
+        )
         let importer = BridgeSessionImporter(
             client: client,
             sessionStore: sessionStore,
             trajectory: trajectory,
             queryModel: nil,
-            mappings: mappings
+            mappings: mappings,
+            transcripts: transcripts
         )
         return Harness(
             importer: importer,
             sessionStore: sessionStore,
             trajectory: trajectory,
             mappings: mappings,
+            transcripts: transcripts,
             root: root
         )
     }
@@ -660,6 +666,153 @@ final class BridgeSessionImporterTests: XCTestCase {
             checkpoint: ConversationCheckpoint(messages: messages, workState: ConversationWorkState())
         )
         XCTAssertEqual(savedLocal.messages.count, 1)
+    }
+
+    // MARK: - Transcript tail and paging
+
+    private func userMessageEvents(count: Int, startingAt seq: UInt64 = 0) throws -> [SessionEvent] {
+        try (0..<count).map { offset in
+            try SessionEvent(
+                type: SessionEventVocabulary.userMessage,
+                seq: seq + UInt64(offset),
+                time: 1_735_689_600_000 + Int64(offset),
+                data: .object([
+                    "id": .string(UUID().uuidString.lowercased()),
+                    "role": .string("user"),
+                    "content": .array([.object(["type": .string("text"), "text": .string("message \(offset)")])])
+                ])
+            )
+        }
+    }
+
+    func testLongMirrorKeepsOnlyTheTailInlineAndPagesTheRestFromTheTranscript() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let events = try userMessageEvents(count: 150)
+
+        let outcome = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: "Long",
+            header: nil,
+            events: events,
+            lastBridgeSequence: 149
+        )
+
+        let session = try await harness.sessionStore.session(id: outcome.localSessionID)
+        XCTAssertEqual(session.messages.count, BridgeMirrorTranscriptStore.sessionTailLimit)
+        XCTAssertEqual(session.messages.first?.content, "message 30")
+        XCTAssertEqual(session.messages.last?.content, "message 149")
+        XCTAssertEqual(session.bridgeMirror?.transcriptMessageCount, 150)
+        XCTAssertEqual(session.summary.messageCount, 150)
+
+        let total = try await harness.transcripts.count(sessionID: outcome.localSessionID)
+        XCTAssertEqual(total, 150)
+        let older = try await harness.transcripts.page(sessionID: outcome.localSessionID, before: 30, limit: 80)
+        XCTAssertEqual(older.map(\.content), (0..<30).map { "message \($0)" })
+        let middle = try await harness.transcripts.page(sessionID: outcome.localSessionID, before: 100, limit: 10)
+        XCTAssertEqual(middle.map(\.content), (90..<100).map { "message \($0)" })
+    }
+
+    func testRefreshProjectsOnlyTheNewEventsAndKeepsToolNamesAcrossPages() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+        // Page 1: everything up to and including the assistant tool call (seq 4).
+        let first = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: Array(report.events.prefix(5)),
+            lastBridgeSequence: 4,
+            isSuffix: true
+        )
+        // Page 2: the tool result and the rest; its call lives in page 1.
+        let second = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: Array(report.events.dropFirst(5)),
+            lastBridgeSequence: 9,
+            isSuffix: true
+        )
+
+        XCTAssertEqual(second, .refreshed(localSessionID: first.localSessionID, appendedEvents: 5))
+        let session = try await harness.sessionStore.session(id: first.localSessionID)
+        XCTAssertEqual(session.messages.count, 5)
+        XCTAssertEqual(session.bridgeMirror?.transcriptMessageCount, 5)
+        let toolMessage = try XCTUnwrap(session.messages.first { $0.role == .tool })
+        XCTAssertEqual(toolMessage.toolCallID, "call_1")
+        XCTAssertEqual(toolMessage.toolName, "read")
+    }
+
+    func testMirrorFromBeforeTheTranscriptStoreIsSeededFromItsSessionMessages() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+        let first = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+        // Rewind to the pre-transcript shape: no transcript file, the session
+        // carries all messages and no count.
+        try await harness.transcripts.delete(sessionID: first.localSessionID)
+        let legacy = try await harness.sessionStore.session(id: first.localSessionID)
+        _ = try await harness.sessionStore.checkpointSession(
+            id: first.localSessionID,
+            checkpoint: ConversationCheckpoint(
+                messages: legacy.messages,
+                workState: ConversationWorkState(),
+                bridgeMirror: BridgeSessionMirror(bridgeSessionID: bridgeSessionID)
+            )
+        )
+
+        let outcome = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+
+        XCTAssertEqual(outcome, .unchanged(localSessionID: first.localSessionID))
+        let total = try await harness.transcripts.count(sessionID: first.localSessionID)
+        XCTAssertEqual(total, 5)
+        let session = try await harness.sessionStore.session(id: first.localSessionID)
+        XCTAssertEqual(session.bridgeMirror?.transcriptMessageCount, 5)
+        XCTAssertEqual(session.messages.count, 5)
+    }
+
+    func testTranscriptStoreIndexSurvivesReopenAndDropsATornTrailingLine() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("bridge-transcript-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let sessionID = UUID()
+        let store = BridgeMirrorTranscriptStore(directory: root)
+        let total = try await store.append(
+            [AgentMessage.user("one"), AgentMessage.assistant("two"), AgentMessage.user("three")],
+            sessionID: sessionID
+        )
+        XCTAssertEqual(total, 3)
+
+        // Simulate a crash mid-append: a partial line without its newline.
+        let url = root.appendingPathComponent(sessionID.uuidString.lowercased() + ".messages.jsonl")
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data("{\"role\":\"user\",\"content\":\"torn".utf8))
+        try handle.close()
+
+        let reopened = BridgeMirrorTranscriptStore(directory: root)
+        let count = try await reopened.count(sessionID: sessionID)
+        XCTAssertEqual(count, 3)
+        let tail = try await reopened.tail(sessionID: sessionID, limit: 2)
+        XCTAssertEqual(tail.map(\.content), ["two", "three"])
+        let grown = try await reopened.append([AgentMessage.user("four")], sessionID: sessionID)
+        XCTAssertEqual(grown, 4)
+        let all = try await reopened.page(sessionID: sessionID, before: 4, limit: 10)
+        XCTAssertEqual(all.map(\.content), ["one", "two", "three", "four"])
     }
 
     // MARK: - Failure handling
