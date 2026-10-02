@@ -182,6 +182,14 @@ actor BridgeSessionImporter {
         )
         let report: BridgeSessionEventConverter.Report
         if page.isIncremental {
+            // The desktop log is shorter than the mirror (rolled back or
+            // restored): its head is behind the stored cursor. Appending from the
+            // stale cursor would skip everything the desktop writes until it
+            // passes that number again, so rebuild the mirror from the full log.
+            if let through = page.throughSeq, through < mapping.importedThroughBridgeSeq {
+                try await resetMirrorLog(mapping)
+                return nil
+            }
             do {
                 report = try BridgeSessionEventConverter.decodeLog(page.data, firstSequence: head + 1)
             } catch BridgeLogConversionError.nonContiguousSuffix {
@@ -189,6 +197,10 @@ actor BridgeSessionImporter {
             }
         } else {
             report = try BridgeSessionEventConverter.decodeLog(page.data)
+            if report.lastBridgeSequence < mapping.importedThroughBridgeSeq {
+                try await resetMirrorLog(mapping)
+                return nil
+            }
         }
         return try await importConverted(
             bridgeSessionID: bridgeSessionID,
@@ -198,6 +210,18 @@ actor BridgeSessionImporter {
             lastBridgeSequence: max(report.lastBridgeSequence, mapping.importedThroughBridgeSeq),
             isSuffix: page.isIncremental
         )
+    }
+
+    /// Drops the mirror's local log and cursor but keeps its session and
+    /// mapping identity, so the following full import rebuilds the same mirror
+    /// (same local id, still selectable) from the desktop's current log.
+    private func resetMirrorLog(_ mapping: BridgeSessionMapping) async throws {
+        try await trajectory.delete(sessionID: mapping.localSessionID)
+        var reset = mapping
+        reset.importedThroughBridgeSeq = -1
+        reset.importedEventCount = 0
+        reset.updatedAt = .now
+        try await mappings.record(reset)
     }
 
     /// Runs imports of one desktop session strictly one after another. A manual

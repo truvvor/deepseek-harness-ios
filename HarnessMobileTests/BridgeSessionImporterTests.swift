@@ -417,6 +417,50 @@ final class BridgeSessionImporterTests: XCTestCase {
         XCTAssertEqual(mapping?.importedThroughBridgeSeq, 11)
     }
 
+    func testDesktopLogRewoundBehindTheCursorRebuildsTheSameMirror() async throws {
+        defer { BridgeExportURLProtocolStub.handler = nil }
+        let harness = try makeHarness(protocolClasses: [BridgeExportURLProtocolStub.self])
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let fixture = try fixtureData()
+        let report = try converted(fixture)
+        let first = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+        // The desktop now holds only seq 0...4 (header + five events).
+        let rewound = String(decoding: fixture, as: UTF8.self)
+            .split(separator: "\n")
+            .prefix(6)
+            .joined(separator: "\n") + "\n"
+        let header = String(rewound.split(separator: "\n")[0]) + "\n"
+        let queries = RequestLog()
+        BridgeExportURLProtocolStub.handler = { request in
+            let query = request.url?.query ?? ""
+            queries.append(query)
+            if query.hasPrefix("since=") {
+                return Self.ndjson(
+                    request,
+                    body: header,
+                    headers: ["x-dsh-since": "9", "x-dsh-through-seq": "4", "x-dsh-event-count": "5"]
+                )
+            }
+            return Self.ndjson(request, body: rewound, headers: [:])
+        }
+
+        let outcome = try await harness.importer.importSession(bridgeSessionID: bridgeSessionID, listTitle: nil)
+
+        XCTAssertEqual(outcome, .refreshed(localSessionID: first.localSessionID, appendedEvents: 5))
+        XCTAssertEqual(queries.values, ["since=9", ""])
+        let events = try await harness.trajectory.allEvents(sessionID: first.localSessionID)
+        XCTAssertEqual(events.map(\.seq), (0...4).map { UInt64($0) })
+        let mapping = try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID)
+        XCTAssertEqual(mapping?.localSessionID, first.localSessionID)
+        XCTAssertEqual(mapping?.importedThroughBridgeSeq, 4)
+    }
+
     func testSuffixWithAGapIsRejectedSoTheFullLogIsUsed() {
         let gap = Data(#"{"type":"turn/start","seq":12,"time":1,"data":{"turn":2}}"#.utf8)
         XCTAssertThrowsError(try BridgeSessionEventConverter.decodeLog(gap, firstSequence: 10)) { error in
