@@ -279,7 +279,7 @@ struct ChatView: View {
                 } label: {
                     optionLabel("Chat", systemImage: "bubble.left.and.bubble.right", selected: conversationMode == .chat)
                 }
-                .accessibilityIdentifier("对话")
+                .accessibilityIdentifier("Chat")
 
                 Button {
                     conversationMode = .trajectory
@@ -287,7 +287,7 @@ struct ChatView: View {
                 } label: {
                     optionLabel("Trajectory", systemImage: "point.3.connected.trianglepath.dotted", selected: conversationMode == .trajectory)
                 }
-                .accessibilityIdentifier("轨迹")
+                .accessibilityIdentifier("Trajectory")
 
                 Divider()
 
@@ -350,7 +350,7 @@ struct ChatView: View {
                 } label: {
                     Label("Scheduled Reminders", systemImage: "clock.badge.checkmark")
                 }
-                .accessibilityIdentifier("定时提醒")
+                .accessibilityIdentifier("Scheduled Reminders")
 
                 Button {
                     isExportFormatPresented = true
@@ -375,7 +375,7 @@ struct ChatView: View {
         }
         .accessibilityLabel("Session Options")
         .accessibilityHint("Opens chat, trajectory, model, and tool permission options")
-        .accessibilityIdentifier("会话选项")
+        .accessibilityIdentifier("Session Options")
     }
 
     private func optionLabel(_ title: String, systemImage: String, selected: Bool) -> some View {
