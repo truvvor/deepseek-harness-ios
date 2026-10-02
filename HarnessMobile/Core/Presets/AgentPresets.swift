@@ -291,8 +291,8 @@ enum AgentPresetRegistry {
             id: "standard",
             trust: .system,
             manifest: AgentPresetManifest(
-                name: "标准模式",
-                description: "功能完整的编码 Agent，支持文件编辑、Shell、计划、目标和普通插件贡献工具。",
+                name: "Standard Mode",
+                description: "Full-featured coding Agent with file editing, Shell, plans, goals, and regular plugin-contributed tools.",
                 order: 1
             ),
             composition: AgentPresetNativeComposition(
@@ -306,8 +306,8 @@ enum AgentPresetRegistry {
             id: "code",
             trust: .system,
             manifest: AgentPresetManifest(
-                name: "PTC 模式",
-                description: "通过生成的 Python Code Mode SDK 在手机 iSH 中组合多步本机工具。",
+                name: "PTC Mode",
+                description: "Composes multi-step local tools in the phone's iSH via the generated Python Code Mode SDK.",
                 order: 2
             ),
             composition: AgentPresetNativeComposition(
@@ -321,8 +321,8 @@ enum AgentPresetRegistry {
             id: "minimal",
             trust: .system,
             manifest: AgentPresetManifest(
-                name: "极简模式",
-                description: "仅保留本机 iSH Shell 与工作区文件工具的精简编码 Agent。",
+                name: "Minimal Mode",
+                description: "Lean coding Agent with only the local iSH Shell and workspace file tools.",
                 order: 3
             ),
             composition: AgentPresetNativeComposition(
@@ -353,8 +353,8 @@ enum AgentPresetRegistry {
             id: "cordis",
             trust: .system,
             manifest: AgentPresetManifest(
-                name: "创造模式",
-                description: "标准能力加上运行时检查、插件实验与可撤销的 Harness 自修改工具。",
+                name: "Creative Mode",
+                description: "Standard capabilities plus runtime inspection, plugin experiments, and reversible Harness self-modification tools.",
                 order: 4
             ),
             composition: AgentPresetNativeComposition(
@@ -599,36 +599,36 @@ enum AgentPresetError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case let .invalidID(id):
-            return "Agent preset ID \(id.debugDescription) 必须匹配 [a-z0-9][a-z0-9-]*。"
+            return "Agent preset ID \(id.debugDescription) must match [a-z0-9][a-z0-9-]*."
         case .invalidOrder:
-            return "Agent preset 的 order 必须是有限数值。"
+            return "Agent preset order must be a finite number."
         case .invalidPrompt:
-            return "Agent preset Prompt 不能为空或超过 64 KiB。"
+            return "Agent preset Prompt cannot be empty or exceed 64 KiB."
         case .inheritedPromptHasText:
-            return "继承 Prompt 的 preset 不能同时携带替换文本。"
+            return "A preset that inherits the Prompt cannot also carry replacement text."
         case .invalidToolSelection:
-            return "Agent preset 的工具组合无效。"
+            return "Agent preset tool combination is invalid."
         case .invalidPermissionComposition:
-            return "Agent preset 的默认权限高于它允许的最高权限。"
+            return "Agent preset default permission is higher than its maximum allowed permission."
         case .invalidCommandSelection:
-            return "Agent preset 的命令组合无效。"
+            return "Agent preset command combination is invalid."
         case let .unknownPreset(id, available):
-            let choices = available.isEmpty ? "无" : available.joined(separator: "、")
-            return "找不到 Agent preset \(id.debugDescription)；可用：\(choices)。"
+            let choices = available.isEmpty ? "none" : available.joined(separator: ", ")
+            return "Agent preset \(id.debugDescription) not found; available: \(choices)."
         case let .brokenPreset(id, reason):
-            return "Agent preset \(id.debugDescription) 无法挂载：\(reason)"
+            return "Agent preset \(id.debugDescription) cannot be mounted: \(reason)"
         case .presetLocked:
-            return "Agent preset 当前正在运行中，停止任务后才能切换。"
+            return "An Agent preset is currently running; stop the task before switching."
         case let .presetAlreadyExists(id):
-            return "Agent preset \(id.debugDescription) 已存在，安装不会覆盖。"
+            return "Agent preset \(id.debugDescription) already exists; installing will not overwrite it."
         case let .systemPresetIsReserved(id):
-            return "Agent preset \(id.debugDescription) 由 App 提供，用户 registry 不能遮蔽它。"
+            return "Agent preset \(id.debugDescription) is provided by the App; the user registry cannot shadow it."
         case .userStoreRequiresUserTrust:
-            return "用户 registry 只接受 trust=user 的 Agent preset。"
+            return "The user registry only accepts Agent presets with trust=user."
         case let .unsupportedRegistryVersion(version):
-            return "不支持的 Agent preset registry 版本：\(version)。"
+            return "Unsupported Agent preset registry version: \(version)."
         case .corruptRegistry:
-            return "Agent preset registry 已损坏。"
+            return "Agent preset registry is corrupted."
         }
     }
 }

@@ -150,7 +150,7 @@ enum ModelProviderCatalog {
         ModelProviderDescriptor(
             id: .deepSeekOfficial,
             displayName: "DeepSeek",
-            detail: "DeepSeek 官方 OpenAI-compatible Chat Completions API",
+            detail: "DeepSeek official OpenAI-compatible Chat Completions API",
             wireProtocol: .openAIChatCompletions,
             inferenceSupport: .supported,
             discoverySupport: .openAICompatibleModels,
@@ -222,12 +222,12 @@ enum ModelProviderCatalog {
                     reasoningWireStyle: .budgetTokens
                 )
             ],
-            compatibilityNotice: "Anthropic Messages 支持原生 /v1/models 发现；超过 1000 个模型时仅加载首批，其余模型仍可手动输入。"
+            compatibilityNotice: "Anthropic Messages supports native /v1/models discovery. With more than 1000 models, only the first batch is loaded; other models can still be entered manually."
         ),
         ModelProviderDescriptor(
             id: .openRouter,
             displayName: "OpenRouter",
-            detail: "聚合多个厂商的 OpenAI-compatible Chat Completions API",
+            detail: "OpenAI-compatible Chat Completions API aggregating multiple vendors",
             wireProtocol: .openAIChatCompletions,
             inferenceSupport: .supported,
             discoverySupport: .openAICompatibleModels,
@@ -241,8 +241,8 @@ enum ModelProviderCatalog {
         ),
         ModelProviderDescriptor(
             id: .customOpenAICompatible,
-            displayName: "自定义 OpenAI-compatible",
-            detail: "自定义 HTTPS endpoint，必须兼容流式 chat/completions；/models 可选",
+            displayName: "Custom OpenAI-compatible",
+            detail: "Custom HTTPS endpoint; must support streaming chat/completions. /models is optional",
             wireProtocol: .openAIChatCompletions,
             inferenceSupport: .supported,
             discoverySupport: .openAICompatibleModels,
@@ -250,7 +250,7 @@ enum ModelProviderCatalog {
             defaultModel: "",
             defaultReasoningMode: .providerDefault,
             builtInModels: [],
-            compatibilityNotice: "仅支持 OpenAI-compatible Chat Completions wire，不会自动兼容 Anthropic、Gemini 或其他协议。"
+            compatibilityNotice: "Only the OpenAI-compatible Chat Completions wire format is supported; Anthropic, Gemini, and other protocols are not automatically compatible."
         )
     ]
 

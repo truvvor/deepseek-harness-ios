@@ -298,7 +298,7 @@ extension LocalSubagentRequest {
         let requested = Set((filter.allow ?? []) + (filter.deny ?? []))
         guard requested.isSubset(of: known) else {
             throw LocalToolError.pluginDenied(
-                "子 Agent 工具过滤器包含未知工具：\(requested.subtracting(known).sorted().joined(separator: ", "))"
+                "Subagent tool filter contains unknown tools: \(requested.subtracting(known).sorted().joined(separator: ", "))"
             )
         }
         let allowed = filter.allow.map(Set.init)
@@ -327,14 +327,14 @@ enum LocalSubagentStructuredOutput {
         guard let data = text.data(using: .utf8),
               let value = try? JSONDecoder().decode(JSONValue.self, from: data) else {
             throw LocalToolError.pluginFailed(
-                "子 Agent 没有返回 output schema 要求的合法 JSON。"
+                "Subagent did not return valid JSON required by the output schema."
             )
         }
         do {
             try NativeAgentJSONSchemaValidator.validate(value: value, schema: schema)
         } catch {
             throw LocalToolError.pluginFailed(
-                "子 Agent 的结构化输出不符合声明的 output schema。"
+                "Subagent structured output does not match the declared output schema."
             )
         }
     }
@@ -454,7 +454,7 @@ private struct SubagentModelListTool: LocalAgentTool {
     var definition: ModelToolDefinition {
         ModelToolDefinition(
             name: "list_subagent_models",
-            description: "列出当前移动端 provider catalog 中可用于子 Agent 的模型与 reasoning 能力。",
+            description: "List the models and reasoning capabilities available to subagents in the current mobile provider catalog.",
             parameters: .object([
                 "type": .string("object"),
                 "properties": .object([:]),
@@ -469,7 +469,7 @@ private struct SubagentModelListTool: LocalAgentTool {
         try arguments.requireOnlyKeys([])
     }
 
-    func summary(arguments: [String: JSONValue]) -> String { "列出子 Agent 模型" }
+    func summary(arguments: [String: JSONValue]) -> String { "List subagent models" }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
         try validate(arguments: arguments)
@@ -501,13 +501,13 @@ private struct SubagentReportTool: LocalAgentTool {
     let delivery: LocalSubagentReportDeliveryHandler
     let definition = ModelToolDefinition(
         name: "report",
-        description: "向启动你的父 Agent 报告一个自包含的进展或结论。报告不会结束当前轮次；完成前至少报告一次，关键中间发现也可以提前报告。报告内容只会送达该父 Agent。",
+        description: "Report a self-contained progress update or conclusion to the parent Agent that started you. Reporting does not end the current turn; report at least once before finishing, and you may report key intermediate findings early. Reports are delivered only to that parent Agent.",
         parameters: .object([
             "type": .string("object"),
             "properties": .object([
                 "output": .object([
                     "type": .string("string"),
-                    "description": .string("给父 Agent 的自包含报告。")
+                    "description": .string("Self-contained report for the parent Agent.")
                 ])
             ]),
             "required": .array([.string("output")]),
@@ -525,7 +525,7 @@ private struct SubagentReportTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "报告给父 Agent"
+        "Report to parent Agent"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -578,7 +578,7 @@ private struct SubagentTool: LocalAgentTool {
         return ModelToolDefinition(
             name: toolName,
             description: fork
-                ? "从父 Agent 最近一个已完成回合的只读前缀 fork 一个独立的一次性本机 Agent；不会继承未完成的工具调用。"
+                ? "Fork an independent, one-shot on-device Agent from the read-only prefix of the parent Agent's most recent completed turn; unfinished tool calls are not inherited."
                 : "Delegate a focused task to another local Harness Agent under the configured context, persona, tool, schema, and depth policy. Set run_in_background=true to return a job id immediately.",
             parameters: .object([
                 "type": .string("object"),
@@ -653,8 +653,8 @@ private struct SubagentTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        let label = arguments["label"]?.stringValue ?? "子 Agent"
-        return "启动\(String(label.prefix(80)))"
+        let label = arguments["label"]?.stringValue ?? "Subagent"
+        return "Start \(String(label.prefix(80)))"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -664,7 +664,7 @@ private struct SubagentTool: LocalAgentTool {
     func execute(arguments: [String: JSONValue]) async throws -> String {
         try validate(arguments: arguments)
         guard let runner else {
-            throw LocalToolError.pluginDenied("手机子 Agent 运行器尚未就绪。")
+            throw LocalToolError.pluginDenied("The mobile subagent runner is not ready yet.")
         }
         let resolvedPolicy = try policy.validated()
         let childAddress = UUID().uuidString.lowercased()
@@ -673,8 +673,8 @@ private struct SubagentTool: LocalAgentTool {
             prompt: try arguments.requiredString("prompt", maximumUTF8Bytes: Self.maximumPromptBytes),
             label: arguments["label"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines)
                 .isEmpty == false
-                ? arguments["label"]?.stringValue ?? "子 Agent"
-                : "子 Agent",
+                ? arguments["label"]?.stringValue ?? "Subagent"
+                : "Subagent",
             model: arguments["model"]?.stringValue,
             reasoningEffort: arguments["reasoning_effort"].flatMap {
                 ReasoningMode(rawValue: $0.stringValue ?? "")
@@ -737,7 +737,7 @@ private struct SubagentTool: LocalAgentTool {
         )
         let read = try await registry.read(id: jobID, ownerSession: ownerSession)
         guard read.snapshot.status == .completed else {
-            throw LocalToolError.pluginFailed(read.snapshot.detail ?? "子 Agent 未完成。")
+            throw LocalToolError.pluginFailed(read.snapshot.detail ?? "Subagent did not complete.")
         }
         return JSONValue.object([
             "subagent_id": .string(childAddress),
@@ -788,7 +788,7 @@ private struct SendMessageTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "继续子 Agent \(arguments["subagent_id"]?.stringValue ?? "")"
+        "Continue subagent \(arguments["subagent_id"]?.stringValue ?? "")"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -797,12 +797,12 @@ private struct SendMessageTool: LocalAgentTool {
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
         try validate(arguments: arguments)
-        guard let runner else { throw LocalToolError.pluginDenied("手机子 Agent 运行器尚未就绪。") }
+        guard let runner else { throw LocalToolError.pluginDenied("The mobile subagent runner is not ready yet.") }
         let id = try arguments.requiredString("subagent_id", maximumUTF8Bytes: 256).lowercased()
         let child = try await registry.subagent(id: id, requesterSession: ownerSession)
         guard child.parentSession == ownerSession.lowercased() else {
             throw LocalToolError.pluginDenied(
-                "send_message 只能继续直接子 Agent；更深层后代应由它的直接父 Agent 继续。"
+                "send_message can only continue direct subagents; deeper descendants must be continued by their direct parent Agent."
             )
         }
         let request = LocalSubagentRequest.continuation(
@@ -860,7 +860,7 @@ private struct SubagentListTool: LocalAgentTool {
         }
     }
 
-    func summary(arguments: [String: JSONValue]) -> String { "列出子 Agent" }
+    func summary(arguments: [String: JSONValue]) -> String { "List subagents" }
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool { true }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -963,7 +963,7 @@ private struct SubagentControlTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "控制子 Agent \(arguments["subagent_id"]?.stringValue ?? "")"
+        "Control subagent \(arguments["subagent_id"]?.stringValue ?? "")"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -1082,7 +1082,7 @@ private struct JobOutputTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "读取后台任务 \(arguments["job_id"]?.stringValue ?? "")"
+        "Read background job \(arguments["job_id"]?.stringValue ?? "")"
     }
 
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool { true }
@@ -1154,7 +1154,7 @@ private struct JobListTool: LocalAgentTool {
         try arguments.requireOnlyKeys([])
     }
 
-    func summary(arguments: [String: JSONValue]) -> String { "列出后台任务" }
+    func summary(arguments: [String: JSONValue]) -> String { "List background jobs" }
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool { true }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -1201,7 +1201,7 @@ private struct JobKillTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "停止后台任务 \(arguments["job_id"]?.stringValue ?? "")"
+        "Stop background job \(arguments["job_id"]?.stringValue ?? "")"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {

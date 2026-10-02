@@ -236,7 +236,7 @@ extension AppModel {
         updateNativePluginCompilationStage(
             .nativeInstallation,
             state: .running,
-            detail: "正在保存清单并注册到可替换的 Cordis 工具层。"
+            detail: "Saving the manifest and registering it with the replaceable Cordis tool layer."
         )
         let previousPlugin = nativeAgentPlugins.first { $0.id == compiled.id }
         nativeAgentPlugins = try await nativeAgentPluginStore.upsert(
@@ -281,14 +281,14 @@ extension AppModel {
         updateNativePluginCompilationStage(
             .nativeInstallation,
             state: .succeeded,
-            detail: "原生插件已保存；默认保持停用，等待显式启用。"
+            detail: "Native plugin saved; it stays disabled by default until explicitly enabled."
         )
         updateNativePluginCompilationStage(
             .ishFallback,
             state: .skipped,
-            detail: "原生编译与校验成功，不需要 iSH 回退。"
+            detail: "Native compilation and validation succeeded; no iSH fallback needed."
         )
-        completeNativePluginCompilationTrace("Agent 原生编译成功，插件已安装。")
+        completeNativePluginCompilationTrace("Agent native compilation succeeded; plugin installed.")
         return compiled.marketplaceProjection
     }
 
@@ -325,12 +325,12 @@ extension AppModel {
         updateNativePluginCompilationStage(
             .validation,
             state: .succeeded,
-            detail: "校验通过：\(compiled.tools.count) 个工具，\(compiled.promptSections.count) 个提示词段。"
+            detail: "Validation passed: \(compiled.tools.count) tools, \(compiled.promptSections.count) prompt sections."
         )
         updateNativePluginCompilationStage(
             .nativeInstallation,
             state: .running,
-            detail: "正在保存清单并注册到可替换的 Cordis 工具层。"
+            detail: "Saving the manifest and registering it with the replaceable Cordis tool layer."
         )
         let previousPlugin = nativeAgentPlugins.first { $0.id == compiled.id }
         nativeAgentPlugins = try await nativeAgentPluginStore.upsert(
@@ -374,12 +374,12 @@ extension AppModel {
         updateNativePluginCompilationStage(
             .nativeInstallation,
             state: .succeeded,
-            detail: "原生插件已保存；默认保持停用，等待显式启用。"
+            detail: "Native plugin saved; it stays disabled by default until explicitly enabled."
         )
         updateNativePluginCompilationStage(
             .ishFallback,
             state: .skipped,
-            detail: "原生编译与校验成功，不需要 iSH 回退。"
+            detail: "Native compilation and validation succeeded; no iSH fallback needed."
         )
         return compiled.marketplaceProjection
     }
@@ -511,7 +511,7 @@ extension AppModel {
             updateNativePluginCompilationStage(
                 .nativeInstallation,
                 state: .failed,
-                detail: "插件协调器拒绝提交，已回滚本机原生插件变更。"
+                detail: "The plugin coordinator rejected the commit; local native plugin changes were rolled back."
             )
         } catch {
             let message = HarnessTraceRedactor.string(
@@ -525,7 +525,7 @@ extension AppModel {
                     message: message,
                     retryable: false,
                     preparedToken: pendingAgentPluginPreparation?.preparedToken,
-                    suggestedAction: "导出诊断并重新打开插件市场；不要假设这次安装已经提交。"
+                    suggestedAction: "Export diagnostics and reopen the plugin marketplace; do not assume this installation was committed."
                 )
             )
         }
@@ -552,7 +552,7 @@ extension AppModel {
         }
         guard snapshot.state == .active else {
             throw NativeAgentPluginError.invalidCompiledPlugin(
-                snapshot.error ?? "插件激活失败。"
+                snapshot.error ?? "Plugin activation failed."
             )
         }
     }
@@ -576,7 +576,7 @@ extension AppModel {
         let selectedTools = availableTools.filter { requested.contains($0.definition.name) }
         guard Set(selectedTools.map { $0.definition.name }) == requested else {
             throw NativeAgentPluginError.invalidCompiledPlugin(
-                "工具 \(tool.name) 请求了当前设备没有的原生能力。"
+                "Tool \(tool.name) requested a native capability this device does not have."
             )
         }
         let configuration = effectiveConfiguration
@@ -621,7 +621,7 @@ extension AppModel {
                     await onOutput(
                         AgentToolOutputChunk(
                             channel: isError ? .stderr : .progress,
-                            text: "\(call.name)：\(isError ? "失败" : "完成")\n"
+                            text: "\(call.name): \(isError ? "failed" : "done")\n"
                         )
                     )
                 case .stepStarted, .contextInjected, .textDelta,
@@ -636,7 +636,7 @@ extension AppModel {
             permissionMode: .dangerFullAccess
         )
         await onOutput(
-            AgentToolOutputChunk(channel: .system, text: "手机 Agent 正在执行原生插件工具。\n")
+            AgentToolOutputChunk(channel: .system, text: "Phone Agent is running a native plugin tool.\n")
         )
         try await runtime.run(
             history: [
@@ -824,7 +824,7 @@ extension AppModel {
                         ?? "unknown",
                     message: HarnessTraceRedactor.string(message, maximumUTF8Bytes: 2_048),
                     retryable: true,
-                    suggestedAction: "先调用 diagnostics_read(scope=compilation)，根据失败阶段修复后重试；源码不可适配时使用 action=install_ish。"
+                    suggestedAction: "Call diagnostics_read(scope=compilation) first, fix the failing stage, and retry; if the source cannot be adapted, use action=install_ish."
                 )
             )
         }
@@ -842,10 +842,10 @@ extension AppModel {
             updateNativePluginCompilationStage(
                 step.stage,
                 state: .skipped,
-                detail: "前序阶段失败，未继续执行。"
+                detail: "A previous stage failed; not continued."
             )
         }
-        completeNativePluginCompilationTrace("失败：\(message)")
+        completeNativePluginCompilationTrace("Failed: \(message)")
     }
 
     func handleNativeAgentCompilerEvent(
@@ -856,25 +856,25 @@ extension AppModel {
             updateNativePluginCompilationStage(
                 .modelCompilation,
                 state: .running,
-                detail: "已调用 \(providerID) / \(model)，API 只负责推理。"
+                detail: "Called \(providerID) / \(model); the API is used for inference only."
             )
         case .responseStarted:
             updateNativePluginCompilationStage(
                 .modelCompilation,
                 state: .running,
-                detail: "已收到模型响应，正在生成受限原生清单。"
+                detail: "Model response received; generating the restricted native manifest."
             )
         case .manifestReceived:
             updateNativePluginCompilationStage(
                 .modelCompilation,
                 state: .succeeded,
-                detail: "Agent 已返回结构化原生插件清单。"
+                detail: "Agent returned a structured native plugin manifest."
             )
         case let .adaptabilityAccepted(name):
             updateNativePluginCompilationStage(
                 .adaptability,
                 state: .succeeded,
-                detail: "可转换为原生工具：\(name)"
+                detail: "Convertible to native tools: \(name)"
             )
         case let .adaptabilityRejected(reason):
             updateNativePluginCompilationStage(
@@ -886,13 +886,13 @@ extension AppModel {
             updateNativePluginCompilationStage(
                 .validation,
                 state: .running,
-                detail: "正在由签名内置 Swift 代码校验 schema、工具边界和路径。"
+                detail: "Signed built-in Swift code is validating the schema, tool boundaries, and paths."
             )
         case let .validationSucceeded(toolCount, promptSectionCount):
             updateNativePluginCompilationStage(
                 .validation,
                 state: .succeeded,
-                detail: "校验通过：\(toolCount) 个工具，\(promptSectionCount) 个提示词段。"
+                detail: "Validation passed: \(toolCount) tools, \(promptSectionCount) prompt sections."
             )
         }
     }

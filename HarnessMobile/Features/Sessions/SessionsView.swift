@@ -39,13 +39,13 @@ struct SessionsView: View {
                 } else {
                     if collectionScope == .all {
                         if !activeSessions.isEmpty {
-                            sessionSection("项目", sessions: activeSessions)
+                            sessionSection("Projects", sessions: activeSessions)
                         }
                         if !archivedSessions.isEmpty {
-                            sessionSection("已归档", sessions: archivedSessions)
+                            sessionSection("Archived", sessions: archivedSessions)
                         }
                     } else {
-                        sessionSection(collectionScope == .active ? "项目" : collectionScope.sectionTitle, sessions: visibleSessions)
+                        sessionSection(collectionScope == .active ? "Projects" : collectionScope.sectionTitle, sessions: visibleSessions)
                     }
                 }
             }
@@ -60,7 +60,7 @@ struct SessionsView: View {
         .searchable(
             text: $searchText,
             placement: .navigationBarDrawer(displayMode: .automatic),
-            prompt: "搜索标题和消息"
+            prompt: "Search titles and messages"
         )
         .searchScopes($collectionScope) {
             ForEach(SessionCollectionScope.allCases) { scope in
@@ -73,19 +73,19 @@ struct SessionsView: View {
                     Image(systemName: "gearshape")
                         .frame(width: 44, height: 44)
                 }
-                .accessibilityLabel("设置")
+                .accessibilityLabel("Settings")
             }
 
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Picker("范围", selection: $collectionScope) {
+                    Picker("Scope", selection: $collectionScope) {
                         ForEach(SessionCollectionScope.allCases) { scope in
                             Label(scope.title, systemImage: scope.systemImage)
                                 .tag(scope)
                         }
                     }
 
-                    Picker("排序", selection: $sortOrder) {
+                    Picker("Sort", selection: $sortOrder) {
                         ForEach(SessionSortOrder.allCases) { order in
                             Label(order.title, systemImage: order.systemImage)
                                 .tag(order)
@@ -95,7 +95,7 @@ struct SessionsView: View {
                     Image(systemName: "line.3.horizontal.decrease.circle")
                         .frame(width: 44, height: 44)
                 }
-                .accessibilityLabel("筛选与排序")
+                .accessibilityLabel("Filter and Sort")
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -103,7 +103,7 @@ struct SessionsView: View {
                     Image(systemName: "square.grid.2x2")
                         .frame(width: 44, height: 44)
                 }
-                .accessibilityLabel("工具")
+                .accessibilityLabel("Tools")
             }
         }
         .task(id: searchTaskID) {
@@ -113,22 +113,22 @@ struct SessionsView: View {
             RenameConversationSheet(session: session)
         }
         .confirmationDialog(
-            "删除项目？",
+            "Delete Project?",
             isPresented: $isDeleteConfirmationPresented,
             titleVisibility: .visible,
             presenting: sessionToDelete
         ) { session in
-            Button("删除“\(session.title)”", role: .destructive) {
+            Button("Delete '\(session.title)'", role: .destructive) {
                 deleteConversation(session)
             }
-            Button("取消", role: .cancel) {
+            Button("Cancel", role: .cancel) {
                 sessionToDelete = nil
             }
         } message: { session in
             if session.id == model.activeSessionID, model.isRunning {
-                Text("当前执行会先停止，然后删除这个项目。工作区文件不会被删除。")
+                Text("The current run will stop first, then this project will be deleted. Workspace files will not be deleted.")
             } else {
-                Text("会删除这个项目在本机保存的消息、任务状态和恢复检查点；工作区文件不受影响。")
+                Text("This deletes the project's messages, task state, and recovery checkpoints stored on this device. Workspace files are not affected.")
             }
         }
     }
@@ -143,7 +143,7 @@ struct SessionsView: View {
                     .background(Color.accentColor, in: Circle())
                     .shadow(color: .black.opacity(0.16), radius: 8, y: 3)
             }
-            .accessibilityLabel("新建项目")
+            .accessibilityLabel("New Project")
             .disabled(operation != nil)
         }
         .padding(.trailing, 16)
@@ -206,24 +206,24 @@ struct SessionsView: View {
         if isSearching {
             HStack {
                 Spacer()
-                ProgressView("正在搜索…")
+                ProgressView("Searching…")
                 Spacer()
             }
         } else if !normalizedSearchText.isEmpty {
             ContentUnavailableView.search(text: normalizedSearchText)
         } else if collectionScope == .archived {
             ContentUnavailableView(
-                "没有已归档项目",
+                "No Archived Projects",
                 systemImage: "archivebox",
-                description: Text("归档项目会保留消息和任务状态，并可随时恢复。")
+                description: Text("Archived projects keep their messages and task state and can be restored at any time.")
             )
         } else {
             ContentUnavailableView {
-                Label("还没有项目", systemImage: "folder")
+                Label("No Projects Yet", systemImage: "folder")
             } description: {
-                Text("新建项目后，消息、任务状态与恢复检查点都会保存在本机。")
+                Text("After you create a project, its messages, task state, and recovery checkpoints are saved on this device.")
             } actions: {
-                Button("新建项目", action: createConversation)
+                Button("New Project", action: createConversation)
                     .disabled(operation != nil)
             }
         }
@@ -239,7 +239,7 @@ struct SessionsView: View {
                     .harnessCardListRow()
             }
         } header: {
-            Label(title, systemImage: title == "已归档" ? "archivebox" : "folder.fill")
+            Label(title, systemImage: title == "Archived" ? "archivebox" : "folder.fill")
         }
     }
 
@@ -264,14 +264,14 @@ struct SessionsView: View {
                 Button {
                     restoreConversation(session)
                 } label: {
-                    Label("恢复", systemImage: "arrow.uturn.backward")
+                    Label("Restore", systemImage: "arrow.uturn.backward")
                 }
                 .tint(.green)
             } else {
                 Button {
                     archiveConversation(session)
                 } label: {
-                    Label("归档", systemImage: "archivebox")
+                    Label("Archive", systemImage: "archivebox")
                 }
                 .tint(.orange)
             }
@@ -279,25 +279,25 @@ struct SessionsView: View {
             Button {
                 forkConversation(session)
             } label: {
-                Label("分叉", systemImage: "arrow.triangle.branch")
+                Label("Fork", systemImage: "arrow.triangle.branch")
             }
             .tint(.indigo)
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button("删除", role: .destructive) {
+            Button("Delete", role: .destructive) {
                 requestDeletion(of: session)
             }
 
             Button {
                 sessionToRename = session
             } label: {
-                Label("重命名", systemImage: "pencil")
+                Label("Rename", systemImage: "pencil")
             }
 
             Button {
                 regenerateConversationTitle(session)
             } label: {
-                Label("重新生成标题", systemImage: "text.badge.star")
+                Label("Regenerate Title", systemImage: "text.badge.star")
             }
             .tint(.blue)
         }
@@ -305,39 +305,39 @@ struct SessionsView: View {
             Button {
                 forkConversation(session)
             } label: {
-                Label("分叉项目", systemImage: "arrow.triangle.branch")
+                Label("Fork Project", systemImage: "arrow.triangle.branch")
             }
 
             if session.isArchived {
                 Button {
                     restoreConversation(session)
                 } label: {
-                    Label("恢复项目", systemImage: "arrow.uturn.backward")
+                    Label("Restore Project", systemImage: "arrow.uturn.backward")
                 }
             } else {
                 Button {
                     archiveConversation(session)
                 } label: {
-                    Label("归档项目", systemImage: "archivebox")
+                    Label("Archive Project", systemImage: "archivebox")
                 }
             }
 
             Button {
                 sessionToRename = session
             } label: {
-                Label("重命名", systemImage: "pencil")
+                Label("Rename", systemImage: "pencil")
             }
 
             Button {
                 regenerateConversationTitle(session)
             } label: {
-                Label("重新生成标题", systemImage: "text.badge.star")
+                Label("Regenerate Title", systemImage: "text.badge.star")
             }
 
             Button(role: .destructive) {
                 requestDeletion(of: session)
             } label: {
-                Label("删除", systemImage: "trash")
+                Label("Delete", systemImage: "trash")
             }
         }
     }
@@ -528,9 +528,9 @@ struct SessionsView: View {
 
     private func accessibilityHint(for session: ConversationSessionSummary) -> String {
         if session.isArchived {
-            return "恢复并打开此项目"
+            return "Restore and open this project"
         }
-        return session.id == model.activeSessionID ? "当前项目" : "切换到此项目"
+        return session.id == model.activeSessionID ? "Current project" : "Switch to this project"
     }
 }
 
@@ -548,7 +548,7 @@ private struct WorkspaceHierarchySection: View {
                 if let activeSessionTitle {
                     hierarchyRow(
                         title: activeSessionTitle,
-                        detail: isRunning ? "当前会话 · Agent 运行中" : "当前会话 · 等待输入",
+                        detail: isRunning ? "Current session · Agent running" : "Current session · Waiting for input",
                         systemImage: isRunning ? "waveform" : "bubble.left",
                         tint: isRunning ? .green : .blue,
                         depth: 1
@@ -557,8 +557,8 @@ private struct WorkspaceHierarchySection: View {
 
                 Button(action: onOpenWorkspace) {
                     hierarchyRow(
-                        title: "文件",
-                        detail: "\(files.count) 个本机文件",
+                        title: "Files",
+                        detail: "\(files.count) local files",
                         systemImage: "folder",
                         tint: .orange,
                         depth: 1,
@@ -571,7 +571,7 @@ private struct WorkspaceHierarchySection: View {
                 ForEach(mounts.prefix(4)) { mount in
                     hierarchyRow(
                         title: mount.name,
-                        detail: "\(mount.effectiveWritable ? "读写" : "只读") · \(mountStatusTitle(mount.status))",
+                        detail: "\(mount.effectiveWritable ? "Read-write" : "Read-only") · \(mountStatusTitle(mount.status))",
                         systemImage: mountStatusIcon(mount.status),
                         tint: mountStatusColor(mount.status),
                         depth: 2
@@ -579,14 +579,14 @@ private struct WorkspaceHierarchySection: View {
                 }
 
                 if mounts.count > 4 {
-                    Text("另有 \(mounts.count - 4) 个挂载目录")
+                    Text("\(mounts.count - 4) more mounted folders")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.leading, 52)
                 }
 
                 Button(action: onOpenWorkspace) {
-                    Label("打开完整工作区", systemImage: "arrow.up.forward.app")
+                    Label("Open Full Workspace", systemImage: "arrow.up.forward.app")
                         .font(.subheadline.weight(.medium))
                         .padding(.leading, 28)
                 }
@@ -598,7 +598,7 @@ private struct WorkspaceHierarchySection: View {
                         Text("/workspace")
                             .font(.body.weight(.semibold))
                             .foregroundStyle(.primary)
-                        Text("\(files.count) 个文件 · \(mounts.count) 个挂载 · \(isRunning ? "正在运行" : "本机就绪")")
+                        Text("\(files.count) files · \(mounts.count) mounts · \(isRunning ? "Running" : "Ready on device")")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -644,10 +644,10 @@ private struct WorkspaceHierarchySection: View {
 
     private func mountStatusTitle(_ status: WorkspaceStore.MountStatus) -> String {
         switch status {
-        case .active: "已连接"
-        case .staleBookmark: "需重新授权"
-        case .permissionDenied: "权限被拒绝"
-        case .unavailable: "不可用"
+        case .active: "Connected"
+        case .staleBookmark: "Needs reauthorization"
+        case .permissionDenied: "Permission denied"
+        case .unavailable: "Unavailable"
         }
     }
 
@@ -708,17 +708,17 @@ private enum SessionCollectionScope: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .active: "当前"
-        case .archived: "归档"
-        case .all: "全部"
+        case .active: "Current"
+        case .archived: "Archive"
+        case .all: "All"
         }
     }
 
     var sectionTitle: String {
         switch self {
-        case .active: "项目"
-        case .archived: "已归档"
-        case .all: "全部项目"
+        case .active: "Projects"
+        case .archived: "Archived"
+        case .all: "All Projects"
         }
     }
 
@@ -740,9 +740,9 @@ private enum SessionSortOrder: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .updatedNewest: "最近更新"
-        case .createdNewest: "最近创建"
-        case .title: "标题"
+        case .updatedNewest: "Recently Updated"
+        case .createdNewest: "Recently Created"
+        case .title: "Title"
         }
     }
 
@@ -766,13 +766,13 @@ private enum SessionDisplayStatus: Equatable {
 
     var title: String {
         switch self {
-        case .running: "运行中"
-        case let .waiting(count): "排队 \(count)"
-        case .resumable: "可继续"
-        case .completed: "已完成"
-        case .ready: "就绪"
-        case .current: "当前"
-        case .archived: "已归档"
+        case .running: "Running"
+        case let .waiting(count): "Queued \(count)"
+        case .resumable: "Resumable"
+        case .completed: "Completed"
+        case .ready: "Ready"
+        case .current: "Current"
+        case .archived: "Archived"
         }
     }
 
@@ -860,10 +860,10 @@ private struct SessionRow: View {
                         systemImage: status.systemImage,
                         tint: status.color
                     )
-                    Text("\(session.messageCount) 条消息")
+                    Text("\(session.messageCount) messages")
                     if session.forkedFromSessionID != nil {
                         Text("·").accessibilityHidden(true)
-                        Label("分叉", systemImage: "arrow.triangle.branch")
+                        Label("Fork", systemImage: "arrow.triangle.branch")
                             .labelStyle(.titleAndIcon)
                     }
                 }
@@ -875,7 +875,7 @@ private struct SessionRow: View {
             if isBusy {
                 ProgressView()
                     .controlSize(.small)
-                    .accessibilityLabel("正在处理项目")
+                    .accessibilityLabel("Processing project")
             }
         }
         .padding(.vertical, 6)
@@ -908,11 +908,11 @@ private struct SessionErrorSection: View {
                 .foregroundStyle(.red)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Button("关闭") {
+            Button("Close") {
                 model.errorMessage = nil
             }
         } header: {
-            Label("操作失败", systemImage: "exclamationmark.triangle")
+            Label("Operation Failed", systemImage: "exclamationmark.triangle")
         }
     }
 }
@@ -936,13 +936,13 @@ private struct RenameConversationSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("项目名称", text: $title)
+                    TextField("Project Name", text: $title)
                         .focused($isTitleFocused)
                         .submitLabel(.done)
                         .onSubmit(save)
                 } footer: {
                     HStack {
-                        Text("名称保存在本机，最多 80 个字符。")
+                        Text("The name is saved on this device, up to 80 characters.")
                         Spacer()
                         Text("\(title.count)/80")
                             .monospacedDigit()
@@ -956,22 +956,22 @@ private struct RenameConversationSheet: View {
                             .foregroundStyle(.red)
                             .fixedSize(horizontal: false, vertical: true)
                     } header: {
-                        Label("无法重命名项目", systemImage: "pencil.slash")
+                        Label("Unable to Rename Project", systemImage: "pencil.slash")
                     }
                 }
             }
-            .navigationTitle("重命名项目")
+            .navigationTitle("Rename Project")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") {
+                    Button("Cancel") {
                         dismiss()
                     }
                     .disabled(isSaving)
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存", action: save)
+                    Button("Save", action: save)
                         .disabled(!canSave)
                 }
             }

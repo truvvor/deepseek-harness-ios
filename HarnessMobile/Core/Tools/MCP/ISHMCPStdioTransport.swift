@@ -41,7 +41,7 @@ actor ISHMCPStdioTransport: MCPStdioTransport {
         try configuration.validate()
 #if os(iOS) && canImport(HarnessISH)
         guard process == nil else {
-            throw MCPClientError.invalidState("MCP iSH 进程已经在运行")
+            throw MCPClientError.invalidState("MCP iSH process is already running")
         }
         try await coordinator.prepare(workspaceURL: workspaceURL)
 
@@ -65,7 +65,7 @@ actor ISHMCPStdioTransport: MCPStdioTransport {
             outputCallback: outputRelay.receive,
             completion: exitRelay.receive
         ) else {
-            throw MCPClientError.transportFailure("iSH 无法启动 MCP 进程")
+            throw MCPClientError.transportFailure("iSH could not start the MCP process")
         }
         process = started
 
@@ -86,7 +86,7 @@ actor ISHMCPStdioTransport: MCPStdioTransport {
             guard stdinReady else {
                 process = nil
                 started.terminate()
-                throw MCPClientError.transportFailure("iSH MCP stdin 未在启动窗口内就绪")
+                throw MCPClientError.transportFailure("iSH MCP stdin was not ready within the startup window")
             }
         } catch {
             process = nil
@@ -108,7 +108,7 @@ actor ISHMCPStdioTransport: MCPStdioTransport {
             throw MCPClientError.transportEOF
         }
         guard process.writeStdin(data) else {
-            throw MCPClientError.transportFailure("iSH MCP stdin 拒绝写入")
+            throw MCPClientError.transportFailure("iSH MCP stdin rejected the write")
         }
 #else
         _ = data

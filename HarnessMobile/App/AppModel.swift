@@ -83,13 +83,13 @@ enum NativePluginCompilationStage: String, CaseIterable, Identifiable, Sendable 
 
     var title: String {
         switch self {
-        case .sourceAcquisition: "下载源码"
-        case .sourceAnalysis: "分析源码"
-        case .adaptability: "判断原生适配"
-        case .modelCompilation: "Agent 编译"
-        case .validation: "Swift 校验"
-        case .nativeInstallation: "注册原生工具"
-        case .ishFallback: "iSH 回退安装"
+        case .sourceAcquisition: "Download Source"
+        case .sourceAnalysis: "Analyze Source"
+        case .adaptability: "Assess Native Fit"
+        case .modelCompilation: "Agent Compilation"
+        case .validation: "Swift Validation"
+        case .nativeInstallation: "Register Native Tools"
+        case .ishFallback: "iSH Fallback Install"
         }
     }
 }
@@ -139,7 +139,7 @@ struct NativePluginCompilationTrace: Identifiable, Sendable, Equatable {
             NativePluginCompilationStep(
                 stage: $0,
                 state: .pending,
-                detail: "等待开始",
+                detail: "Waiting to start",
                 updatedAt: now
             )
         }
@@ -442,7 +442,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         activeAddress: String
     ) -> [HarnessSessionPathNode] {
         let rootUUID = UUID(uuidString: rootSession)
-        let rootTitle = sessions.first(where: { $0.id == rootUUID })?.title ?? "主会话"
+        let rootTitle = sessions.first(where: { $0.id == rootUUID })?.title ?? "Main Session"
         var path = [
             HarnessSessionPathNode(
                 id: rootSession,
@@ -1143,7 +1143,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 "data": .string(data.base64EncodedString())
             ])
         case "session/create":
-            let title = fields["title"]?.stringValue ?? "新会话"
+            let title = fields["title"]?.stringValue ?? "New Session"
             await createConversation(title: title)
             return try await currentProjection()
         case "session/select", "session/switch":
@@ -1762,7 +1762,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             var state = try await sessionStore.loadState()
             if state.activeSession == nil {
                 _ = try await sessionStore.createSession(
-                    title: "新会话",
+                    title: "New Session",
                     controlState: defaultConversationControlState()
                 )
                 state = try await sessionStore.loadState()
@@ -2450,7 +2450,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                         name: skill.name,
                         description: skill.invocation.modelInvocable
                             ? skill.description
-                            : "仅用户调用 · \(skill.description)",
+                            : "User-invoked only · \(skill.description)",
                         systemImage: "wand.and.stars",
                         replacementText: "/\(skill.name) ",
                         kind: .skill(name: skill.name)
@@ -2602,13 +2602,13 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     ) async -> Bool {
         guard !isSubmitting else { return false }
         isSubmitting = true
-        submissionStatus = "正在解析命令与技能"
+        submissionStatus = "Parsing commands and skills"
         defer {
             isSubmitting = false
             submissionStatus = nil
         }
         if let addressed = AddressedSubagentInputParser.parse(text) {
-            submissionStatus = "正在发送给子 Agent"
+            submissionStatus = "Sending to sub-Agent"
             return await sendAddressedInput(addressed)
         }
         let preparation = await slashCommandRegistry.prepare(
@@ -2617,11 +2617,11 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         )
         switch preparation {
         case .notACommand:
-            submissionStatus = isRunning ? "正在加入运行队列" : "正在启动 Agent"
+            submissionStatus = isRunning ? "Adding to run queue" : "Starting Agent"
             return await send(text, disposition: disposition)
         case let .invalidSyntax(error):
             presentCommandOutput(
-                title: "命令格式错误",
+                title: "Invalid Command Format",
                 text: error.message,
                 isError: true
             )
@@ -2631,7 +2631,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 // `/skill-name` is a user-owned gesture, not a direct command.
                 // It remains visible in the conversation while AgentRuntime
                 // adds the matching local instruction block at this turn.
-                submissionStatus = isRunning ? "正在加入运行队列" : "正在启动 Agent"
+                submissionStatus = isRunning ? "Adding to run queue" : "Starting Agent"
                 return await send(text, disposition: disposition)
             }
             let suggestions = await slashCommandRegistry.search(
@@ -2640,8 +2640,8 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             )
             let hint = suggestions.prefix(3).map { "/\($0.name)" }.joined(separator: "、")
             presentCommandOutput(
-                title: "未知命令 /\(command.name)",
-                text: hint.isEmpty ? "输入 /help 查看本机命令。" : "可能想用：\(hint)",
+                title: "Unknown Command /\(command.name)",
+                text: hint.isEmpty ? "Type /help to see local commands." : "Did you mean: \(hint)",
                 isError: true
             )
             return false
@@ -2649,7 +2649,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             guard let commandSessionID = activeSessionID else {
                 presentCommandOutput(
                     title: "/\(prepared.invocation.descriptor.name)",
-                    text: "当前没有可记录命令的会话。",
+                    text: "There is no session to record the command in.",
                     isError: true
                 )
                 return false
@@ -2663,7 +2663,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             } catch {
                 presentCommandOutput(
                     title: "/\(prepared.invocation.descriptor.name)",
-                    text: "命令未执行：无法写入 command/run。\n\(error.localizedDescription)",
+                    text: "Command not run: could not write command/run.\n\(error.localizedDescription)",
                     isError: true
                 )
                 return false
@@ -2692,7 +2692,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             ) else {
                 presentCommandOutput(
                     title: "/\(pending.commandName)",
-                    text: "命令交互已失效，请重新运行命令。",
+                    text: "The command interaction has expired. Run the command again.",
                     isError: true
                 )
                 return
@@ -2726,7 +2726,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             )
             presentCommandOutput(
                 title: "/\(execution.descriptor.name)",
-                text: execution.result.text ?? "命令执行失败。",
+                text: execution.result.text ?? "Command failed.",
                 isError: true
             )
             return true
@@ -2747,7 +2747,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             } catch {
                 presentCommandOutput(
                     title: "/\(execution.descriptor.name)",
-                    text: "命令已经执行，但 command/done 写入失败。\n\(error.localizedDescription)",
+                    text: "The command ran, but writing command/done failed.\n\(error.localizedDescription)",
                     isError: true
                 )
                 return true
@@ -2794,8 +2794,8 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     private func sendAddressedInput(_ input: AddressedSubagentInput) async -> Bool {
         guard let parentSessionID = activeSessionID?.uuidString.lowercased() else {
             presentCommandOutput(
-                title: "子 Agent",
-                text: "当前没有可用于子 Agent 路由的会话。",
+                title: "Sub-Agent",
+                text: "There is no session available for sub-Agent routing.",
                 isError: true
             )
             return false
@@ -2847,13 +2847,13 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             }
             presentCommandOutput(
                 title: child.label,
-                text: "已发送给子 Agent。Job：\(jobID)",
+                text: "Sent to sub-Agent. Job: \(jobID)",
                 isError: false
             )
             return true
         } catch {
             presentCommandOutput(
-                title: "子 Agent",
+                title: "Sub-Agent",
                 text: error.localizedDescription,
                 isError: true
             )
@@ -2890,7 +2890,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                     NSError(
                         domain: "HarnessMobile",
                         code: 409,
-                        userInfo: [NSLocalizedDescriptionKey: "当前任务仍在运行，请等待完成后再发送附件。"]
+                        userInfo: [NSLocalizedDescriptionKey: "A task is still running. Wait for it to finish before sending attachments."]
                     )
                 )
                 return false
@@ -2937,7 +2937,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         await startRun(
             history: history,
             workState: runWorkState,
-            automaticTitle: shouldRename ? String((trimmed.isEmpty ? "附件" : trimmed).prefix(40)) : nil,
+            automaticTitle: shouldRename ? String((trimmed.isEmpty ? "Attachment" : trimmed).prefix(40)) : nil,
             shouldCheckpointBeforeRun: true,
             initialUserMessage: message
         )
@@ -3061,7 +3061,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         guard preset.isMountable else {
             throw AgentPresetError.brokenPreset(
                 preset.id,
-                reason: preset.broken ?? "未知挂载错误"
+                reason: preset.broken ?? "Unknown mount error"
             )
         }
         if preset.id == "cordis" {
@@ -3081,7 +3081,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             throw AgentPresetError.brokenPreset(
                 "cordis",
                 reason: ishPluginMarketplaceFailure?.message
-                    ?? "iSH Plugin Host 启动失败；请在诊断日志中查看 Host stderr。"
+                    ?? "iSH Plugin Host failed to start. Check Host stderr in the diagnostic log."
             )
         }
         let availableTools = Set(pluginToolContributions.map { $0.definition.name })
@@ -3089,7 +3089,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             let missing = Self.creativeModeLifecycleTools.subtracting(availableTools).sorted()
             throw AgentPresetError.brokenPreset(
                 "cordis",
-                reason: "Cordis Host 已运行，但生命周期工具未挂载：\(missing.joined(separator: ", "))。"
+                reason: "Cordis Host is running, but lifecycle tools are not mounted: \(missing.joined(separator: ", "))."
             )
         }
     }
@@ -3375,7 +3375,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         let normalizedNote = hasVisibleText ? note : nil
         if let normalizedNote,
            normalizedNote.utf8.count > MessageFeedback.maximumNoteUTF8Bytes {
-            errorMessage = "反馈备注不能超过 4 KiB。"
+            errorMessage = "Feedback notes cannot exceed 4 KiB."
             return
         }
 
@@ -3442,7 +3442,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         await persistSession()
     }
 
-    func createConversation(title: String = "新会话") async {
+    func createConversation(title: String = "New Session") async {
         hasStagedImage = false
         stagedImageReference = nil
         hasStagedFile = false
@@ -3554,7 +3554,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             var state = try await sessionStore.loadState()
             if state.activeSession == nil {
                 _ = try await sessionStore.createSession(
-                    title: "新会话",
+                    title: "New Session",
                     controlState: defaultConversationControlState()
                 )
                 state = try await sessionStore.loadState()
@@ -3670,7 +3670,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             var state = try await sessionStore.loadState()
             if state.activeSession == nil {
                 _ = try await sessionStore.createSession(
-                    title: "新会话",
+                    title: "New Session",
                     controlState: defaultConversationControlState()
                 )
                 state = try await sessionStore.loadState()
@@ -3853,10 +3853,10 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         _ authorization: BackgroundNotificationAuthorization
     ) -> String {
         switch authorization {
-        case .notDetermined: "尚未请求"
-        case .denied: "已拒绝"
-        case .authorized: "已允许"
-        case .unavailable: "不可用"
+        case .notDetermined: "Not Requested"
+        case .denied: "Denied"
+        case .authorized: "Allowed"
+        case .unavailable: "Unavailable"
         }
     }
 
@@ -3864,12 +3864,12 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         _ authorization: BackgroundLocationAuthorization
     ) -> String {
         switch authorization {
-        case .notDetermined: "尚未请求"
-        case .whenInUse: "仅使用期间"
-        case .always: "始终允许"
-        case .denied: "已拒绝"
-        case .restricted: "受系统限制"
-        case .unavailable: "不可用"
+        case .notDetermined: "Not Requested"
+        case .whenInUse: "While Using"
+        case .always: "Always"
+        case .denied: "Denied"
+        case .restricted: "Restricted"
+        case .unavailable: "Unavailable"
         }
     }
 
@@ -3958,7 +3958,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 NSError(
                     domain: "HarnessMobile",
                     code: 409,
-                    userInfo: [NSLocalizedDescriptionKey: "当前任务仍在运行，请等待完成后再添加附件。"]
+                    userInfo: [NSLocalizedDescriptionKey: "A task is still running. Wait for it to finish before adding attachments."]
                 )
             )
             return
@@ -3977,7 +3977,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 NSError(
                     domain: "HarnessMobile",
                     code: 409,
-                    userInfo: [NSLocalizedDescriptionKey: "当前任务仍在运行，请等待完成后再添加附件。"]
+                    userInfo: [NSLocalizedDescriptionKey: "A task is still running. Wait for it to finish before adding attachments."]
                 )
             )
             return
@@ -4161,7 +4161,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             if let expectedProtocolVersion,
                ping.protocolVersion != expectedProtocolVersion {
                 throw ISHPluginHostError.invalidProtocol(
-                    "iSH 插件 Host 协议版本不匹配：期望 \(expectedProtocolVersion)，实际 \(ping.protocolVersion)。"
+                    "iSH Plugin Host protocol version mismatch: expected \(expectedProtocolVersion), got \(ping.protocolVersion)."
                 )
             }
             ishPluginHostPackages = ping.packages
@@ -4255,14 +4255,14 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         inspectorID: String
     ) async throws -> JSONValue {
         guard let client = ishPluginHostClient else {
-            throw ISHPluginHostError.invalidState("iSH 插件 Host 尚未运行。")
+            throw ISHPluginHostError.invalidState("iSH Plugin Host is not running.")
         }
         guard let plugin = await ishNativeClientRegistry.plugin(id: pluginID),
               let inspector = plugin.contributions.inspectors.first(where: { $0.id == inspectorID }),
               plugin.endpoints.contains(where: { $0.id == inspector.endpoint }) else {
             throw ISHNativeClientError.endpointFailed(
                 code: "contribution-not-active",
-                message: "原生 Inspector 已停止或被替换。"
+                message: "The native Inspector was stopped or replaced."
             )
         }
         return try await client.invokeNativeClientEndpoint(
@@ -4277,7 +4277,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     @discardableResult
     func refreshISHPluginSettings() async -> Bool {
         guard let client = ishPluginHostClient else {
-            errorMessage = "iSH 插件 Host 尚未运行。"
+            errorMessage = "iSH Plugin Host is not running."
             return false
         }
         do {
@@ -4295,7 +4295,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         expectedRevision: Int
     ) async throws -> ISHPluginSettingsNamespace {
         guard let client = ishPluginHostClient else {
-            throw ISHPluginHostError.invalidState("iSH 插件 Host 尚未运行。")
+            throw ISHPluginHostError.invalidState("iSH Plugin Host is not running.")
         }
         return try await performISHPluginSettingsWrite(
             client: client,
@@ -4319,7 +4319,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         expectedRevision: Int
     ) async throws -> ISHPluginSettingsNamespace {
         guard let client = ishPluginHostClient else {
-            throw ISHPluginHostError.invalidState("iSH 插件 Host 尚未运行。")
+            throw ISHPluginHostError.invalidState("iSH Plugin Host is not running.")
         }
         return try await performISHPluginSettingsWrite(
             client: client,
@@ -4343,7 +4343,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         expectedRevision: Int
     ) async throws -> ISHPluginSettingsNamespace {
         guard let client = ishPluginHostClient else {
-            throw ISHPluginHostError.invalidState("iSH 插件 Host 尚未运行。")
+            throw ISHPluginHostError.invalidState("iSH Plugin Host is not running.")
         }
         return try await performISHPluginSettingsWrite(
             client: client,
@@ -4375,7 +4375,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
               normalizedPurpose.utf8.count <= 2_048,
               !normalizedCode.isEmpty,
               normalizedCode.utf8.count <= 240 * 1_024 else {
-            errorMessage = "插件名称、用途或 Host 代码无效。"
+            errorMessage = "The plugin name, purpose, or Host code is invalid."
             return false
         }
         guard await startISHPluginHost(),
@@ -4415,7 +4415,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     ) async {
         guard let client = ishPluginHostClient,
               let sessionID = activeSessionID?.uuidString else {
-            errorMessage = "iSH 插件 Host 尚未运行。"
+            errorMessage = "iSH Plugin Host is not running."
             return
         }
         do {
@@ -4440,7 +4440,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             )
             guard response.ok else {
                 throw ISHPluginHostError.invalidState(
-                    response.message ?? response.reason ?? "iSH 插件未能停止。"
+                    response.message ?? response.reason ?? "The iSH plugin could not be stopped."
                 )
             }
             try await synchronizeISHPluginHost(client: client)
@@ -4458,7 +4458,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             )
             guard response.ok else {
                 throw ISHPluginHostError.invalidState(
-                    response.message ?? response.reason ?? "iSH 插件未能卸载。"
+                    response.message ?? response.reason ?? "The iSH plugin could not be uninstalled."
                 )
             }
             try await synchronizeISHPluginHost(client: client)
@@ -4488,7 +4488,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         try await synchronizeISHPluginHost(client: client)
         guard response.ok else {
             throw ISHPluginHostError.invalidState(
-                response.message ?? response.reason ?? "iSH 插件未能启动。"
+                response.message ?? response.reason ?? "The iSH plugin could not be started."
             )
         }
         return response
@@ -4858,7 +4858,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 operation: { @MainActor [weak self] in
                     guard let self else {
                         throw PluginInstallCoordinatorError.operationFailed(
-                            "AppModel 已结束。"
+                            "AppModel has ended."
                         )
                     }
                     guard let plugin = await self.installISHMarketplacePluginResultUncoordinated(
@@ -4869,7 +4869,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                     ) else {
                         throw PluginInstallCoordinatorError.operationFailed(
                             self.ishPluginMarketplaceFailure?.message
-                                ?? "插件 Host 未返回已提交记录。"
+                                ?? "The Plugin Host did not return a committed record."
                         )
                     }
                     return self.pluginInstallResult(for: plugin, scope: .global)
@@ -4902,7 +4902,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         beginNativePluginCompilationTrace(source: source)
         guard await startISHPluginHost(reportErrorsGlobally: false),
               let client = ishPluginHostClient else {
-            failNativePluginCompilationTrace("iSH 插件 Host 未能启动，尚未下载源码。")
+            failNativePluginCompilationTrace("iSH Plugin Host could not start; source has not been downloaded.")
             return nil
         }
 
@@ -4910,7 +4910,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         updateNativePluginCompilationStage(
             .sourceAcquisition,
             state: .running,
-            detail: "正在手机内下载并准备受限源码快照。"
+            detail: "Downloading and preparing a restricted source snapshot on the phone."
         )
         do {
             let prepared = try await withTemporaryISHGuestNetwork {
@@ -4924,7 +4924,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             updateNativePluginCompilationStage(
                 .sourceAcquisition,
                 state: .succeeded,
-                detail: "源码已下载到手机隔离缓存，未发送 API 密钥。"
+                detail: "Source downloaded to the phone's isolated cache. No API key was sent."
             )
 
             // Desktop parity (D-010): installs default to loading the package
@@ -4937,12 +4937,12 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 updateNativePluginCompilationStage(
                     .sourceAnalysis,
                     state: .succeeded,
-                    detail: "已分析 \(candidate.files.count) 个源码文件（\(sourceBytes) 字节）。"
+                    detail: "Analyzed \(candidate.files.count) source files (\(sourceBytes) bytes)."
                 )
                 updateNativePluginCompilationStage(
                     .adaptability,
                     state: .running,
-                    detail: "正在判断核心行为能否映射到手机原生工具。"
+                    detail: "Checking whether the core behavior can map to native phone tools."
                 )
                 advanceISHPluginMarketplaceOperation(to: .compilingNativePlugin)
                 do {
@@ -4976,7 +4976,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                         updateNativePluginCompilationStage(
                             .validation,
                             state: .skipped,
-                            detail: "适配判断未通过，没有原生清单需要校验。"
+                            detail: "Native fit check failed; there is no native manifest to validate."
                         )
                     case .invalidCompiledPlugin:
                         updateNativePluginCompilationStage(
@@ -4991,7 +4991,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                     updateNativePluginCompilationStage(
                         .nativeInstallation,
                         state: .skipped,
-                        detail: "原生方案未注册，保留源码并切换到 iSH。"
+                        detail: "Native plan not registered; keeping the source and switching to iSH."
                     )
                     updateNativePluginCompilationStage(
                         .ishFallback,
@@ -5003,32 +5003,32 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 updateNativePluginCompilationStage(
                     .sourceAnalysis,
                     state: .succeeded,
-                    detail: "Host 已完成源码分析，但没有生成可交给 Agent 的受限快照。"
+                    detail: "The Host finished source analysis but produced no restricted snapshot for the Agent."
                 )
                 updateNativePluginCompilationStage(
                     .adaptability,
                     state: .skipped,
-                    detail: "缺少可安全编译的源码入口，直接使用 iSH 兼容路径。"
+                    detail: "No safely compilable source entry; using the iSH compatibility path."
                 )
                 updateNativePluginCompilationStage(
                     .modelCompilation,
                     state: .skipped,
-                    detail: "未调用模型编译。"
+                    detail: "Model compilation was not invoked."
                 )
                 updateNativePluginCompilationStage(
                     .validation,
                     state: .skipped,
-                    detail: "没有原生清单需要校验。"
+                    detail: "No native manifest to validate."
                 )
                 updateNativePluginCompilationStage(
                     .nativeInstallation,
                     state: .skipped,
-                    detail: "没有注册原生工具。"
+                    detail: "No native tools registered."
                 )
                 updateNativePluginCompilationStage(
                     .ishFallback,
                     state: .running,
-                    detail: "正在手机 iSH 沙箱中安装原插件。"
+                    detail: "Installing the original plugin in the phone's iSH sandbox."
                 )
             }
 
@@ -5044,12 +5044,12 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             updateNativePluginCompilationStage(
                 .ishFallback,
                 state: .succeeded,
-                detail: "iSH 插件已安装；可在启用后加载 Host 贡献。"
+                detail: "iSH plugin installed; Host contributions load once enabled."
             )
-            completeNativePluginCompilationTrace("已通过 iSH 兼容路径安装。")
+            completeNativePluginCompilationTrace("Installed via the iSH compatibility path.")
             return plugin
         } catch where ISHPluginMarketplaceErrorPolicy.isCancellation(error) {
-            failNativePluginCompilationTrace("操作已取消。")
+            failNativePluginCompilationTrace("Operation cancelled.")
             return nil
         } catch {
             failNativePluginCompilationTrace(error)
@@ -5223,7 +5223,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             try await withTemporaryISHGuestNetwork {
                 let response = try await client.uninstallMarketplacePlugin(id: id)
                 guard response.ok else {
-                    throw ISHPluginHostError.invalidState("社区插件未能卸载。")
+                    throw ISHPluginHostError.invalidState("The community plugin could not be uninstalled.")
                 }
             }
             ishMarketplacePlugins.removeAll { $0.id == id }
@@ -5389,7 +5389,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         guard !normalizedID.isEmpty,
               !normalizedInstruction.isEmpty,
               normalizedInstruction.utf8.count <= 16 * 1_024 else {
-            errorMessage = "实验插件需要有效名称，Prompt 内容不能超过 16 KiB。"
+            errorMessage = "Experimental plugins need a valid name, and the Prompt cannot exceed 16 KiB."
             return false
         }
         let pluginID = CordisPluginID(rawValue: "memory.\(normalizedID)")
@@ -5418,7 +5418,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
 
     func uninstallPlugin(id: CordisPluginID) async {
         guard id.rawValue.hasPrefix("memory.") || id.rawValue.hasPrefix("ish.") else {
-            errorMessage = "内置插件可以停用或替换，但不能从运行时库存中删除。"
+            errorMessage = "Built-in plugins can be disabled or replaced, but not removed from the runtime inventory."
             return
         }
         do {
@@ -5546,7 +5546,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     ) async throws {
         let subagentRunner: LocalSubagentRunner = { [weak self] request, emit in
             guard let self else {
-                throw LocalToolError.pluginDenied("手机子 Agent 宿主已退出。")
+                throw LocalToolError.pluginDenied("The phone sub-Agent host has exited.")
             }
             return try await self.executeLocalSubagent(
                 request,
@@ -5563,7 +5563,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             planModeState: planModeState,
             pluginMarketplaceExecutor: { [weak self] request in
                 guard let self else {
-                    throw LocalToolError.pluginDenied("本机插件管理器已退出。")
+                    throw LocalToolError.pluginDenied("The local plugin manager has exited.")
                 }
                 return try await self.executePluginMarketplaceTool(request)
             },
@@ -5624,8 +5624,8 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         guard !trimmed.isEmpty else { throw LocalToolError.invalidArguments }
         let messageID = UUID()
         let framed = sourceKind == "subagent-report"
-            ? "后台子 Agent \(childAddress) 报告：\n\(trimmed)"
-            : "后台子 Agent \(childAddress) 已结束：\n\(trimmed)"
+            ? "Background sub-Agent \(childAddress) reported:\n\(trimmed)"
+            : "Background sub-Agent \(childAddress) finished:\n\(trimmed)"
 
         if activeSessionID == parentID,
            let identity = selectedRunPresentation?.identity,
@@ -5694,7 +5694,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         ) { [weak self] notice, delivery in
             guard notice.kind != "subagent" else { return }
             guard let self else {
-                throw LocalToolError.pluginFailed("主 Agent 尚未恢复，后台任务结果稍后重试。")
+                throw LocalToolError.pluginFailed("The main Agent has not resumed yet; the background task result will be retried later.")
             }
             try await self.deliverJobCompletionNotice(notice, delivery: delivery)
         }
@@ -5708,7 +5708,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             throw LocalToolError.invalidArguments
         }
         let messageID = UUID()
-        let content = "后台任务完成：\n\(notice.text)"
+        let content = "Background task completed:\n\(notice.text)"
         let message = AgentMessage(
             id: messageID,
             role: .user,
@@ -5867,7 +5867,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         if let bundleID = request.providerBundleID {
             guard let bundle = providerBundle(bundleID), bundle.enabled else {
                 await stopHook("failed")
-                throw LocalToolError.pluginDenied("Profile Bundle " + bundleID.rawValue + " 尚未启用，请先在设置中安装。")
+                throw LocalToolError.pluginDenied("Profile Bundle " + bundleID.rawValue + " is not enabled. Install it in Settings first.")
             }
             do {
                 if let capabilityFailure = bundle.capabilityFailureMessage(
@@ -5914,7 +5914,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             }
             guard let descriptor = await ACPSubagentProviderCatalog.shared.descriptor(id: acpProviderID) else {
                 await stopHook("failed")
-                throw LocalToolError.pluginDenied("ACP provider (acpProviderID) 尚未注册。")
+                throw LocalToolError.pluginDenied("ACP provider (acpProviderID) is not registered.")
             }
             do {
                 let workspaceURL = try await workspaceStore.rootURL()
@@ -5965,7 +5965,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
 
         let childSubagentRunner: LocalSubagentRunner = { [weak self] nestedRequest, nestedEmit in
             guard let self else {
-                throw LocalToolError.pluginDenied("手机子 Agent 宿主已退出。")
+                throw LocalToolError.pluginDenied("The phone sub-Agent host has exited.")
             }
             return try await self.executeLocalSubagent(
                 nestedRequest,
@@ -6012,7 +6012,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             parentSession: parentSessionID,
             delivery: { [weak self] childAddress, parentSession, output, delivery in
                 guard let self else {
-                    throw LocalToolError.pluginDenied("父 Agent 宿主已退出，报告未送达。")
+                    throw LocalToolError.pluginDenied("The parent Agent host has exited; the report was not delivered.")
                 }
                 return try await self.deliverSubagentMessage(
                     childAddress: childAddress,
@@ -6126,11 +6126,11 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                     )
                 case let .reasoningDelta(delta):
                     await onOutput(
-                        AgentToolOutputChunk(channel: .system, text: "[子 Agent 推理] \(String(delta.prefix(2_000)))\n")
+                        AgentToolOutputChunk(channel: .system, text: "[Sub-Agent reasoning] \(String(delta.prefix(2_000)))\n")
                     )
                 case let .toolStarted(call, summary):
                     await onOutput(
-                        AgentToolOutputChunk(channel: .progress, text: "子 Agent 调用 \(call.name)：\(summary)\n")
+                        AgentToolOutputChunk(channel: .progress, text: "Sub-Agent called \(call.name): \(summary)\n")
                     )
                 case let .toolOutput(_, chunk):
                     await onOutput(chunk)
@@ -6138,7 +6138,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                     await onOutput(
                         AgentToolOutputChunk(
                             channel: isError ? .stderr : .progress,
-                            text: "子 Agent \(call.name)：\(isError ? "失败" : "完成")\n"
+                            text: "Sub-Agent \(call.name): \(isError ? "failed" : "done")\n"
                         )
                     )
                 case .stepStarted, .contextInjected, .toolEventChanged, .usage:
@@ -6180,7 +6180,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         await onOutput(
             AgentToolOutputChunk(
                 channel: .system,
-                text: "已启动本机子 Agent \(childSessionID)（父地址 \(parentSessionID)，activation \(activationID.uuidString.lowercased())）。\n"
+                text: "Started local sub-Agent \(childSessionID) (parent address \(parentSessionID), activation \(activationID.uuidString.lowercased())).\n"
             )
         )
         do {
@@ -6199,7 +6199,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 checkpoint: ConversationCheckpoint(messages: committedMessages)
             )
             guard let result = await collector.result(), !result.isEmpty else {
-                throw LocalToolError.pluginFailed("子 Agent 未返回最终结果。")
+                throw LocalToolError.pluginFailed("The sub-Agent returned no final result.")
             }
             do {
                 try LocalSubagentStructuredOutput.validate(
@@ -6250,7 +6250,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             _ = try? await deliverSubagentMessage(
                 childAddress: childSessionID,
                 parentSession: parentSessionID,
-                output: "子 Agent 未能完成任务：\(error.localizedDescription)",
+                output: "The sub-Agent could not complete the task: \(error.localizedDescription)",
                 sourceKind: "subagent-settled",
                 delivery: request.reportDelivery
             )
@@ -6833,7 +6833,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 let legacyFallback = session.messages.first(where: {
                     $0.role == .user && !$0.isHiddenContextMessage
                 }).map { String($0.content.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40)) }
-                guard session.title == "新会话" || session.title == legacyFallback else { return }
+                guard session.title == "New Session" || session.title == "New Session" || session.title == legacyFallback else { return }
             }
             if sessionTitleSettings.automaticMode == .firstPrompt,
                case .provider? = session.titleSource {
@@ -7184,13 +7184,13 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 scope: activeSessionID?.uuidString
             )
         case let .newSession(title):
-            await createConversation(title: title ?? "新会话")
-            return "已创建新会话。"
+            await createConversation(title: title ?? "New Session")
+            return "Created a new session."
         case .clear:
             // Keep the log-only command lifecycle and audit trajectory while
             // clearing the model-visible conversation state.
             await resetConversation(preserveTrajectory: true)
-            return "当前会话已清空，工作区文件保留。"
+            return "The current session was cleared; workspace files were kept."
         case let .goal(message):
             let goalText = message?.trimmingCharacters(in: .whitespacesAndNewlines)
             if let goalText, !goalText.isEmpty {
@@ -7202,19 +7202,19 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             }
             if hasStagedImage {
                 let prompt = goalText.map {
-                    "请结合附图完善当前目标：\($0)"
-                } ?? "请结合附图确定当前会话目标，并说明目标与依据。"
+                    "Refine the current goal using the attached image: \($0)"
+                } ?? "Use the attached image to set the current session goal, and explain the goal and your reasoning."
                 guard await send(prompt, disposition: .queued) else {
-                    throw AppCommandError.invalidState("附图目标请求未能加入 Agent 队列。")
+                    throw AppCommandError.invalidState("The image goal request could not be added to the Agent queue.")
                 }
             }
-            return goalText == nil && !hasStagedImage ? "当前目标：\(workState.goal?.title ?? "未设置")" : nil
+            return goalText == nil && !hasStagedImage ? "Current goal: \(workState.goal?.title ?? "Not set")" : nil
         case let .goalCommand(operation, message):
             let action: ConversationGoalAction
             switch operation {
             case .edit:
                 guard let message, !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                    throw AppCommandError.invalidState("编辑目标需要提供新的目标内容。")
+                    throw AppCommandError.invalidState("Editing the goal requires new goal text.")
                 }
                 action = .edit(title: message)
             case .pause:
@@ -7231,23 +7231,23 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             workState = try await workStateCoordinator.applyGoalAction(action)
             await persistSession()
             switch operation {
-            case .edit: return "已编辑当前目标。"
-            case .pause: return "当前目标已暂停。"
-            case .resume: return "当前目标已恢复。"
-            case .complete: return "当前目标已完成。"
-            case .block: return "当前目标已标记为阻塞。"
-            case .clear: return "当前目标已清空。"
+            case .edit: return "Current goal edited."
+            case .pause: return "Current goal paused."
+            case .resume: return "Current goal resumed."
+            case .complete: return "Current goal completed."
+            case .block: return "Current goal marked as blocked."
+            case .clear: return "Current goal cleared."
             }
         case let .feedback(messageID, operation):
             guard let sessionID = activeSessionID else {
-                throw AppCommandError.invalidState("当前没有可记录反馈的会话。")
+                throw AppCommandError.invalidState("There is no session to record feedback in.")
             }
             let targetID = messageID
                 ?? messages.reversed().first(where: { $0.role == .assistant })?.id
             guard let targetID,
                   let target = messages.first(where: { $0.id == targetID }),
                   target.role == .assistant else {
-                throw AppCommandError.invalidState("当前会话没有可反馈的助手消息。")
+                throw AppCommandError.invalidState("The current session has no assistant message to give feedback on.")
             }
             let current = try await feedbackSidecarStore.record(
                 sessionID: sessionID,
@@ -7256,11 +7256,11 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             switch operation {
             case .show:
                 guard let current, let rating = current.rating else {
-                    return "该消息暂无反馈。"
+                    return "No feedback for this message yet."
                 }
-                let label = rating == .positive ? "点赞" : "点踩"
-                let note = current.note.map { "\n备注：\($0)" } ?? ""
-                return "该消息反馈：\(label)（revision \(current.revision)）\(note)"
+                let label = rating == .positive ? "thumbs up" : "thumbs down"
+                let note = current.note.map { "\nNote: \($0)" } ?? ""
+                return "Feedback for this message: \(label) (revision \(current.revision))\(note)"
             case let .setRating(rating):
                 let record = try await feedbackSidecarStore.setRating(
                     sessionID: sessionID,
@@ -7270,7 +7270,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 )
                 applyFeedbackSidecarRecord(record, messageID: targetID)
                 await persistSession()
-                return rating == .positive ? "已点赞该助手消息。" : "已点踩该助手消息。"
+                return rating == .positive ? "Gave the assistant message a thumbs up." : "Gave the assistant message a thumbs down."
             case let .note(note):
                 let record = try await feedbackSidecarStore.updateNote(
                     sessionID: sessionID,
@@ -7280,7 +7280,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 )
                 applyFeedbackSidecarRecord(record, messageID: targetID)
                 await persistSession()
-                return note.isEmpty ? "已清除反馈备注。" : "已保存反馈备注。"
+                return note.isEmpty ? "Feedback note cleared." : "Feedback note saved."
             case .clear:
                 let record = try await feedbackSidecarStore.clear(
                     sessionID: sessionID,
@@ -7289,15 +7289,15 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 )
                 applyFeedbackSidecarRecord(record, messageID: targetID)
                 await persistSession()
-                return "已清除该消息的反馈。"
+                return "Cleared feedback for this message."
             }
         case let .plan(mode, message):
             setInteractionMode(mode == .on ? .plan : .agent)
             if let message, !message.isEmpty {
                 _ = await send(message, disposition: .steer)
             } else if mode == .on, hasStagedImage {
-                guard await send("请结合附图制定当前任务计划。", disposition: .steer) else {
-                    throw AppCommandError.invalidState("附图计划请求未能加入 Agent 队列。")
+                guard await send("Use the attached image to make a plan for the current task.", disposition: .steer) else {
+                    throw AppCommandError.invalidState("The image plan request could not be added to the Agent queue.")
                 }
             }
             return nil
@@ -7321,8 +7321,8 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 throw AppCommandError.unsupportedAgentPreset(preset)
             }
             let selected = try await selectAgentPreset(id: id)
-            let modeName = selected.id == "cordis" ? "Cordis 创造模式" : "Agent"
-            return "已选择 \(selected.displayName)（\(selected.id)）；下一轮将使用本机 \(modeName)。"
+            let modeName = selected.id == "cordis" ? "Cordis Creative Mode" : "Agent"
+            return "Selected \(selected.displayName) (\(selected.id)); the next turn will use local \(modeName)."
         case let .model(selection):
             guard let selection else {
                 isSessionModelPickerRequested = true
@@ -7355,7 +7355,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             let profile = providerDirectory.profile(matching: draft)
             let providerName = profile?.displayName
                 ?? ModelProviderCatalog.descriptor(for: draft.providerID).displayName
-            return "本会话模型：\(providerName) / \(draft.model)"
+            return "Session model: \(providerName) / \(draft.model)"
         case .compact:
             let compactLimit = 128 * 1_024
             let projection = try ConversationCompactor.project(
@@ -7367,9 +7367,9 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             omittedContextMessages = projection.omittedMessageCount
             await persistSession()
             if projection.omittedMessageCount == 0 {
-                return "当前上下文低于本机压缩阈值；已为后续请求启用 128 KiB 上限。"
+                return "Current context is below the local compaction threshold; a 128 KiB cap is enabled for subsequent requests."
             }
-            return "后续请求将省略较早的 \(projection.omittedMessageCount) 条消息，并保留完整的最近工具事务。"
+            return "Subsequent requests will omit the \(projection.omittedMessageCount) earliest messages and keep recent tool transactions intact."
         case .status:
             return statusCommandText()
         }
@@ -7451,18 +7451,18 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         let providerName = profile?.displayName
             ?? ModelProviderCatalog.descriptor(for: effectiveConfiguration.providerID).displayName
         let mode = interactionMode == .plan ? "Plan" : "Agent"
-        let running = isRunning ? "运行中（步骤 \(currentStep)）" : "空闲"
-        let queued = queuedInputs.isEmpty ? "无" : "\(queuedInputs.count) 条"
+        let running = isRunning ? "Running (step \(currentStep))" : "Idle"
+        let queued = queuedInputs.isEmpty ? "None" : "\(queuedInputs.count)"
         let compact = controlState.contextLimitUTF8Bytes.map { "\($0 / 1_024) KiB" }
-            ?? "自动 384 KiB"
+            ?? "Auto 384 KiB"
         return """
-        状态：\(running)
-        模式：\(mode)
-        权限：\(permissionMode.title)
-        模型：\(providerName) / \(effectiveConfiguration.model)
-        队列：\(queued)
-        消息：\(messages.count) 条
-        上下文：\(compact)
+        Status: \(running)
+        Mode: \(mode)
+        Permissions: \(permissionMode.title)
+        Model: \(providerName) / \(effectiveConfiguration.model)
+        Queue: \(queued)
+        Messages: \(messages.count)
+        Context: \(compact)
         """
     }
 
@@ -7505,8 +7505,8 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         switch event {
         case let .stepStarted(step):
             if let status = try? ContinuedProcessingStatus(
-                title: "Harness 正在执行",
-                subtitle: "第 \(step) 步 · 持续执行",
+                title: "Harness Is Running",
+                subtitle: "Step \(step) · Running continuously",
                 completedUnitCount: Int64(clamping: max(0, step - 1)),
                 totalUnitCount: max(1, Int64(clamping: step))
             ) {
@@ -7516,7 +7516,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                     runID: runID,
                     sessionID: sessionID,
                     sessionTitle: sessions.first(where: { $0.id == sessionID })?.title
-                        ?? "Harness 任务",
+                        ?? "Harness Task",
                     phase: .working,
                     status: status,
                     privacyModeEnabled: backgroundPreferences.isPrivacyModeEnabled,
@@ -7541,8 +7541,8 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         case let .toolStarted(call, summary):
 #if os(iOS)
             if let status = try? ContinuedProcessingStatus(
-                title: "Harness 正在执行",
-                subtitle: "正在使用本机工具",
+                title: "Harness Is Running",
+                subtitle: "Using local tools",
                 completedUnitCount: Int64(clamping: max(0, snapshot.currentStep - 1)),
                 totalUnitCount: max(1, Int64(clamping: snapshot.currentStep))
             ) {
@@ -7550,7 +7550,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                     runID: runID,
                     sessionID: sessionID,
                     sessionTitle: sessions.first(where: { $0.id == sessionID })?.title
-                        ?? "Harness 任务",
+                        ?? "Harness Task",
                     phase: .usingTool,
                     status: status,
                     toolName: call.name,
@@ -7577,8 +7577,8 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             }
 #if os(iOS)
             if let status = try? ContinuedProcessingStatus(
-                title: "Harness 正在执行",
-                subtitle: "继续模型步骤",
+                title: "Harness Is Running",
+                subtitle: "Continuing model step",
                 completedUnitCount: Int64(clamping: max(0, snapshot.currentStep - 1)),
                 totalUnitCount: max(1, Int64(clamping: snapshot.currentStep))
             ) {
@@ -7586,7 +7586,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                     runID: runID,
                     sessionID: sessionID,
                     sessionTitle: sessions.first(where: { $0.id == sessionID })?.title
-                        ?? "Harness 任务",
+                        ?? "Harness Task",
                     phase: .working,
                     status: status,
                     privacyModeEnabled: backgroundPreferences.isPrivacyModeEnabled,
@@ -7642,15 +7642,15 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     var diagnosticHostStateDescription: String {
         switch ishPluginHostState {
         case .stopped:
-            return "已停止"
+            return "Stopped"
         case .installing:
-            return "正在安装"
+            return "Installing"
         case .starting:
-            return "正在启动"
+            return "Starting"
         case let .running(hostVersion, processID):
-            return "运行中 · v\(hostVersion) · pid \(processID.map(String.init) ?? "-")"
+            return "Running · v\(hostVersion) · pid \(processID.map(String.init) ?? "-")"
         case let .failed(message):
-            return "失败 · \(message)"
+            return "Failed · \(message)"
         }
     }
 
@@ -8027,7 +8027,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             "available": .bool(true),
             "truncated": .bool(true),
             "summary": summary,
-            "message": .string("诊断结果过大，已保留摘要；请缩小 limit 后按 errors、plugin_host、trace 分段读取。")
+            "message": .string("Diagnostic result too large; a summary was kept. Lower limit and read errors, plugin_host, and trace separately.")
         ])
     }
 
@@ -8360,7 +8360,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     }
 
     private var activeSessionTitle: String {
-        sessions.first(where: { $0.id == activeSessionID })?.title ?? "Harness 任务"
+        sessions.first(where: { $0.id == activeSessionID })?.title ?? "Harness Task"
     }
 
     private func beginQuestionMonitoring(
@@ -8556,13 +8556,13 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         guard await sessionRunRegistry.snapshot(for: identity) != nil else { return }
 
         guard let initialStatus = try? ContinuedProcessingStatus(
-            title: "Harness 正在执行",
-            subtitle: "准备模型与本机工具",
+            title: "Harness Is Running",
+            subtitle: "Preparing model and local tools",
             completedUnitCount: 0,
             totalUnitCount: 1
         ) else {
             if selectedRunPresentation?.identity == identity {
-                errorMessage = "无法创建后台任务进度。"
+                errorMessage = "Could not create background task progress."
             }
             _ = try? await sessionRunRegistry.finish(.failed, for: identity)
             return
@@ -8580,7 +8580,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             runID: runID,
             sessionID: identity.sessionID,
             sessionTitle: sessions.first(where: { $0.id == identity.sessionID })?.title
-                ?? "Harness 任务",
+                ?? "Harness Task",
             status: initialStatus,
             privacyModeEnabled: backgroundPreferences.isPrivacyModeEnabled,
             isEnabled: backgroundPreferences.isLiveActivityEnabled
@@ -9644,9 +9644,9 @@ private enum AppCommandError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .unknownProvider(provider):
-            return "未知模型服务商：\(provider)。"
+            return "Unknown model provider: \(provider)."
         case let .unsupportedAgentPreset(preset):
-            return "当前移动版没有名为 \(preset) 的 Agent 预设。"
+            return "The mobile app has no Agent preset named \(preset)."
         case let .invalidState(message):
             return message
         }

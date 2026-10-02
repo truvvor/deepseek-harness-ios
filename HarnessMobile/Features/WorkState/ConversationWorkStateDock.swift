@@ -68,16 +68,16 @@ private struct ConversationGoalBar: View {
         .frame(minHeight: 36)
         .harnessCardSurface(padding: 8, radius: HarnessTheme.Radius.small)
         .confirmationDialog(
-            "清空当前目标？",
+            "Clear Current Goal?",
             isPresented: $isClearConfirmationPresented,
             titleVisibility: .visible
         ) {
-            Button("清空目标", role: .destructive) {
+            Button("Clear Goal", role: .destructive) {
                 perform(.clear)
             }
-            Button("取消", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("目标会从当前会话移除，聊天记录、计划和待办不会被删除。")
+            Text("The goal will be removed from this session. Chat history, plans, and todos will not be deleted.")
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("conversation-goal-bar")
@@ -108,11 +108,11 @@ private struct ConversationGoalBar: View {
                         .foregroundStyle(.orange)
                         .accessibilityLabel(blocker)
                 } else {
-                    Text("\(goal.usedRounds)/\(goal.effectiveMaximumRounds) 轮")
+                    Text("\(goal.usedRounds)/\(goal.effectiveMaximumRounds) rounds")
                         .font(.caption2.monospaced())
                         .foregroundStyle(.secondary)
                         .fixedSize()
-                        .accessibilityLabel("目标轮次 \(goal.usedRounds)，共 \(goal.effectiveMaximumRounds) 轮")
+                        .accessibilityLabel("Goal round \(goal.usedRounds) of \(goal.effectiveMaximumRounds)")
                 }
             }
 
@@ -132,7 +132,7 @@ private struct ConversationGoalBar: View {
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("编辑目标")
+                .accessibilityLabel("Edit Goal")
                 .accessibilityIdentifier("goal-edit-button")
 
                 lifecycleMenu
@@ -151,7 +151,7 @@ private struct ConversationGoalBar: View {
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("暂停目标")
+            .accessibilityLabel("Pause Goal")
             .accessibilityIdentifier("goal-pause-button")
         case .paused, .blocked:
             Button {
@@ -161,7 +161,7 @@ private struct ConversationGoalBar: View {
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("恢复目标")
+            .accessibilityLabel("Resume Goal")
             .accessibilityIdentifier("goal-resume-button")
         case .pending:
             Button {
@@ -171,7 +171,7 @@ private struct ConversationGoalBar: View {
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("开始目标")
+            .accessibilityLabel("Start Goal")
             .accessibilityIdentifier("goal-start-button")
         case .completed:
             EmptyView()
@@ -195,20 +195,20 @@ private struct ConversationGoalBar: View {
             Button(role: .destructive) {
                 isClearConfirmationPresented = true
             } label: {
-                Label("清空目标", systemImage: "trash")
+                Label("Clear Goal", systemImage: "trash")
             }
         } label: {
             Image(systemName: "ellipsis")
                 .frame(width: 44, height: 44)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("更多目标操作")
+        .accessibilityLabel("More Goal Actions")
         .accessibilityIdentifier("goal-more-menu")
     }
 
     private var editRow: some View {
         HStack(spacing: 6) {
-            TextField("目标", text: $draft)
+            TextField("Goal", text: $draft)
                 .textFieldStyle(.plain)
                 .font(.caption)
                 .focused($isEditFocused)
@@ -228,7 +228,7 @@ private struct ConversationGoalBar: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .accessibilityLabel("保存目标")
+                .accessibilityLabel("Save Goal")
                 .accessibilityIdentifier("goal-save-button")
 
                 Button {
@@ -238,7 +238,7 @@ private struct ConversationGoalBar: View {
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("取消编辑目标")
+                .accessibilityLabel("Cancel Editing Goal")
             }
         }
     }
@@ -290,7 +290,7 @@ private struct ConversationTodoPanel: View {
                 HStack(spacing: 8) {
                     HarnessIconTile(systemImage: "checklist", tint: .secondary, size: 28)
 
-                    Text("待办")
+                    Text("Todos")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.primary)
 
@@ -309,8 +309,8 @@ private struct ConversationTodoPanel: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("待办，\(progressSummary)")
-            .accessibilityValue(isExpanded ? "已展开" : "已折叠")
+            .accessibilityLabel("Todos, \(progressSummary)")
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
             .accessibilityIdentifier("todo-panel-toggle")
 
             if isExpanded {
@@ -358,11 +358,11 @@ private struct ConversationTodoPanel: View {
         let pending = todos.count - completed - active - blocked - paused
 
         return [
-            completed > 0 ? "\(completed) 完成" : nil,
-            active > 0 ? "\(active) 进行" : nil,
-            blocked > 0 ? "\(blocked) 受阻" : nil,
-            paused > 0 ? "\(paused) 暂停" : nil,
-            pending > 0 ? "\(pending) 待处理" : nil,
+            completed > 0 ? "\(completed) done" : nil,
+            active > 0 ? "\(active) active" : nil,
+            blocked > 0 ? "\(blocked) blocked" : nil,
+            paused > 0 ? "\(paused) paused" : nil,
+            pending > 0 ? "\(pending) pending" : nil,
         ]
         .compactMap { $0 }
         .joined(separator: " · ")

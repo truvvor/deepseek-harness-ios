@@ -302,7 +302,7 @@ struct LocalWorkflowTool: LocalAgentTool {
 
     func summary(arguments: [String: JSONValue]) -> String {
         let name = arguments["meta"]?.objectValue?["name"]?.stringValue ?? "workflow"
-        return "运行本机工作流：\(String(name.prefix(80)))"
+        return "Run on-device workflow: \(String(name.prefix(80)))"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -319,7 +319,7 @@ struct LocalWorkflowTool: LocalAgentTool {
     ) async throws -> String {
         try validate(arguments: arguments)
         guard let runner else {
-            throw LocalToolError.pluginDenied("手机 workflow 子 Agent 运行器尚未就绪。")
+            throw LocalToolError.pluginDenied("The mobile workflow subagent runner is not ready yet.")
         }
         let script = try arguments.requiredString(
             "script",

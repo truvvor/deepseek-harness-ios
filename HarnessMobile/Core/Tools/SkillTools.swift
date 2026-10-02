@@ -29,7 +29,7 @@ struct SkillLoadTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "加载本机 Skill：\(arguments["name"]?.stringValue ?? "未知")"
+        "Load local Skill: \(arguments["name"]?.stringValue ?? "unknown")"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {

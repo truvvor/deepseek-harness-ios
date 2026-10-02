@@ -22,21 +22,21 @@ enum SessionTrajectoryRepositoryError: Error, Sendable, Equatable, LocalizedErro
     var errorDescription: String? {
         switch self {
         case let .sessionUnavailable(sessionID):
-            return "会话轨迹 \(sessionID.uuidString) 正在关闭。"
+            return "Session trajectory \(sessionID.uuidString) is closing."
         case .resetInProgress:
-            return "会话轨迹正在重置。"
+            return "Session trajectory is resetting."
         case .turnNumberExhausted:
-            return "会话 Turn 编号已达到上限。"
+            return "Session turn number has reached its limit."
         case let .syncBaseUnavailable(baseSequence):
-            return "本地轨迹中不存在同步基线 \(baseSequence)。"
+            return "Sync baseline \(baseSequence) doesn't exist in the local trajectory."
         case let .malformedDeliveryAcceptance(sequence):
-            return "轨迹中的 delivery-accepted 事件 \(sequence) 格式非法。"
+            return "delivery-accepted event \(sequence) in the trajectory is malformed."
         case let .syncBaseMismatch(expected, actual):
-            return "同步 suffix 基线冲突：本地期待 \(expected)，收到 \(actual)。"
+            return "Sync suffix baseline conflict: expected \(expected) locally, received \(actual)."
         case .syncAssetsUnsupported:
-            return "当前 canonical event log 尚不接纳同步 asset 引用。"
+            return "The current canonical event log doesn't yet accept synced asset references."
         case .syncTombstonesUnsupported:
-            return "当前 append-only canonical event log 尚不接纳同步 tombstone。"
+            return "The current append-only canonical event log doesn't yet accept synced tombstones."
         }
     }
 }
@@ -305,9 +305,9 @@ enum SessionLogDeliveryError: Error, LocalizedError, Sendable, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .emptyAcknowledgement: "Session log 服务端未确认任何 cursor。"
-        case let .rejected(status): "Session log 上传被服务端拒绝（HTTP \(status)）。"
-        case .invalidAcknowledgement: "Session log 服务端确认 cursor 无效。"
+        case .emptyAcknowledgement: "Session log server didn't acknowledge any cursor."
+        case let .rejected(status): "Session log upload was rejected by the server (HTTP \(status))."
+        case .invalidAcknowledgement: "Session log server acknowledged an invalid cursor."
         }
     }
 }

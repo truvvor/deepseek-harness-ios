@@ -38,13 +38,13 @@ struct NativeMarkdownText: View {
                     Button {
                         UIPasteboard.general.string = source
                     } label: {
-                        Label("复制完整 Markdown", systemImage: "doc.on.doc")
+                        Label("Copy Full Markdown", systemImage: "doc.on.doc")
                     }
                     .font(.caption.weight(.medium))
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("copy-complete-markdown")
-                    .accessibilityValue("\(source.utf8.count) 字节")
+                    .accessibilityValue("\(source.utf8.count) bytes")
 
                     if let segments {
                         if let first = segments.first {
@@ -123,7 +123,7 @@ private struct LargeMarkdownPreparationView: View {
     var body: some View {
         HStack(spacing: 10) {
             ProgressView()
-            Text("正在准备超长 Markdown…")
+            Text("Preparing long Markdown…")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -202,7 +202,7 @@ private struct NativeMarkdownSegmentView: View {
                 .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityLabel("正在渲染 Markdown 分段")
+        .accessibilityLabel("Rendering Markdown segments")
     }
 }
 
@@ -394,7 +394,7 @@ private struct NativeMarkdownTableView: View {
         .background(Color(uiColor: .secondarySystemBackground).opacity(0.55))
         .clipShape(.rect(cornerRadius: 8))
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("表格，\(table.rows.count + 1) 行，\(table.header.count) 列")
+        .accessibilityLabel("Table, \(table.rows.count + 1) rows, \(table.header.count) columns")
         .accessibilityIdentifier("markdown-table")
         .onGeometryChange(for: CGFloat.self) { proxy in
             proxy.size.width

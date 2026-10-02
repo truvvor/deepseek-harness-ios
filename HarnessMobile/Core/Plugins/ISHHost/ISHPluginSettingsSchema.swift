@@ -11,17 +11,17 @@ enum ISHPluginSettingsSchemaError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .missingSchema:
-            return "这个配置分节没有可读取的 schema。"
+            return "This settings section has no readable schema."
         case .malformedEnvelope:
-            return "配置 schema 的序列化结构无效。"
+            return "The settings schema has an invalid serialized structure."
         case let .missingReference(reference):
-            return "配置 schema 缺少引用 \(reference)。"
+            return "The settings schema is missing reference \(reference)."
         case let .recursiveReference(reference):
-            return "配置 schema 包含当前不支持的递归引用 \(reference)。"
+            return "The settings schema contains an unsupported recursive reference \(reference)."
         case let .unsupportedType(type):
-            return "当前不支持 \(type) 类型的动态配置。"
+            return "Dynamic settings of type \(type) are not supported yet."
         case .invalidConstantUnion:
-            return "选项 schema 必须完全由常量组成。"
+            return "An options schema must consist entirely of constants."
         }
     }
 }

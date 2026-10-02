@@ -135,7 +135,7 @@ enum OutputRetention {
 /// the durable session log for exact replay; pruning itself makes no model
 /// call and may relieve token pressure enough for compaction to be skipped.
 enum ToolResultPruner {
-    static let middleMarker = "\n[... 中间内容已修剪，完整原文保留在会话日志 ...]\n"
+    static let middleMarker = "\n[... middle content trimmed; full original kept in the session log ...]\n"
     /// Default per-result budget applied at compaction time.
     static let defaultMaxBytes = 8 * 1_024
 

@@ -485,7 +485,7 @@ actor SessionStore {
     @discardableResult
     func createSession(
         id: UUID = UUID(),
-        title: String = "新会话",
+        title: String = "New Session",
         titleSource: ConversationSessionTitleSource? = nil,
         workState: ConversationWorkState = ConversationWorkState(),
         controlState: ConversationControlState = ConversationControlState(),
@@ -494,7 +494,7 @@ actor SessionStore {
         var snapshot = try readSnapshot()
         let now = Date.now
         let normalizedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let resolvedTitle = normalizedTitle.isEmpty ? "新会话" : normalizedTitle
+        let resolvedTitle = normalizedTitle.isEmpty ? "New Session" : normalizedTitle
         let session = ConversationSession(
             id: id,
             title: resolvedTitle,
@@ -504,7 +504,7 @@ actor SessionStore {
             createdAt: now,
             updatedAt: now,
             revision: 0,
-            titleSource: titleSource ?? (resolvedTitle == "新会话" ? .fallback : .user)
+            titleSource: titleSource ?? (resolvedTitle == "New Session" ? .fallback : .user)
         )
         snapshot.sessions.append(session)
         if makeActive || snapshot.activeSessionID == nil {
@@ -708,7 +708,7 @@ actor SessionStore {
         }
         let session = ConversationSession(
             id: UUID(),
-            title: "当前会话",
+            title: "Current Session",
             messages: ConversationCompactor.repairIncompleteToolTurn(checkpoint.messages),
             workState: checkpoint.workState,
             controlState: controlState,
@@ -761,7 +761,7 @@ actor SessionStore {
             let repaired = ConversationCompactor.repairIncompleteToolTurn(legacy.messages)
             let session = ConversationSession(
                 id: UUID(),
-                title: "迁移的会话",
+                title: "Migrated Session",
                 messages: repaired,
                 workState: ConversationWorkState(),
                 controlState: ConversationControlState(),
@@ -883,7 +883,7 @@ actor SessionStore {
     }
 
     private static func forkTitle(for sourceTitle: String) -> String {
-        let suffix = " 副本"
+        let suffix = " Copy"
         let available = max(1, 80 - suffix.count)
         return String(sourceTitle.prefix(available)) + suffix
     }
@@ -1022,15 +1022,15 @@ enum SessionStoreError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case let .unsupportedVersion(version):
-            return "不支持的会话版本：\(version)。"
+            return "Unsupported session version: \(version)."
         case let .sessionNotFound(id):
-            return "找不到会话：\(id.uuidString)。"
+            return "Session not found: \(id.uuidString)."
         case let .sessionArchived(id):
-            return "会话已归档，请先恢复：\(id.uuidString)。"
+            return "Session is archived; restore it first: \(id.uuidString)."
         case .corruptSnapshot:
-            return "会话快照已损坏。"
+            return "The session snapshot is corrupted."
         case .emptyTitle:
-            return "会话标题不能为空。"
+            return "Session title cannot be empty."
         }
     }
 }
@@ -1199,13 +1199,13 @@ enum AppIntentInboxError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidRequest:
-            "App Intent 请求无效。"
+            "Invalid App Intent request."
         case .queueFull:
-            "App Intent 请求队列已满。"
+            "The App Intent request queue is full."
         case let .unsupportedVersion(version):
-            "不支持的 App Intent 收件箱版本：\(version)。"
+            "Unsupported App Intent inbox version: \(version)."
         case .unreadableStore:
-            "App Intent 收件箱无法读取。"
+            "The App Intent inbox cannot be read."
         }
     }
 }

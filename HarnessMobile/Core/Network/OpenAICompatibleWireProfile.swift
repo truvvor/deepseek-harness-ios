@@ -14,9 +14,9 @@ enum OpenAICompatibleWireProfile: String, Codable, Sendable, Equatable, CaseIter
 
     var title: String {
         switch self {
-        case .deepSeek: return "DeepSeek 原生"
-        case .openAI: return "OpenAI 标准"
-        case .legacyGateway: return "保守兼容网关"
+        case .deepSeek: return "DeepSeek Native"
+        case .openAI: return "OpenAI Standard"
+        case .legacyGateway: return "Conservative Compatible Gateway"
         }
     }
 

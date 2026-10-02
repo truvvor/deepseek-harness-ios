@@ -117,7 +117,7 @@ struct SessionTraceTool: LocalAgentTool {
         _ = try SessionTrajectoryToolSupport.types(arguments)
     }
 
-    func summary(arguments: [String: JSONValue]) -> String { "读取会话轨迹" }
+    func summary(arguments: [String: JSONValue]) -> String { "Read session trajectory" }
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool { true }
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> { ["session-trajectory:(sessionID)"] }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> { ["session:read:(sessionID)"] }
@@ -180,7 +180,7 @@ struct SessionSearchTool: LocalAgentTool {
         _ = try SessionTrajectoryToolSupport.types(arguments)
     }
 
-    func summary(arguments: [String: JSONValue]) -> String { "搜索会话轨迹" }
+    func summary(arguments: [String: JSONValue]) -> String { "Search session trajectory" }
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool { true }
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> { ["session-trajectory:(sessionID)"] }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> { ["session:read:(sessionID)"] }
@@ -232,7 +232,7 @@ struct SessionEventGetTool: LocalAgentTool {
             throw LocalToolError.invalidArguments
         }
     }
-    func summary(arguments: [String: JSONValue]) -> String { "读取轨迹事件" }
+    func summary(arguments: [String: JSONValue]) -> String { "Read trajectory events" }
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool { true }
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> { ["session-trajectory:(sessionID)"] }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> { ["session:read:(sessionID)"] }
@@ -265,7 +265,7 @@ struct SessionEventTypesTool: LocalAgentTool {
     let risk: ToolRisk = .sensitiveRead
 
     func validate(arguments: [String: JSONValue]) throws { try arguments.requireOnlyKeys([]) }
-    func summary(arguments: [String: JSONValue]) -> String { "统计轨迹事件类型" }
+    func summary(arguments: [String: JSONValue]) -> String { "Count trajectory event types" }
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool { true }
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> { ["session-trajectory:(sessionID)"] }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> { ["session:read:(sessionID)"] }

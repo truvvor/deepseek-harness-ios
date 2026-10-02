@@ -542,45 +542,45 @@ enum ProviderProfileError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidID:
-            return "Provider ID 必须以小写字母开头，只能包含小写字母、数字和连字符，且保存后不可修改。"
+            return "Provider ID must start with a lowercase letter, may contain only lowercase letters, digits, and hyphens, and cannot be changed after saving."
         case let .duplicateID(id):
-            return "Provider ID“\(id)”已经存在。"
+            return "Provider ID '\(id)' already exists."
         case let .duplicateCredentialReference(reference):
-            return "凭据引用“\(reference.rawValue)”已经被另一个 Provider Profile 使用。"
+            return "Credential reference '\(reference.rawValue)' is already used by another Provider Profile."
         case .invalidDisplayName:
-            return "服务商显示名称不能为空，且不能超过 96 字节。"
+            return "Provider display name cannot be empty or exceed 96 bytes."
         case .invalidCredentialReference:
-            return "服务商凭据引用无效。"
+            return "Invalid provider credential reference."
         case .invalidModelID:
-            return "模型 ID 不能为空，且不能超过 256 字节。"
+            return "Model ID cannot be empty or exceed 256 bytes."
         case let .invalidModelInputModalities(id):
-            return "模型 ID“\(id)”的输入类型必须包含 text，且不能重复。"
+            return "Input types for model ID '\(id)' must include text and cannot repeat."
         case let .invalidModelReasoningModes(id):
-            return "模型 ID“\(id)”的 reasoning 能力声明无效。"
+            return "Invalid reasoning capability declaration for model ID '\(id)'."
         case let .duplicateModelID(id):
-            return "模型 ID“\(id)”重复。"
+            return "Duplicate model ID '\(id)'."
         case .emptyDefaultModel:
-            return "默认模型不能为空。"
+            return "Default model cannot be empty."
         case .customProviderRequiresModel:
-            return "自定义服务商至少需要声明一个模型。"
+            return "A custom provider must declare at least one model."
         case .catalogProtocolMismatch:
-            return "目录服务商不能改成与其内建适配器不同的 API 协议。"
+            return "A catalog provider cannot be changed to an API protocol different from its built-in adapter."
         case .unsupportedWireProtocol:
-            return "当前原生客户端只支持 OpenAI-compatible Chat Completions 协议。"
+            return "The native client currently supports only the OpenAI-compatible Chat Completions protocol."
         case .unsupportedWireCompatibility:
-            return "只有 OpenAI Chat Completions Profile 可以设置兼容协议。"
+            return "Only OpenAI Chat Completions Profiles can set a compatibility protocol."
         case .missingActiveProfile:
-            return "默认服务商指向了不存在的 Provider Profile。"
+            return "The default provider points to a Provider Profile that doesn't exist."
         case let .missingProfile(id):
-            return "Provider Profile“\(id)”不存在。"
+            return "Provider Profile '\(id)' doesn't exist."
         case .profileIdentityChanged:
-            return "Provider ID 和凭据引用是永久标识，编辑时不能修改。"
+            return "Provider ID and credential reference are permanent identifiers and cannot be changed when editing."
         case .profileBusy:
-            return "当前任务仍在运行，停止任务后才能移除这个 Provider Profile。"
+            return "A task is still running. Stop it before removing this Provider Profile."
         case .profileRemovalRollbackFailed:
-            return "Provider Profile 删除失败，且无法恢复原目录。请重新启动 App 后检查服务商配置。"
+            return "Failed to delete the Provider Profile, and the original catalog could not be restored. Restart the app and check your provider configuration."
         case let .unsupportedDirectorySchema(version):
-            return "不支持 Provider Profile 目录版本 \(version)。"
+            return "Unsupported Provider Profile catalog version \(version)."
         }
     }
 }

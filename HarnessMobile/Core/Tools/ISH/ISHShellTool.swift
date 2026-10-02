@@ -72,7 +72,7 @@ struct ISHShellExecuteTool: LocalAgentTool {
         let firstLine = command.split(separator: "\n", maxSplits: 1)
             .first
             .map(String.init) ?? command
-        return "在手机 iSH 中执行：\(String(firstLine.prefix(120)))"
+        return "Run in on-device iSH: \(String(firstLine.prefix(120)))"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -257,7 +257,7 @@ struct ISHCodeExecuteTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "在手机运行 \(arguments["language"]?.stringValue ?? "代码")"
+        "Run \(arguments["language"]?.stringValue ?? "code") on device"
     }
 
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> {

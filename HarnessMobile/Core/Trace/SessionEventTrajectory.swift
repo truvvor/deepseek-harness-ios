@@ -475,11 +475,11 @@ struct ModelVisibleEventAuditFailure: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch kind {
         case .missingMessageSource:
-            return "模型请求包含未记录的会话消息，已停止发送。"
+            return "The model request contains unrecorded session messages; sending stopped."
         case .missingToolResultSource:
-            return "模型请求包含未记录的工具响应，已停止发送。"
+            return "The model request contains unrecorded tool responses; sending stopped."
         case .missingRequestHeader:
-            return "模型请求的系统提示或工具定义未记录，已停止发送。"
+            return "The model request's system prompt or tool definitions were not recorded; sending stopped."
         }
     }
 }

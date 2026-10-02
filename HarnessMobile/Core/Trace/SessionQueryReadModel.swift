@@ -59,17 +59,17 @@ enum SessionQueryReadModelError: Error, Sendable, Equatable, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidQuery:
-            return "会话搜索词不能为空或包含不可用字符。"
+            return "Session search term must not be empty or contain invalid characters."
         case .invalidLimit:
-            return "会话查询 limit 必须是 1 到 1000 的整数。"
+            return "Session query limit must be an integer from 1 to 1000."
         case .foreignDatabase:
-            return "会话查询数据库属于其他功能，已拒绝覆盖。"
+            return "The session query database belongs to another feature; overwrite refused."
         case let .unsupportedSchema(version):
-            return "会话查询数据库 schema \(version) 不受当前版本支持。"
+            return "Session query database schema \(version) is not supported by this version."
         case let .unstableSource(sessionID):
-            return "会话 \(sessionID.uuidString) 在建立查询索引时持续变化，已停止本次索引。"
+            return "Session \(sessionID.uuidString) kept changing while building the query index; indexing was stopped."
         case let .sqlite(code, message):
-            return "会话查询 SQLite 错误 \(code)：\(message)"
+            return "Session query SQLite error \(code): \(message)"
         }
     }
 }
@@ -461,7 +461,7 @@ actor SessionQueryReadModel {
                 return String(firstMessage.prefix(80))
             }
         }
-        return "新会话"
+        return "New Session"
     }
 
     private func joined(_ values: [String]) -> String {

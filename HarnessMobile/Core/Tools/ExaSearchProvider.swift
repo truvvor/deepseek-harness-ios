@@ -101,11 +101,11 @@ enum PerplexitySearchMapper {
     var errorDescription: String? {
         switch self {
         case .missingCredential:
-            "Exa 搜索需要 Exa API key；当前配置缺失。"
+            "Exa search requires an Exa API key, which is not configured."
         case let .transport(detail):
             detail
         case let .endpoint(status, detail):
-            "Exa 搜索端点返回 \(status)。\(detail)"
+            "Exa search endpoint returned \(status). \(detail)"
         }
     }
 }

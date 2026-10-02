@@ -88,7 +88,7 @@ struct NaturalLanguageAnalyzeTool: LocalAgentTool {
 
     func summary(arguments: [String: JSONValue]) -> String {
         let mode = arguments["mode"]?.stringValue ?? "analyze"
-        return "使用本机 NaturalLanguage 执行 \(mode) 分析"
+        return "Run \(mode) analysis with on-device NaturalLanguage"
     }
 
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool {
@@ -252,7 +252,7 @@ struct SpeechSynthesizeTool: LocalAgentTool {
     let risk: ToolRisk = .sideEffect
 
     func validate(arguments: [String: JSONValue]) throws { _ = try parsed(arguments) }
-    func summary(arguments: [String: JSONValue]) -> String { "执行本机系统朗读：\(arguments["action"]?.stringValue ?? "speak")" }
+    func summary(arguments: [String: JSONValue]) -> String { "Run on-device system speech: \(arguments["action"]?.stringValue ?? "speak")" }
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> {
         try validate(arguments: arguments)
         return ["audio:speech-synthesizer"]
@@ -270,7 +270,7 @@ struct SpeechSynthesizeTool: LocalAgentTool {
             volume: input.volume
         )
 #else
-        throw MobileNativeToolError.hardwareUnavailable("系统朗读")
+        throw MobileNativeToolError.hardwareUnavailable("System speech")
 #endif
     }
 
@@ -304,7 +304,7 @@ struct SpeechTranscribeTool: LocalAgentTool {
     let risk: ToolRisk = .sensitiveRead
 
     func validate(arguments: [String: JSONValue]) throws { _ = try parsed(arguments) }
-    func summary(arguments: [String: JSONValue]) -> String { "使用麦克风进行一次有界语音识别；文字结果会发送给模型" }
+    func summary(arguments: [String: JSONValue]) -> String { "Run one bounded speech recognition session with the microphone; the transcribed text will be sent to the model" }
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> {
         try validate(arguments: arguments)
         return ["audio:microphone", "speech:recognizer"]
@@ -319,7 +319,7 @@ struct SpeechTranscribeTool: LocalAgentTool {
             onDeviceOnly: input.onDeviceOnly
         )
 #else
-        throw MobileNativeToolError.hardwareUnavailable("语音识别")
+        throw MobileNativeToolError.hardwareUnavailable("Speech recognition")
 #endif
     }
 
@@ -348,7 +348,7 @@ struct SystemOpenTool: LocalAgentTool {
     let risk: ToolRisk = .sideEffect
 
     func validate(arguments: [String: JSONValue]) throws { _ = try target(arguments) }
-    func summary(arguments: [String: JSONValue]) -> String { "让 iOS 打开指定系统目标或 Deep Link" }
+    func summary(arguments: [String: JSONValue]) -> String { "Ask iOS to open the specified system target or deep link" }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
         let value = try target(arguments)
         return ["system-open:\(URL(string: value)?.scheme?.lowercased() ?? "settings")"]
@@ -360,10 +360,10 @@ struct SystemOpenTool: LocalAgentTool {
         let resolved = value.lowercased() == "settings" ? UIApplication.openSettingsURLString : value
         guard let url = URL(string: resolved) else { throw LocalToolError.invalidArguments }
         let opened = await SystemOpenCapabilityBridge.open(url)
-        guard opened else { throw MobileNativeToolError.operationFailed("打开系统目标") }
+        guard opened else { throw MobileNativeToolError.operationFailed("Opening system target") }
         return JSONValue.object(["opened": .bool(true), "scheme": .string(url.scheme ?? "")]).displayText
 #else
-        throw MobileNativeToolError.hardwareUnavailable("系统 Deep Link")
+        throw MobileNativeToolError.hardwareUnavailable("System deep link")
 #endif
     }
 
@@ -399,7 +399,7 @@ struct MapsSearchTool: LocalAgentTool {
     let risk: ToolRisk = .localState
 
     func validate(arguments: [String: JSONValue]) throws { _ = try parsed(arguments) }
-    func summary(arguments: [String: JSONValue]) -> String { "使用 MapKit 搜索“\(arguments["query"]?.stringValue ?? "地点")”" }
+    func summary(arguments: [String: JSONValue]) -> String { "Search MapKit for '\(arguments["query"]?.stringValue ?? "place")'" }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
         let input = try parsed(arguments)
@@ -446,7 +446,7 @@ struct MapsRouteTool: LocalAgentTool {
     let risk: ToolRisk = .localState
 
     func validate(arguments: [String: JSONValue]) throws { _ = try parsed(arguments) }
-    func summary(arguments: [String: JSONValue]) -> String { "使用 MapKit 计算路线和预计时间" }
+    func summary(arguments: [String: JSONValue]) -> String { "Calculate route and ETA with MapKit" }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
         let input = try parsed(arguments)
@@ -486,7 +486,7 @@ struct PhotoLibraryListTool: LocalAgentTool {
     let risk: ToolRisk = .sensitiveRead
 
     func validate(arguments: [String: JSONValue]) throws { _ = try parsed(arguments) }
-    func summary(arguments: [String: JSONValue]) -> String { "读取照片图库中有限数量的媒体元数据" }
+    func summary(arguments: [String: JSONValue]) -> String { "Read a limited amount of media metadata from the photo library" }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> { try validate(arguments: arguments); return ["photos:read"] }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -494,7 +494,7 @@ struct PhotoLibraryListTool: LocalAgentTool {
 #if os(iOS)
         return try await PhotoLibraryCapabilityBridge.list(mediaType: input.mediaType, limit: input.limit, favoriteOnly: input.favoriteOnly)
 #else
-        throw MobileNativeToolError.hardwareUnavailable("照片图库")
+        throw MobileNativeToolError.hardwareUnavailable("Photo library")
 #endif
     }
 
@@ -526,7 +526,7 @@ struct MediaLibrarySearchTool: LocalAgentTool {
     let risk: ToolRisk = .sensitiveRead
 
     func validate(arguments: [String: JSONValue]) throws { _ = try parsed(arguments) }
-    func summary(arguments: [String: JSONValue]) -> String { "搜索本机媒体资料库" }
+    func summary(arguments: [String: JSONValue]) -> String { "Search the on-device media library" }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> { try validate(arguments: arguments); return ["media-library:read"] }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -534,7 +534,7 @@ struct MediaLibrarySearchTool: LocalAgentTool {
 #if os(iOS)
         return try await MediaLibraryCapabilityBridge.search(query: input.query, kind: input.kind, limit: input.limit)
 #else
-        throw MobileNativeToolError.hardwareUnavailable("媒体资料库")
+        throw MobileNativeToolError.hardwareUnavailable("Media library")
 #endif
     }
 
@@ -565,7 +565,7 @@ struct MediaPlaybackTool: LocalAgentTool {
     let risk: ToolRisk = .sideEffect
 
     func validate(arguments: [String: JSONValue]) throws { _ = try parsed(arguments) }
-    func summary(arguments: [String: JSONValue]) -> String { "控制本机媒体播放：\(arguments["action"]?.stringValue ?? "now_playing")" }
+    func summary(arguments: [String: JSONValue]) -> String { "Control on-device media playback: \(arguments["action"]?.stringValue ?? "now_playing")" }
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> { try validate(arguments: arguments); return ["media:system-player"] }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -573,7 +573,7 @@ struct MediaPlaybackTool: LocalAgentTool {
 #if os(iOS)
         return await MediaLibraryCapabilityBridge.playback(action: input.action, volume: input.volume)
 #else
-        throw MobileNativeToolError.hardwareUnavailable("媒体播放")
+        throw MobileNativeToolError.hardwareUnavailable("Media playback")
 #endif
     }
 
@@ -605,7 +605,7 @@ struct HealthQueryTool: LocalAgentTool {
     let risk: ToolRisk = .sensitiveRead
 
     func validate(arguments: [String: JSONValue]) throws { _ = try parsed(arguments) }
-    func summary(arguments: [String: JSONValue]) -> String { "读取已授权的 HealthKit \(arguments["metric"]?.stringValue ?? "健康")数据；结果会发送给模型" }
+    func summary(arguments: [String: JSONValue]) -> String { "Read authorized HealthKit \(arguments["metric"]?.stringValue ?? "health") data; results will be sent to the model" }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
         let input = try parsed(arguments)
         return ["healthkit:read:\(input.metric)"]
@@ -647,7 +647,7 @@ struct BluetoothScanTool: LocalAgentTool {
     let risk: ToolRisk = .sensitiveRead
 
     func validate(arguments: [String: JSONValue]) throws { _ = try parsed(arguments) }
-    func summary(arguments: [String: JSONValue]) -> String { "执行一次有界 BLE 前台扫描" }
+    func summary(arguments: [String: JSONValue]) -> String { "Run one bounded foreground BLE scan" }
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> { try validate(arguments: arguments); return ["bluetooth:central"] }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -655,7 +655,7 @@ struct BluetoothScanTool: LocalAgentTool {
 #if os(iOS)
         return try await BluetoothScanBridge.perform(duration: .seconds(input.duration), serviceUUIDs: input.serviceUUIDs)
 #else
-        throw MobileNativeToolError.hardwareUnavailable("蓝牙 LE")
+        throw MobileNativeToolError.hardwareUnavailable("Bluetooth LE")
 #endif
     }
 
@@ -687,7 +687,7 @@ struct VisionAnalyzeTool: LocalAgentTool {
         try arguments.requireOnlyKeys(["mode"])
         _ = try IOSCapabilityArguments.choice(arguments, key: "mode", allowed: ["ocr", "barcodes", "classify", "faces"])
     }
-    func summary(arguments: [String: JSONValue]) -> String { "在本机使用 Vision 分析最近图片" }
+    func summary(arguments: [String: JSONValue]) -> String { "Analyze the latest image on-device with Vision" }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
         try validate(arguments: arguments)
@@ -852,10 +852,10 @@ private final class LiveSpeechRecognitionBridge {
     private func start(language: String, duration: Duration, onDeviceOnly: Bool) async throws -> String {
         try await Self.ensureAuthorization()
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: language)), recognizer.isAvailable else {
-            throw MobileNativeToolError.hardwareUnavailable("语音识别语言 \(language)")
+            throw MobileNativeToolError.hardwareUnavailable("Speech recognition language \(language)")
         }
         if onDeviceOnly && !recognizer.supportsOnDeviceRecognition {
-            throw MobileNativeToolError.hardwareUnavailable("离线语音识别")
+            throw MobileNativeToolError.hardwareUnavailable("Offline speech recognition")
         }
         let audioSession = AVAudioSession.sharedInstance()
         try audioSession.setCategory(.record, mode: .measurement, options: [.duckOthers])
@@ -878,7 +878,7 @@ private final class LiveSpeechRecognitionBridge {
                 do {
                     try engine.start()
                 } catch {
-                    finish(.failure(MobileNativeToolError.operationFailed("麦克风录音")))
+                    finish(.failure(MobileNativeToolError.operationFailed("Microphone recording")))
                     return
                 }
                 recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
@@ -891,7 +891,7 @@ private final class LiveSpeechRecognitionBridge {
                             self.finishText()
                         } else if error != nil {
                             self.finish(self.latestText.isEmpty
-                                ? .failure(MobileNativeToolError.operationFailed("语音识别"))
+                                ? .failure(MobileNativeToolError.operationFailed("Speech recognition"))
                                 : .success(self.resultJSON()))
                         }
                     }
@@ -908,7 +908,7 @@ private final class LiveSpeechRecognitionBridge {
 
     private func finishText() {
         finish(latestText.isEmpty
-            ? .failure(MobileNativeToolError.noData("可识别语音"))
+            ? .failure(MobileNativeToolError.noData("recognizable speech"))
             : .success(resultJSON()))
     }
 
@@ -935,13 +935,13 @@ private final class LiveSpeechRecognitionBridge {
             SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
         }
         guard speech == .authorized else {
-            if speech == .restricted { throw MobileNativeToolError.restricted("语音识别") }
-            throw MobileNativeToolError.permissionDenied("语音识别")
+            if speech == .restricted { throw MobileNativeToolError.restricted("Speech recognition") }
+            throw MobileNativeToolError.permissionDenied("Speech recognition")
         }
         let microphone = await withCheckedContinuation { continuation in
             AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
         }
-        guard microphone else { throw MobileNativeToolError.permissionDenied("麦克风") }
+        guard microphone else { throw MobileNativeToolError.permissionDenied("Microphone") }
     }
 }
 
@@ -989,7 +989,7 @@ private enum MapKitCapabilityBridge {
         default: .automobile
         }
         let response = try await MKDirections(request: request).calculate()
-        guard let route = response.routes.first else { throw MobileNativeToolError.noData("可用路线") }
+        guard let route = response.routes.first else { throw MobileNativeToolError.noData("available route") }
         let steps = route.steps.prefix(100).map { step in
             JSONValue.object([
                 "instruction": .string(step.instructions),
@@ -1016,7 +1016,7 @@ private enum MapKitCapabilityBridge {
         }
         let placemarks = try await CLGeocoder().geocodeAddressString(value)
         guard let placemark = placemarks.first, let location = placemark.location else {
-            throw MobileNativeToolError.noData("地理编码结果")
+            throw MobileNativeToolError.noData("geocoding result")
         }
         return MKMapItem(placemark: MKPlacemark(coordinate: location.coordinate))
     }
@@ -1027,8 +1027,8 @@ private enum PhotoLibraryCapabilityBridge {
     static func list(mediaType: String, limit: Int, favoriteOnly: Bool) async throws -> String {
         let status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
         guard status == .authorized || status == .limited else {
-            if status == .restricted { throw MobileNativeToolError.restricted("照片图库") }
-            throw MobileNativeToolError.permissionDenied("照片图库")
+            if status == .restricted { throw MobileNativeToolError.restricted("Photo library") }
+            throw MobileNativeToolError.permissionDenied("Photo library")
         }
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
@@ -1067,8 +1067,8 @@ private enum MediaLibraryCapabilityBridge {
             MPMediaLibrary.requestAuthorization { continuation.resume(returning: $0) }
         }
         guard status == .authorized else {
-            if status == .restricted { throw MobileNativeToolError.restricted("媒体资料库") }
-            throw MobileNativeToolError.permissionDenied("媒体资料库")
+            if status == .restricted { throw MobileNativeToolError.restricted("Media library") }
+            throw MobileNativeToolError.permissionDenied("Media library")
         }
         let mediaQuery: MPMediaQuery = switch kind {
         case "album": .albums()
@@ -1156,7 +1156,7 @@ private enum HealthKitCapabilityBridge {
         if metric == "steps", let quantityType = objectType as? HKQuantityType {
             return try await withCheckedThrowingContinuation { continuation in
                 let query = HKStatisticsQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, statistics, error in
-                    if error != nil { continuation.resume(throwing: MobileNativeToolError.operationFailed("HealthKit 步数查询")); return }
+                    if error != nil { continuation.resume(throwing: MobileNativeToolError.operationFailed("HealthKit step count query")); return }
                     let value = statistics?.sumQuantity()?.doubleValue(for: .count()) ?? 0
                     continuation.resume(returning: JSONValue.object([
                         "metric": .string(metric), "value": .number(value), "unit": .string("count"),
@@ -1171,7 +1171,7 @@ private enum HealthKitCapabilityBridge {
         return try await withCheckedThrowingContinuation { continuation in
             let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
             let query = HKSampleQuery(sampleType: objectType, predicate: predicate, limit: limit, sortDescriptors: [sort]) { _, samples, error in
-                if error != nil { continuation.resume(throwing: MobileNativeToolError.operationFailed("HealthKit 查询")); return }
+                if error != nil { continuation.resume(throwing: MobileNativeToolError.operationFailed("HealthKit query")); return }
                 let values = (samples ?? []).map { sampleJSON($0, metric: metric) }
                 continuation.resume(returning: JSONValue.object([
                     "metric": .string(metric), "count": .number(Double(values.count)), "samples": .array(values)
@@ -1266,11 +1266,11 @@ private final class BluetoothScanBridge: NSObject, @preconcurrency CBCentralMana
                 try? await Task.sleep(for: duration)
                 finish(.success(resultJSON()))
             }
-        case .unauthorized: finish(.failure(MobileNativeToolError.permissionDenied("蓝牙")))
-        case .unsupported: finish(.failure(MobileNativeToolError.hardwareUnavailable("蓝牙 LE")))
-        case .poweredOff: finish(.failure(MobileNativeToolError.hardwareUnavailable("已关闭的蓝牙")))
+        case .unauthorized: finish(.failure(MobileNativeToolError.permissionDenied("Bluetooth")))
+        case .unsupported: finish(.failure(MobileNativeToolError.hardwareUnavailable("Bluetooth LE")))
+        case .poweredOff: finish(.failure(MobileNativeToolError.hardwareUnavailable("Powered-off Bluetooth")))
         case .resetting, .unknown: break
-        @unknown default: finish(.failure(MobileNativeToolError.hardwareUnavailable("蓝牙 LE")))
+        @unknown default: finish(.failure(MobileNativeToolError.hardwareUnavailable("Bluetooth LE")))
         }
     }
 

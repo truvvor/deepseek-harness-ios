@@ -47,7 +47,7 @@ enum CameraPickerError: LocalizedError {
     case noImageData
 
     var errorDescription: String? {
-        "无法读取所选图片。"
+        "Could not read the selected image."
     }
 }
 

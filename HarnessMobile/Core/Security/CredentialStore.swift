@@ -363,15 +363,15 @@ enum CredentialStoreError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .emptyCredential:
-            return "API Key 不能为空。"
+            return "API Key cannot be empty."
         case .invalidOrigin:
-            return "模型 API origin 无效。"
+            return "The model API origin is invalid."
         case .keyRequiredForOriginChange:
-            return "模型 API 的域名或端口已改变，请为新地址重新输入 API Key。"
+            return "The model API domain or port has changed. Re-enter the API Key for the new address."
         case .credentialOriginMismatch:
-            return "该凭据绑定的模型 API 域名或端口与当前 Provider Profile 不一致，请重新输入 API Key。"
+            return "The model API domain or port bound to this credential does not match the current Provider Profile. Re-enter the API Key."
         case let .keychain(status):
-            return "Keychain 操作失败（\(status)）。"
+            return "Keychain operation failed (\(status))."
         }
     }
 }

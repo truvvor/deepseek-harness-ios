@@ -9,20 +9,20 @@ struct NativeClientContributionsView: View {
             if let plugin {
                 List {
                     Section {
-                        LabeledContent("作用域", value: plugin.scope.rawValue)
+                        LabeledContent("Scope", value: plugin.scope.rawValue)
                         LabeledContent(
-                            "激活代次",
+                            "Activation Generation",
                             value: plugin.activationGeneration.formatted()
                         )
-                        LabeledContent("源码摘要", value: String(plugin.sourceDigest.prefix(12)))
+                        LabeledContent("Source Digest", value: String(plugin.sourceDigest.prefix(12)))
                             .font(.body.monospaced())
                         HarnessStatusPill(
-                            title: "第 \(plugin.activationGeneration.formatted()) 代",
+                            title: "Generation \(plugin.activationGeneration.formatted())",
                             systemImage: "arrow.triangle.2.circlepath",
                             tint: .accentColor
                         )
                     } header: {
-                        Label("原生客户端", systemImage: "puzzlepiece.extension")
+                        Label("Native Client", systemImage: "puzzlepiece.extension")
                     }
 
                     ForEach(plugin.contributions.inspectors) { inspector in
@@ -56,7 +56,7 @@ struct NativeClientContributionsView: View {
                                 )
                             }
                         } header: {
-                            Label("设置", systemImage: "slider.horizontal.3")
+                            Label("Settings", systemImage: "slider.horizontal.3")
                         }
                     }
 
@@ -86,7 +86,7 @@ struct NativeClientContributionsView: View {
                                 )
                             }
                         } header: {
-                            Label("命令", systemImage: "terminal")
+                            Label("Commands", systemImage: "terminal")
                         }
                     }
                 }
@@ -94,9 +94,9 @@ struct NativeClientContributionsView: View {
                 .accessibilityIdentifier("native-client-plugin-\(plugin.pluginId)")
             } else {
                 ContentUnavailableView(
-                    "原生扩展未运行",
+                    "Native Extension Not Running",
                     systemImage: "puzzlepiece.extension",
-                    description: Text("插件可能已停止、被替换，或其声明未通过校验。")
+                    description: Text("The plugin may have stopped, been replaced, or failed declaration validation.")
                 )
             }
         }
@@ -128,7 +128,7 @@ private struct NativeClientInspectorSection: View {
                     Image(systemName: "arrow.clockwise")
                         .frame(width: 44, height: 44)
                 }
-                .accessibilityLabel("刷新 \(inspector.title)")
+                .accessibilityLabel("Refresh \(inspector.title)")
                 .accessibilityIdentifier(
                     "native-client-inspector-refresh-\(plugin.pluginId)-\(inspector.id)"
                 )
@@ -156,9 +156,9 @@ private struct NativeClientInspectorSection: View {
             HStack(spacing: 10) {
                 HarnessIconTile(systemImage: "arrow.triangle.2.circlepath", tint: .accentColor, size: 28)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("正在读取")
+                    Text("Loading")
                         .foregroundStyle(.secondary)
-                    Text("从本机插件贡献读取最新值")
+                    Text("Load the latest value from local plugin contributions")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
