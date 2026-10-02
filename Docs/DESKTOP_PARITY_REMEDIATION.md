@@ -10,6 +10,7 @@
 - **长会话完整显示**：镜像改用 `SessionTrajectoryConversationProjection.transcriptMessages`（忽略 `surfaceOp.replace`），桌面压缩过的长会话不再只显示摘要 + 尾部；模型面投影 `messages(from:)` 不变。
 - **镜像 append-only**（移植自用户提交 1c5b96e）：转换器不再在镜像事件上安装 `surfaceOp.replace`（范围仍解析校验并计入 `droppedSurfaceOperations`），镜像与桌面 GUI 一样显示完整日志，包括被修正前的草稿；导入测试期望 4 → 5。
 - **增量导出**：桥接 rev-2026-10-02-m 支持 `GET …/export?since=<seq>`（响应头 `x-dsh-since`/`x-dsh-through-seq`）。已映射且本地头部等于桌面游标的镜像只拉取尾部（实测 30.8 MB → 214 KB）；后缀必须从 `since+1` 连续，否则（或桥接忽略 `since`）回退全量导出。首次导入仍需全量，受 128 MiB / 200 000 事件上限约束。桌面日志回退（`x-dsh-through-seq` 或全量导出头部小于本地游标）时，清空该镜像本地轨迹、保留会话与映射身份，再全量重建。
+- **分页导入与镜像不修复**：桥接 rev-2026-10-02-n 支持 `?since=&limit=`（`x-dsh-head-seq`/`x-dsh-has-more`/`x-dsh-through-seq` 空页回显 since）。导入改为每页 1000 事件循环、每页后记录映射游标，失败只丢当前页、下次从最后成功处继续。`SessionEventJSONLStore` 冷启动会为未闭合回合追加合成 closer，这会占用桌面下一事件的 seq，使镜像永久卡住（“541 条”）；镜像日志旁写 `<id>.mirror` 标记，仓库据此关闭该修复；无标记的旧镜像若本地头部与游标不符则清空重建。
 - **健康探针**：`BridgeSessionHealth.displayStatus`，无 `status` 字段的 200 响应显示为 `reachable`（此前误显示 `unavailable`）。
 - **测试命令**：`swift test --build-path $RUNNER_TEMP/hm-build --filter Bridge`（CI `bridge-tests.yml`），新增 `BridgeClientPromptTests`。
 - **剩余真机边界**：真实桌面回合/取消/排队与 steer；后台超过 iOS 宽限期时桥接因客户端断开而中止回合（需桥接侧支持断开后继续）；超大会话导入的内存峰值。

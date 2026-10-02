@@ -381,7 +381,7 @@ final class BridgeSessionImporterTests: XCTestCase {
         let outcome = try await harness.importer.importSession(bridgeSessionID: bridgeSessionID, listTitle: nil)
 
         XCTAssertEqual(outcome, .refreshed(localSessionID: first.localSessionID, appendedEvents: 2))
-        XCTAssertEqual(queries.values, ["since=9"])
+        XCTAssertEqual(queries.values, ["since=9&limit=1000"])
         let mapping = try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID)
         XCTAssertEqual(mapping?.importedThroughBridgeSeq, 11)
         XCTAssertEqual(mapping?.importedEventCount, report.events.count + 2)
@@ -440,25 +440,140 @@ final class BridgeSessionImporterTests: XCTestCase {
         BridgeExportURLProtocolStub.handler = { request in
             let query = request.url?.query ?? ""
             queries.append(query)
-            if query.hasPrefix("since=") {
+            if query.hasPrefix("since=9") {
+                // Paged bridge: the cursor is echoed, the real end is head-seq.
                 return Self.ndjson(
                     request,
                     body: header,
-                    headers: ["x-dsh-since": "9", "x-dsh-through-seq": "4", "x-dsh-event-count": "5"]
+                    headers: ["x-dsh-since": "9", "x-dsh-through-seq": "9", "x-dsh-head-seq": "4", "x-dsh-has-more": "false"]
                 )
             }
-            return Self.ndjson(request, body: rewound, headers: [:])
+            return Self.ndjson(
+                request,
+                body: rewound,
+                headers: ["x-dsh-since": "-1", "x-dsh-through-seq": "4", "x-dsh-head-seq": "4", "x-dsh-has-more": "false"]
+            )
         }
 
         let outcome = try await harness.importer.importSession(bridgeSessionID: bridgeSessionID, listTitle: nil)
 
         XCTAssertEqual(outcome, .refreshed(localSessionID: first.localSessionID, appendedEvents: 5))
-        XCTAssertEqual(queries.values, ["since=9", ""])
+        XCTAssertEqual(queries.values, ["since=9&limit=1000", "since=-1&limit=1000"])
         let events = try await harness.trajectory.allEvents(sessionID: first.localSessionID)
         XCTAssertEqual(events.map(\.seq), (0...4).map { UInt64($0) })
         let mapping = try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID)
         XCTAssertEqual(mapping?.localSessionID, first.localSessionID)
         XCTAssertEqual(mapping?.importedThroughBridgeSeq, 4)
+    }
+
+    /// Serves the fixture as a paged bridge would, `pageSize` events per page,
+    /// optionally failing the page that starts after `failAfter`.
+    private static func pagedFixtureHandler(
+        _ fixture: Data,
+        pageSize: Int,
+        failAfter: Int64? = nil,
+        log: RequestLog
+    ) -> (URLRequest) throws -> (HTTPURLResponse, Data) {
+        let lines = String(decoding: fixture, as: UTF8.self).split(separator: "\n").map(String.init)
+        let header = lines[0]
+        let events = Array(lines.dropFirst())
+        return { request in
+            let query = request.url?.query ?? ""
+            log.append(query)
+            let since = query.split(separator: "&")
+                .first { $0.hasPrefix("since=") }
+                .flatMap { Int64($0.dropFirst("since=".count)) } ?? -1
+            if let failAfter, since == failAfter {
+                throw URLError(.networkConnectionLost)
+            }
+            let start = Int(since + 1)
+            let page = Array(events.dropFirst(start).prefix(pageSize))
+            let through = since + Int64(page.count)
+            let head = Int64(events.count - 1)
+            return Self.ndjson(
+                request,
+                body: ([header] + page).joined(separator: "\n") + "\n",
+                headers: [
+                    "x-dsh-since": String(since),
+                    "x-dsh-through-seq": String(through),
+                    "x-dsh-head-seq": String(head),
+                    "x-dsh-has-more": through < head ? "true" : "false"
+                ]
+            )
+        }
+    }
+
+    func testFirstImportIsPagedAndRecordsTheCursorAfterEveryPage() async throws {
+        defer { BridgeExportURLProtocolStub.handler = nil }
+        let harness = try makeHarness(protocolClasses: [BridgeExportURLProtocolStub.self])
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let queries = RequestLog()
+        BridgeExportURLProtocolStub.handler = Self.pagedFixtureHandler(try fixtureData(), pageSize: 4, log: queries)
+
+        let outcome = try await harness.importer.importSession(bridgeSessionID: bridgeSessionID, listTitle: nil)
+
+        guard case let .created(localSessionID) = outcome else {
+            return XCTFail("Expected a new mirror, got \(outcome)")
+        }
+        XCTAssertEqual(queries.values, ["since=-1&limit=1000", "since=3&limit=1000", "since=7&limit=1000"])
+        let events = try await harness.trajectory.allEvents(sessionID: localSessionID)
+        XCTAssertEqual(events.map(\.seq), (0...9).map { UInt64($0) })
+        let mapping = try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID)
+        XCTAssertEqual(mapping?.importedThroughBridgeSeq, 9)
+        XCTAssertEqual(mapping?.importedEventCount, 10)
+        let session = try await harness.sessionStore.session(id: localSessionID)
+        XCTAssertEqual(session.title, "Fixture desktop session")
+        XCTAssertEqual(session.messages.last?.content, "Final answer.")
+    }
+
+    func testFailedPageKeepsEarlierPagesAndTheNextSyncResumesAfterThem() async throws {
+        defer { BridgeExportURLProtocolStub.handler = nil }
+        let harness = try makeHarness(protocolClasses: [BridgeExportURLProtocolStub.self])
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let fixture = try fixtureData()
+        let failing = RequestLog()
+        BridgeExportURLProtocolStub.handler = Self.pagedFixtureHandler(fixture, pageSize: 4, failAfter: 3, log: failing)
+
+        do {
+            _ = try await harness.importer.importSession(bridgeSessionID: bridgeSessionID, listTitle: nil)
+            XCTFail("The second page fails")
+        } catch {}
+        let partial = try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID)
+        XCTAssertEqual(partial?.importedThroughBridgeSeq, 3)
+
+        let resumed = RequestLog()
+        BridgeExportURLProtocolStub.handler = Self.pagedFixtureHandler(fixture, pageSize: 4, log: resumed)
+        let outcome = try await harness.importer.importSession(bridgeSessionID: bridgeSessionID, listTitle: nil)
+
+        let localSessionID = try XCTUnwrap(partial?.localSessionID)
+        XCTAssertEqual(outcome, .refreshed(localSessionID: localSessionID, appendedEvents: 6))
+        XCTAssertEqual(resumed.values, ["since=3&limit=1000", "since=7&limit=1000"])
+        let events = try await harness.trajectory.allEvents(sessionID: localSessionID)
+        XCTAssertEqual(events.map(\.seq), (0...9).map { UInt64($0) })
+    }
+
+    func testMirrorImportedMidTurnGetsNoSyntheticClosersOnColdOpen() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+        // Imported while the desktop turn was still running: turn/start and the
+        // user message, no turn/end yet.
+        let openTurn = Array(report.events.prefix(3))
+        let first = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: openTurn,
+            lastBridgeSequence: 2
+        )
+
+        // A relaunch opens the log with a fresh repository.
+        let reopened = SessionTrajectoryRepository(root: harness.root)
+        let next = try await reopened.nextSequence(sessionID: first.localSessionID)
+
+        XCTAssertEqual(next, 3)
+        let isMirror = await reopened.isAppendOnlyMirror(sessionID: first.localSessionID)
+        XCTAssertTrue(isMirror)
     }
 
     func testSuffixWithAGapIsRejectedSoTheFullLogIsUsed() {

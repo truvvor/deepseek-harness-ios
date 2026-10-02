@@ -1582,14 +1582,20 @@ actor SessionEventJSONLStore {
     private var isLoaded = false
     private var isClosed = false
     private var recoveredTornTail = false
+    /// Local logs close an interrupted turn on cold open. A desktop mirror must
+    /// not: its log is an exact copy of another host's sequence numbers, and a
+    /// synthetic closer would occupy the slot of the desktop's next event.
+    private let repairsInterruptedTurns: Bool
 
     init(
         fileURL: URL,
         streamID: String? = nil,
         knownEventTypes: Set<String> = SessionEventVocabulary.upstreamKnown,
         durability: SessionEventDurability = .buffered,
-        maximumRetainedEvents: Int = 4_096
+        maximumRetainedEvents: Int = 4_096,
+        repairsInterruptedTurns: Bool = true
     ) {
+        self.repairsInterruptedTurns = repairsInterruptedTurns
         self.fileURL = fileURL
         self.streamID = streamID ?? fileURL.deletingPathExtension().lastPathComponent
         self.knownEventTypes = knownEventTypes
@@ -1821,7 +1827,9 @@ actor SessionEventJSONLStore {
             // repair is append-only and therefore idempotent: once the
             // synthetic closers are present, a subsequent open sees a closed
             // turn and produces no additional events.
-            let closers = try SessionEventRecovery.interruptedTurnClosers(recovery.events)
+            let closers = repairsInterruptedTurns
+                ? try SessionEventRecovery.interruptedTurnClosers(recovery.events)
+                : []
             if !closers.isEmpty {
                 _ = try appendAssigned(closers)
                 try flush()

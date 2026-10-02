@@ -131,84 +131,155 @@ actor BridgeSessionImporter {
     @discardableResult
     func importSession(bridgeSessionID: String, listTitle: String?) async throws -> BridgeImportOutcome {
         try await serialized(bridgeSessionID: bridgeSessionID) {
-            if let outcome = try await self.refreshIncrementally(
-                bridgeSessionID: bridgeSessionID,
-                listTitle: listTitle
-            ) {
-                return outcome
+            try await self.importPaged(bridgeSessionID: bridgeSessionID, listTitle: listTitle)
+        }
+    }
+
+    /// Events per `export?since=&limit=` page.
+    static let exportPageSize = 1_000
+
+    /// Imports or refreshes one mirror page by page from the desktop cursor.
+    ///
+    /// The mapping (and with it the cursor) is recorded after every page, so a
+    /// failure part-way through a 30 MB session keeps the pages already
+    /// admitted and the next sync resumes after them instead of re-reading the
+    /// whole log and failing at the same place forever. A bridge without
+    /// incremental export answers with the full log, which is imported in one
+    /// pass as before.
+    private func importPaged(bridgeSessionID: String, listTitle: String?) async throws -> BridgeImportOutcome {
+        var cursor = try await resumeCursor(bridgeSessionID: bridgeSessionID)
+        var createdSessionID: UUID?
+        var localSessionID: UUID?
+        var appendedTotal = 0
+        var rebuiltAfterRewind = false
+
+        while true {
+            try Task.checkCancellation()
+            let page = try await client.exportLog(
+                sessionID: bridgeSessionID,
+                since: cursor,
+                limit: Self.exportPageSize
+            )
+            guard page.isIncremental else {
+                return try await importFullLog(
+                    page.data,
+                    bridgeSessionID: bridgeSessionID,
+                    listTitle: listTitle
+                )
             }
-            let log = try await self.client.exportLog(sessionID: bridgeSessionID)
-            let report = try BridgeSessionEventConverter.decodeLog(log)
-            // A desktop session that carries no user/assistant messages is an empty
-            // shell; mirroring it produced a conversation with zero messages in the
-            // app list. Refreshing an existing mirror stays allowed.
-            if try await self.mappings.mapping(bridgeSessionID: bridgeSessionID) == nil,
-               SessionTrajectoryConversationProjection.transcriptMessages(from: report.events).isEmpty {
-                throw BridgeImportError.notMirrorable("the desktop session has no messages yet")
+            // The desktop log is shorter than the mirror (rolled back or
+            // restored). Appending from the stale cursor would skip everything
+            // the desktop writes until it passes that number again, so rebuild
+            // the same mirror from the start of the log.
+            if cursor >= 0, let head = page.desktopHead, head < cursor {
+                guard !rebuiltAfterRewind else {
+                    throw BridgeImportError.notMirrorable("the desktop log moved backwards during the import")
+                }
+                rebuiltAfterRewind = true
+                if let mapping = try await mappings.mapping(bridgeSessionID: bridgeSessionID) {
+                    try await resetMirrorLog(mapping)
+                }
+                cursor = -1
+                continue
             }
-            return try await self.importConverted(
+
+            let report = try BridgeSessionEventConverter.decodeLog(
+                page.data,
+                firstSequence: UInt64(cursor + 1)
+            )
+            if localSessionID == nil,
+               try await mappings.mapping(bridgeSessionID: bridgeSessionID) == nil {
+                // A desktop session that carries no user/assistant messages is
+                // an empty shell; mirroring it produced a zero-message row.
+                if report.events.isEmpty
+                    || (!page.hasMore
+                        && SessionTrajectoryConversationProjection.transcriptMessages(from: report.events).isEmpty) {
+                    throw BridgeImportError.notMirrorable("the desktop session has no messages yet")
+                }
+            }
+
+            let outcome = try await importConverted(
                 bridgeSessionID: bridgeSessionID,
                 listTitle: listTitle,
                 header: report.header,
                 events: report.events,
-                lastBridgeSequence: report.lastBridgeSequence
+                lastBridgeSequence: max(report.lastBridgeSequence, cursor),
+                isSuffix: true
             )
+            localSessionID = outcome.localSessionID
+            switch outcome {
+            case let .created(id):
+                createdSessionID = id
+            case let .refreshed(_, appended):
+                appendedTotal += appended
+            case .unchanged:
+                break
+            }
+            cursor = max(report.lastBridgeSequence, cursor)
+            if !page.hasMore || report.events.isEmpty { break }
         }
+
+        if let createdSessionID {
+            return .created(localSessionID: createdSessionID)
+        }
+        guard let localSessionID else {
+            throw BridgeImportError.notMirrorable("the desktop export returned no pages")
+        }
+        return appendedTotal > 0
+            ? .refreshed(localSessionID: localSessionID, appendedEvents: appendedTotal)
+            : .unchanged(localSessionID: localSessionID)
     }
 
-    /// Refreshes an existing mirror from `export?since=<cursor>` instead of the
-    /// full log, so a growing 30 MB session costs only its new tail. Returns
-    /// `nil` when the full export must be used instead: no mapping yet, the
-    /// local session is gone, or the mirror was renumbered (its local head
-    /// differs from the desktop cursor). A bridge that ignores `since` sends the
-    /// full log, which is then imported the normal way.
-    private func refreshIncrementally(
+    /// Where the next page starts: the stored desktop cursor when the local log
+    /// ends exactly there, otherwise -1 (full rebuild) for a log that diverged.
+    private func resumeCursor(bridgeSessionID: String) async throws -> Int64 {
+        guard let mapping = try await mappings.mapping(bridgeSessionID: bridgeSessionID),
+              (try? await sessionStore.session(id: mapping.localSessionID)) != nil else {
+            // No mirror yet, or a stale mapping that `importConverted` clears.
+            return -1
+        }
+        // Mirrors written before the append-only marker existed may have been
+        // "repaired" on open: the store appended synthetic turn closers that
+        // occupy the slots of the desktop's next events.
+        let wasMarked = await trajectory.isAppendOnlyMirror(sessionID: mapping.localSessionID)
+        try await trajectory.markAppendOnlyMirror(sessionID: mapping.localSessionID)
+        let next = try await trajectory.nextSequence(sessionID: mapping.localSessionID)
+        let head = Int64(next) - 1
+        let cursor = mapping.importedThroughBridgeSeq
+        if head == cursor {
+            return cursor
+        }
+        if wasMarked, head > cursor {
+            // A marked mirror never gets synthetic events, so the extra local
+            // events are desktop events whose page failed before its mapping
+            // was recorded. Continue after them.
+            return head
+        }
+        try await resetMirrorLog(mapping)
+        return -1
+    }
+
+    /// One-pass import of a complete log, for a bridge without incremental
+    /// export.
+    private func importFullLog(
+        _ data: Data,
         bridgeSessionID: String,
         listTitle: String?
-    ) async throws -> BridgeImportOutcome? {
-        guard let mapping = try await mappings.mapping(bridgeSessionID: bridgeSessionID),
-              mapping.importedThroughBridgeSeq >= 0,
-              (try? await sessionStore.session(id: mapping.localSessionID)) != nil else {
-            return nil
-        }
-        let localEvents = try await trajectory.allEvents(sessionID: mapping.localSessionID)
-        guard let head = localEvents.last?.seq,
-              Int64(exactly: head) == mapping.importedThroughBridgeSeq else {
-            return nil
-        }
-        let page = try await client.exportLog(
-            sessionID: bridgeSessionID,
-            since: mapping.importedThroughBridgeSeq
-        )
-        let report: BridgeSessionEventConverter.Report
-        if page.isIncremental {
-            // The desktop log is shorter than the mirror (rolled back or
-            // restored): its head is behind the stored cursor. Appending from the
-            // stale cursor would skip everything the desktop writes until it
-            // passes that number again, so rebuild the mirror from the full log.
-            if let through = page.throughSeq, through < mapping.importedThroughBridgeSeq {
-                try await resetMirrorLog(mapping)
-                return nil
-            }
-            do {
-                report = try BridgeSessionEventConverter.decodeLog(page.data, firstSequence: head + 1)
-            } catch BridgeLogConversionError.nonContiguousSuffix {
-                return nil
-            }
-        } else {
-            report = try BridgeSessionEventConverter.decodeLog(page.data)
+    ) async throws -> BridgeImportOutcome {
+        let report = try BridgeSessionEventConverter.decodeLog(data)
+        if let mapping = try await mappings.mapping(bridgeSessionID: bridgeSessionID) {
             if report.lastBridgeSequence < mapping.importedThroughBridgeSeq {
                 try await resetMirrorLog(mapping)
-                return nil
             }
+        } else if SessionTrajectoryConversationProjection.transcriptMessages(from: report.events).isEmpty {
+            throw BridgeImportError.notMirrorable("the desktop session has no messages yet")
         }
         return try await importConverted(
             bridgeSessionID: bridgeSessionID,
             listTitle: listTitle,
             header: report.header,
             events: report.events,
-            lastBridgeSequence: max(report.lastBridgeSequence, mapping.importedThroughBridgeSeq),
-            isSuffix: page.isIncremental
+            lastBridgeSequence: report.lastBridgeSequence
         )
     }
 
@@ -217,6 +288,7 @@ actor BridgeSessionImporter {
     /// (same local id, still selectable) from the desktop's current log.
     private func resetMirrorLog(_ mapping: BridgeSessionMapping) async throws {
         try await trajectory.delete(sessionID: mapping.localSessionID)
+        try await trajectory.markAppendOnlyMirror(sessionID: mapping.localSessionID)
         var reset = mapping
         reset.importedThroughBridgeSeq = -1
         reset.importedEventCount = 0
@@ -342,8 +414,10 @@ actor BridgeSessionImporter {
     /// documents. A local log that is already at or past the desktop head is
     /// left untouched, which keeps a re-import idempotent.
     private func admit(_ events: [SessionEvent], sessionID: UUID) async throws -> [SessionEvent] {
-        let localEvents = try await trajectory.allEvents(sessionID: sessionID)
-        let localNext = localEvents.last.map { $0.seq &+ 1 } ?? 0
+        // Mark before the log is first opened so the store never appends
+        // synthetic turn closers to a mirror.
+        try await trajectory.markAppendOnlyMirror(sessionID: sessionID)
+        let localNext = try await trajectory.nextSequence(sessionID: sessionID)
         let suffix = events.filter { $0.seq >= localNext }
         guard !suffix.isEmpty else { return [] }
         guard suffix[0].seq == localNext else {

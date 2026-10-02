@@ -163,11 +163,12 @@ actor BridgeClient {
     /// supports it answers with `x-dsh-since` / `x-dsh-through-seq`; an older
     /// bridge ignores the parameter and returns the full log, which the page
     /// reports as non-incremental.
-    func exportLog(sessionID: String, since: Int64) async throws -> BridgeExportPage {
-        let url = try makeURL(
-            sessionPath(sessionID, "export"),
-            query: [URLQueryItem(name: "since", value: String(since))]
-        )
+    func exportLog(sessionID: String, since: Int64, limit: Int? = nil) async throws -> BridgeExportPage {
+        var query = [URLQueryItem(name: "since", value: String(since))]
+        if let limit {
+            query.append(URLQueryItem(name: "limit", value: String(max(1, limit))))
+        }
+        let url = try makeURL(sessionPath(sessionID, "export"), query: query)
         guard let token = await tokenProvider() else {
             throw BridgeClientError.missingToken
         }
@@ -180,7 +181,9 @@ actor BridgeClient {
         return BridgeExportPage(
             data: data,
             since: response.value(forHTTPHeaderField: "x-dsh-since").flatMap { Int64($0) },
-            throughSeq: response.value(forHTTPHeaderField: "x-dsh-through-seq").flatMap { Int64($0) }
+            throughSeq: response.value(forHTTPHeaderField: "x-dsh-through-seq").flatMap { Int64($0) },
+            headSeq: response.value(forHTTPHeaderField: "x-dsh-head-seq").flatMap { Int64($0) },
+            hasMore: response.value(forHTTPHeaderField: "x-dsh-has-more")?.lowercased() == "true"
         )
     }
 

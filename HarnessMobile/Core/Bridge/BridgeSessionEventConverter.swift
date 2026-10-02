@@ -80,13 +80,14 @@ enum BridgeSessionEventConverter {
         let surfaceEnd: UInt64?
     }
 
-    /// Decodes a v4 export. With `firstSequence > 0` the data is an incremental
-    /// export (`?since=firstSequence-1`): it must continue densely at
-    /// `firstSequence`, keeps the desktop sequence numbers, and may be empty.
+    /// Decodes a v4 export. With `firstSequence` the data is one page of an
+    /// incremental export (`?since=firstSequence-1`): it must continue densely
+    /// at `firstSequence`, keeps the desktop sequence numbers, and may be empty.
+    /// Without it the data is a complete log.
     static func decodeLog(
         _ data: Data,
         now: Date = .now,
-        firstSequence: UInt64 = 0
+        firstSequence: UInt64? = nil
     ) throws -> Report {
         guard data.count <= maximumLogBytes else {
             throw BridgeLogConversionError.logTooLarge(maximumLogBytes)
@@ -142,7 +143,8 @@ enum BridgeSessionEventConverter {
             }
         }
 
-        let isSuffix = firstSequence > 0
+        let isSuffix = firstSequence != nil
+        let start = firstSequence ?? 0
         guard !wireEvents.isEmpty else {
             guard isSuffix else { throw BridgeLogConversionError.emptyLog }
             return Report(
@@ -151,20 +153,20 @@ enum BridgeSessionEventConverter {
                 unknownEventTypes: [],
                 droppedSurfaceOperations: 0,
                 renumberedSequences: false,
-                lastBridgeSequence: clampedSequence(firstSequence - 1)
+                lastBridgeSequence: clampedSequence(start) - 1
             )
         }
 
         var seenSequences = Set<UInt64>()
         let isDense = wireEvents.enumerated().allSatisfy { index, event in
-            UInt64(index) &+ firstSequence == event.seq && seenSequences.insert(event.seq).inserted
+            UInt64(index) &+ start == event.seq && seenSequences.insert(event.seq).inserted
         }
-        // A suffix cannot be renumbered: its local sequences must continue the
-        // mirror exactly, so a gap means the caller has to re-read the full log.
+        // A page cannot be renumbered: its local sequences must continue the
+        // mirror exactly, so a gap means the caller has to re-read the log.
         if isSuffix, !isDense {
-            throw BridgeLogConversionError.nonContiguousSuffix(expected: firstSequence)
+            throw BridgeLogConversionError.nonContiguousSuffix(expected: start)
         }
-        let localSequences = wireEvents.indices.map { UInt64($0) &+ firstSequence }
+        let localSequences = wireEvents.indices.map { UInt64($0) &+ start }
         var originalToLocal: [UInt64: UInt64] = [:]
         if isDense {
             for (index, wire) in wireEvents.enumerated() {

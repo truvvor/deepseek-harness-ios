@@ -266,8 +266,17 @@ struct BridgeExportPage: Sendable, Equatable {
     /// Echo of `x-dsh-since`; `nil` when the bridge ignored `since` and sent
     /// the full log.
     let since: Int64?
-    /// `x-dsh-through-seq`: the desktop head this page reaches.
+    /// `x-dsh-through-seq`: the last sequence in this page, or the echoed
+    /// `since` when the page is empty, so the cursor never moves backwards.
     let throughSeq: Int64?
+    /// `x-dsh-head-seq`: the real end of the desktop log (paged bridges).
+    var headSeq: Int64? = nil
+    /// `x-dsh-has-more`: more events follow this page.
+    var hasMore = false
 
     var isIncremental: Bool { since != nil }
+
+    /// The desktop log end this page reveals. A rolled-back log shows up as a
+    /// head behind the mirror's cursor.
+    var desktopHead: Int64? { headSeq ?? throughSeq }
 }

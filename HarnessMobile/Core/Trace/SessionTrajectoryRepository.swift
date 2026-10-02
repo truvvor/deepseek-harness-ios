@@ -103,6 +103,12 @@ actor SessionTrajectoryRepository: SessionPersistence {
         )
     }
 
+    /// The next sequence the session's log will assign (its durable head + 1),
+    /// without reading the whole stream.
+    func nextSequence(sessionID: UUID) async throws -> UInt64 {
+        try await store(for: sessionID).persistenceRevision().nextSequence
+    }
+
     /// Reads the complete persisted stream on demand. The live AppModel keeps
     /// only a bounded UI tail so long streaming sessions do not retain every
     /// delta in SwiftUI state; exports and forensic diagnostics can still get
@@ -245,6 +251,10 @@ actor SessionTrajectoryRepository: SessionPersistence {
         if FileManager.default.fileExists(atPath: fileURL.path) {
             try FileManager.default.removeItem(at: fileURL)
         }
+        let marker = mirrorMarkerURL(for: sessionID)
+        if FileManager.default.fileExists(atPath: marker.path) {
+            try FileManager.default.removeItem(at: marker)
+        }
     }
 
     func resetAll() async throws {
@@ -274,10 +284,36 @@ actor SessionTrajectoryRepository: SessionPersistence {
         let store = SessionEventJSONLStore(
             fileURL: fileURL(for: sessionID),
             streamID: streamID,
-            knownEventTypes: knownEventTypes
+            knownEventTypes: knownEventTypes,
+            repairsInterruptedTurns: !FileManager.default.fileExists(
+                atPath: mirrorMarkerURL(for: sessionID).path
+            )
         )
         stores[sessionID] = store
         return store
+    }
+
+    /// Marks `sessionID` as an append-only copy of another host's log (a desktop
+    /// mirror). The marker is a file beside the log so it is known before the
+    /// log is first opened after a relaunch, when interrupted-turn repair runs.
+    func markAppendOnlyMirror(sessionID: UUID) throws {
+        let marker = mirrorMarkerURL(for: sessionID)
+        guard !FileManager.default.fileExists(atPath: marker.path) else { return }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        guard FileManager.default.createFile(atPath: marker.path, contents: Data()) else {
+            throw CocoaError(.fileWriteUnknown)
+        }
+    }
+
+    func isAppendOnlyMirror(sessionID: UUID) -> Bool {
+        FileManager.default.fileExists(atPath: mirrorMarkerURL(for: sessionID).path)
+    }
+
+    private func mirrorMarkerURL(for sessionID: UUID) -> URL {
+        directory.appendingPathComponent(
+            sessionID.uuidString.lowercased() + ".mirror",
+            isDirectory: false
+        )
     }
 
     private func fileURL(for sessionID: UUID) -> URL {
