@@ -8,8 +8,7 @@ on:
       - dsh-bridge-sync
     paths:
       - "HarnessMobile/Core/**"
-      - "HarnessMobileTests/Bridge*"
-      - "HarnessMobileTests/Fixtures/**"
+      - "HarnessMobileTests/**"
       - "Package.swift"
       - ".github/workflows/bridge-tests.yml"
   workflow_dispatch:
