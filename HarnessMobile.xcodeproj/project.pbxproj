@@ -419,7 +419,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		A17C4D0000000000000000A1 /* AppModel+Bridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel+Bridge.swift; sourceTree = "<group>"; };
+		A17C4D0000000000000000A1 /* AppModel+Bridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Bridge.swift"; sourceTree = "<group>"; };
 		B17C4D0000000000000000B1 /* BridgeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeClient.swift; sourceTree = "<group>"; };
 		C17C4D0000000000000000C1 /* BridgeClientDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeClientDecodingTests.swift; sourceTree = "<group>"; };
 		B17C4D0000000000000000B2 /* BridgeMirrorCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeMirrorCoordinator.swift; sourceTree = "<group>"; };
@@ -1223,6 +1223,10 @@
 		857B04E594D188682697A7AE /* HarnessMobileTests */ = {
 			isa = PBXGroup;
 			children = (
+				C17C4D0000000000000000C1 /* BridgeClientDecodingTests.swift */,
+				C17C4D0000000000000000C2 /* BridgeSessionEventConverterTests.swift */,
+				C17C4D0000000000000000C3 /* BridgeSessionImporterTests.swift */,
+				C17C4D0000000000000000C4 /* BridgeSessionSyncTests.swift */,
 				E371AE75F820B28E32B22213 /* ACPSubagentClientTests.swift */,
 				1CC4C5D6488E89BC32BE1DF0 /* AgentConfigurationTests.swift */,
 				703F067573EF04BCB55FA2DC /* AgentPresetTests.swift */,
@@ -1841,19 +1845,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A17B4C0000000000000000A1 /* AppModel+Bridge.swift in Sources */,
-				B17B4C0000000000000000B1 /* BridgeClient.swift in Sources */,
-				C17B4C0000000000000000C1 /* BridgeClientDecodingTests.swift in Sources */,
-				B17B4C0000000000000000B2 /* BridgeMirrorCoordinator.swift in Sources */,
-				B17B4C0000000000000000B3 /* BridgeSessionEventConverter.swift in Sources */,
-				C17B4C0000000000000000C2 /* BridgeSessionEventConverterTests.swift in Sources */,
-				B17B4C0000000000000000B4 /* BridgeSessionImporter.swift in Sources */,
-				C17B4C0000000000000000C3 /* BridgeSessionImporterTests.swift in Sources */,
-				B17B4C0000000000000000B5 /* BridgeSessionMirrorStore.swift in Sources */,
-				B17B4C0000000000000000B6 /* BridgeSessionModel.swift in Sources */,
-				B17B4C0000000000000000B7 /* BridgeSessionSync.swift in Sources */,
-				C17B4C0000000000000000C4 /* BridgeSessionSyncTests.swift in Sources */,
-				B17B4C0000000000000000B8 /* BridgeSettings.swift in Sources */,
 				EC0BCA30DA40218C70DC7579 /* HarnessActivityAttributes.swift in Sources */,
 				6936326E2AC55D32C26590D9 /* HarnessLiveActivityBundle.swift in Sources */,
 				A57B04EE744401D2C18EC048 /* HarnessLiveActivityWidget.swift in Sources */,
@@ -1883,6 +1874,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C17B4C0000000000000000C1 /* BridgeClientDecodingTests.swift in Sources */,
+				C17B4C0000000000000000C2 /* BridgeSessionEventConverterTests.swift in Sources */,
+				C17B4C0000000000000000C3 /* BridgeSessionImporterTests.swift in Sources */,
+				C17B4C0000000000000000C4 /* BridgeSessionSyncTests.swift in Sources */,
 				A6FE910C9AE20BCE641B67F7 /* ACPSubagentClientTests.swift in Sources */,
 				FC62947BA740401F765A4F1C /* AgentConfigurationTests.swift in Sources */,
 				E1D6EF65933958F947485E94 /* AgentPresetTests.swift in Sources */,
@@ -2001,6 +1996,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A17B4C0000000000000000A1 /* AppModel+Bridge.swift in Sources */,
+				B17B4C0000000000000000B1 /* BridgeClient.swift in Sources */,
+				B17B4C0000000000000000B2 /* BridgeMirrorCoordinator.swift in Sources */,
+				B17B4C0000000000000000B3 /* BridgeSessionEventConverter.swift in Sources */,
+				B17B4C0000000000000000B4 /* BridgeSessionImporter.swift in Sources */,
+				B17B4C0000000000000000B5 /* BridgeSessionMirrorStore.swift in Sources */,
+				B17B4C0000000000000000B6 /* BridgeSessionModel.swift in Sources */,
+				B17B4C0000000000000000B7 /* BridgeSessionSync.swift in Sources */,
+				B17B4C0000000000000000B8 /* BridgeSettings.swift in Sources */,
 				36252CB772D9B0ADC53B9788 /* ACPSubagentClient.swift in Sources */,
 				F0F314250A2D6660441E56B7 /* ANSIParser.swift in Sources */,
 				DE691AD0E49C8C909DBD9D60 /* AgentConfiguration.swift in Sources */,
