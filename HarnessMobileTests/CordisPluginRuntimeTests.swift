@@ -64,18 +64,7 @@ final class CordisPluginRuntimeTests: XCTestCase {
 
         let upstream = ToolCancellationSignal()
         let cancelledExecution = timeoutExecution(name: "fast", signal: upstream)
-        // Explicit captures: Swift 6.3's region isolation checker cannot analyse
-        // the implicit capture of this pattern ("Please file a bug").
-        let task = Task { [runtime, cancelledExecution] in
-            try await Self.runTimeoutExecute(runtime, execution: cancelledExecution) {
-                try await cancelledExecution.signal.runCooperatively {
-                    while !cancelledExecution.signal.isCancelled {
-                        try await Task.sleep(nanoseconds: 1_000_000)
-                    }
-                    throw CancellationError()
-                }
-            }
-        }
+        let task = Self.startUntilCancelled(runtime, execution: cancelledExecution)
         try await Task.sleep(nanoseconds: 5_000_000)
         _ = upstream.cancel(reason: .upstream)
         do {
@@ -161,6 +150,27 @@ final class CordisPluginRuntimeTests: XCTestCase {
             summary: name,
             signal: signal
         )
+    }
+
+    /// Runs a tool body that only ends when its signal is cancelled. Built in a
+    /// static helper because Swift 6.3's region isolation checker crashes on
+    /// the equivalent inline `Task` closure ("Please file a bug").
+    private static func startUntilCancelled(
+        _ runtime: CordisPluginRuntime,
+        execution: CordisToolExecution
+    ) -> Task<CordisToolExecutionResult, Error> {
+        let signal = execution.signal
+        let body: @Sendable () async throws -> CordisToolExecutionResult = {
+            try await signal.runCooperatively {
+                while !signal.isCancelled {
+                    try await Task.sleep(nanoseconds: 1_000_000)
+                }
+                throw CancellationError()
+            }
+        }
+        return Task {
+            try await runTimeoutExecute(runtime, execution: execution, default: body)
+        }
     }
 
     private static func runTimeoutExecute(
