@@ -259,6 +259,8 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     var desktopMirrorProgress: BridgeImportProgress?
     var desktopMirrorLastError: String?
     var followedMirrorSessionIDs: Set<UUID> = []
+    /// Desktop turns started from this iPhone that have not ended yet (D-014).
+    var desktopMirrorTurns: [UUID: DesktopMirrorTurn] = [:]
     @ObservationIgnored var desktopBridgeCoordinator: BridgeMirrorCoordinator?
     private var allStagedImageReferences: [AgentImageAttachmentRef] {
         (stagedImageReference.map { [$0] } ?? [])
@@ -2611,10 +2613,10 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         guard !isSubmitting else { return false }
         // Every composer path (plain send, slash command, `@subagent`) starts
         // here, and each can run the local agent loop or write `command/run`
-        // into the trajectory. A desktop mirror is read-only (D-012).
-        guard !activeSessionIsDesktopMirror else {
-            refuseDesktopMirrorMutation()
-            return false
+        // into the trajectory. In a desktop mirror the text goes verbatim to the
+        // desktop agent instead, and nothing runs or is written locally (D-014).
+        if activeSessionIsDesktopMirror {
+            return await submitToDesktopMirror(text, disposition: disposition)
         }
         isSubmitting = true
         submissionStatus = "Parsing commands and skills"

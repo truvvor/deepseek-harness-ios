@@ -103,10 +103,62 @@ struct BridgeSessionListResponse: Decodable, Sendable, Equatable {
 
 struct BridgeSessionHealth: Decodable, Sendable, Equatable {
     let status: String?
+    let ok: Bool?
     let build: String?
     let services: [String: JSONValue]?
 
-    var isHealthy: Bool { status?.lowercased() == "ok" }
+    init(status: String?, ok: Bool? = nil, build: String?, services: [String: JSONValue]?) {
+        self.status = status
+        self.ok = ok
+        self.build = build
+        self.services = services
+    }
+
+    var isHealthy: Bool { status?.lowercased() == "ok" || ok == true }
+
+    /// What the settings probe shows. A decoded `/health` answer already proves
+    /// the bridge is reachable and the token accepted, so a body without a
+    /// `status` field reads as reachable rather than unavailable.
+    var displayStatus: String {
+        if let status, !status.isEmpty { return status }
+        if let ok { return ok ? "ok" : "degraded" }
+        return "reachable"
+    }
+}
+
+/// `POST /bridge/v1/sessions/{id}/prompt` mode: `queue` waits behind a running
+/// desktop turn, `steer` injects into it.
+enum BridgePromptMode: String, Codable, Sendable {
+    case queue
+    case steer
+}
+
+struct BridgePromptRequest: Encodable, Sendable {
+    let text: String
+    let mode: BridgePromptMode
+}
+
+/// `POST /bridge/v1/sessions/{id}/prompt` answer, sent after `turn/end`.
+struct BridgePromptResult: Decodable, Sendable, Equatable {
+    let sessionID: String?
+    let text: String?
+    let usage: JSONValue?
+    let completed: Bool?
+
+    private enum CodingKeys: String, CodingKey {
+        case sessionID = "sessionId"
+        case text, usage, completed
+    }
+}
+
+/// `{ "error": { "message", "code", ... } }` returned by bridge routes.
+struct BridgeErrorEnvelope: Decodable, Sendable {
+    struct Detail: Decodable, Sendable {
+        let message: String?
+        let code: String?
+    }
+
+    let error: Detail
 }
 
 /// `GET /bridge/v1/sessions/{id}/messages` envelope.

@@ -48,9 +48,12 @@ enum BridgeLogConversionError: Error, LocalizedError, Sendable, Equatable {
 /// replacement whose range cannot be mapped is dropped and reported.
 enum BridgeSessionEventConverter {
     /// Bounded import size. The trajectory store enforces its own limits too;
-    /// this keeps a hostile or runaway export from being parsed at all.
-    static let maximumEvents = 20_000
-    static let maximumLogBytes = 16 * 1_024 * 1_024
+    /// this keeps a hostile or runaway export from being parsed at all. Long
+    /// desktop working sessions routinely exceed 16 MiB, so the bound is sized
+    /// for real logs, and lines are decoded from byte slices so the export is
+    /// not duplicated into a second in-memory string.
+    static let maximumEvents = 200_000
+    static let maximumLogBytes = 128 * 1_024 * 1_024
 
     struct Report: Sendable, Equatable {
         let header: BridgeSessionLogHeader?
@@ -81,20 +84,16 @@ enum BridgeSessionEventConverter {
         guard data.count <= maximumLogBytes else {
             throw BridgeLogConversionError.logTooLarge(maximumLogBytes)
         }
-        guard let text = String(data: data, encoding: .utf8) else {
-            throw BridgeLogConversionError.malformedHeader
-        }
-
         var header: BridgeSessionLogHeader?
         var wireEvents: [WireEvent] = []
         var lineNumber = 0
+        let decoder = JSONDecoder()
 
-        for rawLine in text.split(separator: "\n", omittingEmptySubsequences: false) {
+        for rawLine in data.split(separator: UInt8(ascii: "\n"), omittingEmptySubsequences: false) {
             lineNumber += 1
-            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
-            if line.isEmpty { continue }
-            guard let lineData = line.data(using: .utf8),
-                  let value = try? JSONDecoder().decode(JSONValue.self, from: lineData),
+            if rawLine.allSatisfy({ $0 == 0x20 || $0 == 0x09 || $0 == 0x0D }) { continue }
+            let lineData = Data(rawLine)
+            guard let value = try? decoder.decode(JSONValue.self, from: lineData),
                   let object = value.objectValue,
                   let type = object["type"]?.stringValue else {
                 throw BridgeLogConversionError.malformedEvent(line: lineNumber)
@@ -106,7 +105,7 @@ enum BridgeSessionEventConverter {
                 guard header == nil, wireEvents.isEmpty else {
                     throw BridgeLogConversionError.malformedHeader
                 }
-                header = try? JSONDecoder().decode(BridgeSessionLogHeader.self, from: lineData)
+                header = try? decoder.decode(BridgeSessionLogHeader.self, from: lineData)
                 guard header != nil else {
                     throw BridgeLogConversionError.malformedHeader
                 }

@@ -21,6 +21,9 @@ enum BridgeClientError: Error, LocalizedError, Sendable, Equatable {
     case transport(String)
     case cancelled
     case streamEnded(String?)
+    /// A non-2xx answer whose body carried the bridge `{error:{code,message}}`
+    /// shape, for example `session/agent-busy` or `session/writer-held`.
+    case rejected(status: Int, code: String?, message: String?)
 
     var errorDescription: String? {
         switch self {
@@ -51,18 +54,30 @@ enum BridgeClientError: Error, LocalizedError, Sendable, Equatable {
         case let .streamEnded(reason):
             return reason.map { "The desktop session stream ended: \($0)" }
                 ?? "The desktop session stream ended."
+        case let .rejected(status, code, message):
+            switch code {
+            case "session/agent-busy":
+                return "The desktop agent is already running a turn in this session."
+            case "session/writer-held":
+                return "Another client currently owns this desktop session."
+            case "session/not-found":
+                return "The desktop session is not open on the desktop host."
+            default:
+                let detail = message ?? code ?? "HTTP \(status)"
+                return "The desktop bridge rejected the request: \(detail)"
+            }
         }
     }
 }
 
-/// Read-only HTTP client for the DeepSeek Harness desktop API bridge
-/// (`/bridge/v1`).
+/// HTTP client for the DeepSeek Harness desktop API bridge (`/bridge/v1`).
 ///
-/// The client can only *read*: `listSessions`, `messages`, `exportLog`,
-/// `stream`, `health`. It deliberately offers no prompt, cancel, archive or
-/// chat-completions route, so the app cannot send its prompts, tools or agent
-/// loop to the desktop host. Outbound publication of the app's own trajectory is
-/// a separate, explicitly-triggered concern and is not part of this client.
+/// Reads: `listSessions`, `messages`, `exportLog`, `stream`, `health`.
+/// Writes (DECISIONS D-014): `prompt` and `cancel`, which hand a user's text to
+/// the *desktop* agent of an already mirrored desktop session. The desktop runs
+/// the turn with its own model, tools and agent loop and stays the only writer
+/// of that session's log; the app never sends its own prompts, tools, model
+/// configuration or agent loop, and offers no archive or chat-completions route.
 actor BridgeClient {
     private let configuration: BridgeClientConfiguration
     private let tokenProvider: BridgeTokenProvider
@@ -72,9 +87,17 @@ actor BridgeClient {
     /// Upper bound for one request, including a long-lived SSE follow.
     static let maximumResourceLifetimeSeconds: TimeInterval = 24 * 60 * 60
 
+    /// `POST …/prompt` answers only after the desktop turn ends and sends no
+    /// bytes before that. The bridge aborts the turn when the client
+    /// disconnects, so the request must outlive a long agent turn.
+    static let promptTimeoutSeconds: TimeInterval = 6 * 60 * 60
+
+    /// `protocolClasses` is a test seam: the client owns its URLSession, so a
+    /// stub `URLProtocol` must be installed on that session's configuration.
     init(
         configuration: BridgeClientConfiguration,
-        tokenProvider: @escaping BridgeTokenProvider
+        tokenProvider: @escaping BridgeTokenProvider,
+        protocolClasses: [AnyClass]? = nil
     ) {
         self.configuration = configuration
         self.tokenProvider = tokenProvider
@@ -87,6 +110,9 @@ actor BridgeClient {
         sessionConfiguration.waitsForConnectivity = false
         sessionConfiguration.requestCachePolicy = .reloadIgnoringLocalCacheData
         sessionConfiguration.urlCache = nil
+        if let protocolClasses {
+            sessionConfiguration.protocolClasses = protocolClasses
+        }
         self.sessionConfiguration = sessionConfiguration
         self.session = URLSession(configuration: sessionConfiguration)
     }
@@ -131,6 +157,36 @@ actor BridgeClient {
     /// line per event. Plain ndjson, no compression.
     func exportLog(sessionID: String) async throws -> Data {
         try await getData(sessionPath(sessionID, "export"), query: [])
+    }
+
+    /// Runs one turn of the desktop agent in `sessionID` (D-014). Blocks until
+    /// the desktop reports `turn/end`; the durable events arrive through the
+    /// mirror (`stream` + `exportLog`), this result is only the turn summary.
+    func prompt(
+        sessionID: String,
+        text: String,
+        mode: BridgePromptMode = .queue
+    ) async throws -> BridgePromptResult {
+        let body = try JSONEncoder().encode(BridgePromptRequest(text: text, mode: mode))
+        let data = try await post(
+            sessionPath(sessionID, "prompt"),
+            body: body,
+            timeout: Self.promptTimeoutSeconds
+        )
+        do {
+            return try JSONDecoder().decode(BridgePromptResult.self, from: data)
+        } catch {
+            throw BridgeClientError.decoding(String(describing: BridgePromptResult.self))
+        }
+    }
+
+    /// Asks the desktop to cancel the running turn of `sessionID`.
+    func cancel(sessionID: String) async throws {
+        _ = try await post(
+            sessionPath(sessionID, "cancel"),
+            body: nil,
+            timeout: configuration.requestTimeoutSeconds
+        )
     }
 
     /// Live SSE mirror of one desktop session. `since` reconstructs the resume
@@ -252,11 +308,35 @@ actor BridgeClient {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = configuration.requestTimeoutSeconds
+        return try await perform(request)
+    }
 
+    private func post(_ path: String, body: Data?, timeout: TimeInterval) async throws -> Data {
+        let url = try makeURL(path, query: [])
+        guard let token = await tokenProvider() else {
+            throw BridgeClientError.missingToken
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = body
+        }
+        request.timeoutInterval = timeout
+        return try await perform(request)
+    }
+
+    private func perform(_ request: URLRequest) async throws -> Data {
         do {
             let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse else {
                 throw BridgeClientError.badResponse
+            }
+            if let rejection = Self.rejection(status: http.statusCode, body: data) {
+                throw rejection
             }
             try Self.validate(status: http.statusCode)
             return data
@@ -294,6 +374,17 @@ actor BridgeClient {
             throw BridgeClientError.missingBaseURL
         }
         return url
+    }
+
+    /// Maps a non-2xx answer that carries a bridge error code to `.rejected`.
+    /// Auth failures keep their dedicated cases.
+    static func rejection(status: Int, body: Data) -> BridgeClientError? {
+        guard !(200..<300).contains(status), status != 401, status != 403,
+              let envelope = try? JSONDecoder().decode(BridgeErrorEnvelope.self, from: body),
+              envelope.error.code != nil || envelope.error.message != nil else {
+            return nil
+        }
+        return .rejected(status: status, code: envelope.error.code, message: envelope.error.message)
     }
 
     private static func validate(status: Int) throws {

@@ -29,9 +29,10 @@ enum BridgeMirrorAvailability: Error, LocalizedError, Sendable, Equatable {
 /// `localUUID ↔ bridgeSessionId` map, so `AppModel` only has to project UI state
 /// and never owns bridge transport itself.
 ///
-/// The coordinator cannot execute anything on the desktop host: the only client
-/// it builds exposes read-only routes (`health`, `sessions`, `messages`,
-/// `export`, `stream`), and the follow supervisor never posts.
+/// The only writes it issues are `prompt` and `cancel` for an already mirrored
+/// desktop session (D-014): the desktop agent runs the turn and writes its log,
+/// and the mirror picks the result up through the normal follow/import path.
+/// The follow supervisor itself never posts.
 actor BridgeMirrorCoordinator {
     private let tokenStore: CredentialStore
     private let mappings: BridgeSessionMirrorStore
@@ -43,6 +44,7 @@ actor BridgeMirrorCoordinator {
     private var client: BridgeClient?
     private var importer: BridgeSessionImporter?
     private var sync: BridgeSessionSync?
+    private var mirrorUpdateHandler: (@Sendable (UUID) async -> Void)?
 
     init(
         settings: BridgeSettings,
@@ -169,6 +171,78 @@ actor BridgeMirrorCoordinator {
         try await mappings.forget(bridgeSessionID: mapping.bridgeSessionID)
     }
 
+    // MARK: - Desktop turns (D-014)
+
+    static let followRestartDelayNanoseconds: UInt64 = 400_000_000
+
+    /// Called with the local mirror id whenever a refresh admitted new desktop
+    /// events, so the UI can reload an open mirror while a desktop turn runs.
+    func setMirrorUpdateHandler(_ handler: (@Sendable (UUID) async -> Void)?) {
+        mirrorUpdateHandler = handler
+    }
+
+    /// Sends `text` to the desktop agent of the mirrored session and returns
+    /// after the desktop turn ends. The mirror is followed for the duration of
+    /// the turn so intermediate desktop events (tool calls, partial answers)
+    /// land on the phone, and is caught up from the export once more at the end.
+    func sendPrompt(
+        localSessionID: UUID,
+        text: String,
+        mode: BridgePromptMode = .queue
+    ) async throws -> BridgePromptResult {
+        let client = try activeClient()
+        let importer = try activeImporter()
+        guard let mapping = try await mappings.mapping(localSessionID: localSessionID) else {
+            throw BridgeFollowError.mirrorNotFound(localSessionID)
+        }
+        async let response = client.prompt(
+            sessionID: mapping.bridgeSessionID,
+            text: text,
+            mode: mode
+        )
+        // An idle mirror's follow loop may be sleeping in its idle backoff
+        // (up to 32 s). Reconnect it once the desktop has had a moment to start
+        // the turn, so intermediate events stream in instead of arriving at the end.
+        if let sync {
+            try? await Task.sleep(nanoseconds: Self.followRestartDelayNanoseconds)
+            try? await sync.startFollowing(localSessionID: localSessionID)
+        }
+        let result: BridgePromptResult
+        do {
+            result = try await response
+        } catch {
+            // A rejected or interrupted turn may still have written events
+            // (the user message, a partial answer); show what the desktop holds.
+            try? await refresh(importer: importer, bridgeSessionID: mapping.bridgeSessionID)
+            throw error
+        }
+        try await refresh(importer: importer, bridgeSessionID: mapping.bridgeSessionID)
+        return result
+    }
+
+    /// Asks the desktop to stop the running turn of the mirrored session.
+    func cancelPrompt(localSessionID: UUID) async throws {
+        let client = try activeClient()
+        guard let mapping = try await mappings.mapping(localSessionID: localSessionID) else {
+            throw BridgeFollowError.mirrorNotFound(localSessionID)
+        }
+        try await client.cancel(sessionID: mapping.bridgeSessionID)
+    }
+
+    private func refresh(importer: BridgeSessionImporter, bridgeSessionID: String) async throws {
+        let outcome = try await importer.importSession(bridgeSessionID: bridgeSessionID, listTitle: nil)
+        await notifyIfChanged(outcome)
+    }
+
+    fileprivate func notifyIfChanged(_ outcome: BridgeImportOutcome) async {
+        switch outcome {
+        case .created, .refreshed:
+            await mirrorUpdateHandler?(outcome.localSessionID)
+        case .unchanged:
+            break
+        }
+    }
+
     // MARK: - Follow
 
     func startFollowing(localSessionID: UUID) async throws {
@@ -219,7 +293,7 @@ actor BridgeMirrorCoordinator {
         self.importer = importer
         self.sync = BridgeSessionSync(
             client: client,
-            refresher: importer,
+            refresher: NotifyingMirrorRefresher(importer: importer, coordinator: self),
             mappings: mappings
         )
     }
@@ -240,5 +314,17 @@ actor BridgeMirrorCoordinator {
         if let availability { throw availability }
         guard let sync else { throw BridgeMirrorAvailability.notConfigured }
         return sync
+    }
+}
+
+/// Follow-loop refresher that also tells the coordinator which local mirror
+/// changed, so an open mirror reloads while the desktop turn is still running.
+private struct NotifyingMirrorRefresher: BridgeMirrorRefreshing {
+    let importer: BridgeSessionImporter
+    weak var coordinator: BridgeMirrorCoordinator?
+
+    func refreshMirror(bridgeSessionID: String) async throws {
+        let outcome = try await importer.importSession(bridgeSessionID: bridgeSessionID, listTitle: nil)
+        await coordinator?.notifyIfChanged(outcome)
     }
 }

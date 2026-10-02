@@ -19,6 +19,7 @@
 		B17B4C0000000000000000B6 /* BridgeSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B17C4D0000000000000000B6 /* BridgeSessionModel.swift */; };
 		B17B4C0000000000000000B7 /* BridgeSessionSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = B17C4D0000000000000000B7 /* BridgeSessionSync.swift */; };
 		C17B4C0000000000000000C4 /* BridgeSessionSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17C4D0000000000000000C4 /* BridgeSessionSyncTests.swift */; };
+		C17B4C0000000000000000C5 /* BridgeClientPromptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17C4D0000000000000000C5 /* BridgeClientPromptTests.swift */; };
 		B17B4C0000000000000000B8 /* BridgeSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B17C4D0000000000000000B8 /* BridgeSettings.swift */; };
 		0027D5DD1756BC587EE92F87 /* ModelProviderAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A329BA377C31AE9121337E /* ModelProviderAdapter.swift */; };
 		002B822D6A8416A0E109CA66 /* SessionTitleSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E88FC0FE6B4542793C7685E1 /* SessionTitleSettings.swift */; };
@@ -431,6 +432,7 @@
 		B17C4D0000000000000000B6 /* BridgeSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeSessionModel.swift; sourceTree = "<group>"; };
 		B17C4D0000000000000000B7 /* BridgeSessionSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeSessionSync.swift; sourceTree = "<group>"; };
 		C17C4D0000000000000000C4 /* BridgeSessionSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeSessionSyncTests.swift; sourceTree = "<group>"; };
+		C17C4D0000000000000000C5 /* BridgeClientPromptTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeClientPromptTests.swift; sourceTree = "<group>"; };
 		B17C4D0000000000000000B8 /* BridgeSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeSettings.swift; sourceTree = "<group>"; };
 		0046C6AA2806E8DD43FF4F7A /* ISHNativeClientSlotRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ISHNativeClientSlotRegistry.swift; sourceTree = "<group>"; };
 		00A7C94C7142E260091078FB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -1227,6 +1229,7 @@
 				C17C4D0000000000000000C2 /* BridgeSessionEventConverterTests.swift */,
 				C17C4D0000000000000000C3 /* BridgeSessionImporterTests.swift */,
 				C17C4D0000000000000000C4 /* BridgeSessionSyncTests.swift */,
+				C17C4D0000000000000000C5 /* BridgeClientPromptTests.swift */,
 				E371AE75F820B28E32B22213 /* ACPSubagentClientTests.swift */,
 				1CC4C5D6488E89BC32BE1DF0 /* AgentConfigurationTests.swift */,
 				703F067573EF04BCB55FA2DC /* AgentPresetTests.swift */,
@@ -1878,6 +1881,7 @@
 				C17B4C0000000000000000C2 /* BridgeSessionEventConverterTests.swift in Sources */,
 				C17B4C0000000000000000C3 /* BridgeSessionImporterTests.swift in Sources */,
 				C17B4C0000000000000000C4 /* BridgeSessionSyncTests.swift in Sources */,
+				C17B4C0000000000000000C5 /* BridgeClientPromptTests.swift in Sources */,
 				A6FE910C9AE20BCE641B67F7 /* ACPSubagentClientTests.swift in Sources */,
 				FC62947BA740401F765A4F1C /* AgentConfigurationTests.swift in Sources */,
 				E1D6EF65933958F947485E94 /* AgentPresetTests.swift in Sources */,

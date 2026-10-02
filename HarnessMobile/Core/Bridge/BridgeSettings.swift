@@ -1,13 +1,13 @@
 import Foundation
 
-/// User-visible configuration for the read-only DeepSeek Harness desktop
-/// bridge.
+/// User-visible configuration for the DeepSeek Harness desktop bridge.
 ///
-/// Scope is deliberately narrow: the app may *read* sessions that the desktop
-/// DSH host already produced (`/sessions`, `/sessions/{id}/export`,
-/// `/sessions/{id}/stream`). It never sends prompts, tools or its own agent loop
-/// to the bridge, and it never accepts a remote execution request. See
-/// `DECISIONS.md` D-012.
+/// Scope is deliberately narrow: the app reads sessions that the desktop DSH
+/// host produced (`/sessions`, `/sessions/{id}/export`, `/sessions/{id}/stream`)
+/// and, for a mirrored session, hands the user's text to the desktop agent
+/// (`prompt`/`cancel`). It never sends its own tools, model configuration or
+/// agent loop, and it never accepts a remote execution request. See
+/// `DECISIONS.md` D-012, D-014.
 ///
 /// The bearer token is deliberately **not** part of this value: it lives only in
 /// the Keychain (`CredentialStore.bridgeTokenAccount`) so this struct stays safe

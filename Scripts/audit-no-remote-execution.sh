@@ -130,6 +130,8 @@ scan_files() {
       outside-network:*/HarnessMobileTests/BridgeSessionEventConverterTests.swift) continue ;;
       outside-network:*/HarnessMobileTests/BridgeSessionImporterTests.swift) continue ;;
       outside-network:*/HarnessMobileTests/BridgeSessionSyncTests.swift) continue ;;
+      # In-process URLProtocol fixture for the D-014 prompt/cancel wire contract.
+      outside-network:*/HarnessMobileTests/BridgeClientPromptTests.swift) continue ;;
       # In-process URLProtocol fixture for provider discovery status/body/size
       # contracts. Production provider networking remains in Core/Network.
       outside-network:*/HarnessMobileTests/ProviderModelDiscoveryTests.swift) continue ;;

@@ -150,6 +150,7 @@ $(SRCROOT)/HarnessMobileTests/BridgeClientDecodingTests.swift
 $(SRCROOT)/HarnessMobileTests/BridgeSessionEventConverterTests.swift
 $(SRCROOT)/HarnessMobileTests/BridgeSessionImporterTests.swift
 $(SRCROOT)/HarnessMobileTests/BridgeSessionSyncTests.swift
+$(SRCROOT)/HarnessMobileTests/BridgeClientPromptTests.swift
 $(SRCROOT)/HarnessMobileTests/ToolResultOutputPolicyTests.swift
 $(SRCROOT)/HarnessMobileTests/ConversationMessageWindowTests.swift
 $(SRCROOT)/HarnessMobileTests/ControllerSplitTests.swift

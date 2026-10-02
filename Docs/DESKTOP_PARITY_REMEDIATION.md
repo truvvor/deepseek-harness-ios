@@ -1,5 +1,15 @@
 # DeepSeek Harness Mobile 对齐与插件迁移
 
+### BRIDGE-002 · 镜像会话驱动桌面 Agent + 大会话导入（2026-10-02）
+
+- **状态**：`VERIFY`（真机/真实桌面桥接未验收）。
+- **决策**：D-014（取代 D-012 第 1、2 条）。桌面为会话主控，iPhone 只保存镜像日志；用户明确拒绝本地 fork。
+- **生产路径**：`BridgeClient.prompt/cancel`（`POST /bridge/v1/sessions/{id}/prompt|cancel`，`mode: queue|steer`，6 h 请求超时，`{error:{code,message}}` → `BridgeClientError.rejected`）；`BridgeMirrorCoordinator.sendPrompt/cancelPrompt`（回合期间 0.4 s 后重启跟随，结束后再从 `/export` 追平；导入有新事件时回调 `AppModel.reloadDesktopMirrorIfActive`）；`AppModel.submit` 在镜像会话转发到 `submitToDesktopMirror`；`ChatView` 使用 `isChatBusy`/`chatRunStartedAt`/`cancelActiveTurn`。附件被明确拒绝；编辑/重跑与本地命令仍拒绝。
+- **导入上限**：`BridgeSessionEventConverter.maximumLogBytes` 16 MiB → 128 MiB，`maximumEvents` 20 000 → 200 000；按字节切行解码，不再把整份导出复制成 `String`。
+- **健康探针**：`BridgeSessionHealth.displayStatus`，无 `status` 字段的 200 响应显示为 `reachable`（此前误显示 `unavailable`）。
+- **测试命令**：`swift test --build-path $RUNNER_TEMP/hm-build --filter Bridge`（CI `bridge-tests.yml`），新增 `BridgeClientPromptTests`。
+- **剩余真机边界**：真实桌面回合/取消/排队与 steer；后台超过 iOS 宽限期时桥接因客户端断开而中止回合（需桥接侧支持断开后继续）；超大会话导入的内存峰值。
+
 ### BRIDGE-001 · 桌面 DSH 会话只读镜像（2026-09-05）
 
 - **状态**：VERIFY

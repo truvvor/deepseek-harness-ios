@@ -528,7 +528,7 @@ struct SessionsView: View {
 
     private func accessibilityHint(for session: ConversationSessionSummary) -> String {
         if session.isDesktopMirror {
-            return "Read-only mirror of a DeepSeek Harness desktop session"
+            return "Mirror of a DeepSeek Harness desktop session. Messages run on the desktop agent"
         }
         if session.isArchived {
             return "Restore and open this project"

@@ -403,7 +403,7 @@ struct ChatView: View {
                 ChatInputBar(
                     draft: $draft,
                     selectedPhoto: $selectedPhoto,
-                    isRunning: model.isRunning,
+                    isRunning: model.isChatBusy,
                     isSubmitting: model.isSubmitting,
                     submissionStatus: model.submissionStatus,
                     hasStagedImage: model.hasStagedImage,
@@ -419,7 +419,7 @@ struct ChatView: View {
                     onShowCommands: showCommands,
                     onSelectSuggestion: selectSuggestion,
                     onSend: send,
-                    onCancel: model.cancelRun,
+                    onCancel: model.cancelActiveTurn,
                     onEditQueuedInput: beginEditingQueuedInput,
                     onRemoveQueuedInput: model.removeQueuedInput,
                     onSteerQueuedInput: model.steerQueuedInput,
@@ -786,7 +786,7 @@ private struct ConversationScroller: View {
             ScrollView {
                 ConversationTimeline(
                     hasResumableRun: model.hasResumableRun,
-                    isRunning: model.isRunning,
+                    isRunning: model.isChatBusy,
                     omittedContextMessages: model.omittedContextMessages,
                     messages: renderedMessages,
                     hiddenMessageCount: hiddenMessageCount,
@@ -796,7 +796,7 @@ private struct ConversationScroller: View {
                     streamingText: model.streamingText,
                     activeToolStatus: model.activeToolStatus,
                     activeToolEvents: model.activeToolEvents,
-                    runStartedAt: model.runStartedAt,
+                    runStartedAt: model.chatRunStartedAt,
                     pendingQuestionCount: model.pendingUserQuestion?.request.questions.count ?? 0,
                     pendingQuestionTitle: model.pendingUserQuestion?.request.questions.first?.question,
                     metrics: model.trajectoryMetrics,

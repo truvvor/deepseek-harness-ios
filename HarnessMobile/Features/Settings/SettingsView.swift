@@ -119,7 +119,7 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings-memory")
                 LabeledContent("Session Storage", value: "On-Device")
                 LabeledContent("Desktop Mirror", value: mirroredSessionCount > 0 ? "\(mirroredSessionCount) Read-Only" : "Off")
-                Text("Sessions, trajectories, and workspace files are stored on this iPhone. The optional Desktop DSH Bridge only reads sessions that the DeepSeek Harness desktop already produced: it never sends your prompts, tools, or agent loop to another machine, and mirrored sessions are read-only here.")
+                Text("Sessions, trajectories, and workspace files are stored on this iPhone. The optional Desktop DSH Bridge mirrors sessions of your DeepSeek Harness desktop; messages typed in a mirror run on the desktop agent, which stays the master of that session. Local sessions never send their tools or agent loop to another machine.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } header: { Label("Storage & Sync", systemImage: "externaldrive") }
@@ -246,7 +246,7 @@ private struct SettingsLinkLabel: View {
     }
 }
 
-/// Read-only desktop DeepSeek Harness bridge.
+/// Desktop DeepSeek Harness bridge (mirror + desktop turns, D-014).
 ///
 /// This screen can only *read* desktop sessions. It deliberately offers no
 /// prompt, cancel or chat-completions entry point, because the product boundary
@@ -350,7 +350,7 @@ private struct DesktopBridgeSettingsView: View {
             } header: {
                 Text("Import")
             } footer: {
-                Text("Importing copies the desktop session log into this app as a local trajectory plus a search index entry. It is a read: nothing is written back to the desktop, and the imported session is marked as a read-only mirror.")
+                Text("Importing copies the desktop session log into this app as a local trajectory plus a search index entry. Nothing is written back by the import; the imported session is marked as a desktop mirror.")
             }
 
             Section {
@@ -380,7 +380,7 @@ private struct DesktopBridgeSettingsView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityHint("Opens the read-only mirror of this desktop session")
+                    .accessibilityHint("Opens the mirror of this desktop session")
                     .swipeActions(edge: .trailing) {
                         Button("Forget", role: .destructive) {
                             Task { await model.removeDesktopMirrorSession(session.id) }
@@ -390,7 +390,7 @@ private struct DesktopBridgeSettingsView: View {
             } header: {
                 Text("Mirrored Sessions")
             } footer: {
-                Text("A mirrored session is read-only on this iPhone: the local agent loop never runs for it, so the desktop log stays the single history. Forget removes the local copy only.")
+                Text("The desktop stays the master of a mirrored session. While the bridge is connected, a message typed in a mirror runs as a turn of the desktop agent and the stop button cancels it there; the iPhone only keeps the mirrored log and never runs its own agent for it. Forget removes the local copy only.")
             }
         }
         .listStyle(.insetGrouped)
@@ -469,7 +469,7 @@ private struct DesktopBridgeSettingsView: View {
         Task {
             if let health = await model.checkDesktopMirrorHealth() {
                 let services = health.services?.keys.sorted().joined(separator: ", ") ?? "unknown"
-                healthSummary = "Bridge \(health.status ?? "unavailable") · services: \(services)"
+                healthSummary = "Bridge \(health.displayStatus) · services: \(services)"
             } else {
                 errorMessage = model.desktopMirrorLastError ?? "The bridge did not answer."
             }

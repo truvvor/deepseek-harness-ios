@@ -113,8 +113,8 @@ P3：带 npm 依赖的真实 cordis 插件安装成功。
 桌面 DSH Host 上有用户真实的工作会话。用户需要在 iPhone 上读到这些会话；同时仓库的硬边界禁止把本机的 prompt、工具集和 Agent 循环交给另一台机器执行。`dsh-api-bridge` 在同一 Host 上暴露 `/bridge/v1`（bearer token，读接口 + SSE 镜像 + v4 JSONL 导出），Host 本身没有 TLS，正常形态是局域网或 tailnet/SSH 隧道。
 
 决策：
-1. 应用只**读**桌面会话：`GET /sessions`、`/sessions/{id}/messages`、`/sessions/{id}/export`、`/sessions/{id}/stream`。桥接客户端不实现 prompt、cancel、archive、chat-completions 任何写路由，因此结构上不可能把本机 prompt/工具/Agent 循环发到桌面。
-2. 导入的会话是**只读镜像**：`ConversationSession.bridgeMirror` 记录来源，`isResumable` 恒为 `false`，`AppModel.send` 与重跑路径拒绝在镜像会话上启动本地 Agent 循环。桌面日志保持该会话的唯一历史权威。
+1. （已被 D-014 取代）应用只**读**桌面会话：`GET /sessions`、`/sessions/{id}/messages`、`/sessions/{id}/export`、`/sessions/{id}/stream`。桥接客户端不实现 prompt、cancel、archive、chat-completions 任何写路由，因此结构上不可能把本机 prompt/工具/Agent 循环发到桌面。
+2. （已被 D-014 取代）导入的会话是**只读镜像**：`ConversationSession.bridgeMirror` 记录来源，`isResumable` 恒为 `false`，`AppModel.send` 与重跑路径拒绝在镜像会话上启动本地 Agent 循环。桌面日志保持该会话的唯一历史权威。
 3. 事件写入复用既有追加式边界 `SessionTrajectoryRepository.admitSyncEnvelope`（连续后缀、≤512 事件、assets/tombstones fail-closed），不为桥接新增第二套轨迹写路径。
 4. 反向（手机轨迹 → 桌面）只允许用户显式触发的**单向上传**，且不携带任何凭据语义；本决策不开启该通道（`sessionLogEnabled` 保持关闭）。
 5. （已被 D-013 取代）明文 HTTP 只允许指向用户自己的桌面桥接地址，并由 `NSAllowsLocalNetworking` + 单个 `NSExceptionDomains` 条目限定；不使用 `NSAllowsArbitraryLoads`，模型 Provider 仍强制 HTTPS。令牌只存 Keychain（`WhenUnlockedThisDeviceOnly`），只出现在 `Authorization` 头，不进入 URL、日志、设置、轨迹或导出。
@@ -144,6 +144,27 @@ P3：带 npm 依赖的真实 cordis 插件安装成功。
 
 验证：
 真机上对裸 IP 的 HTTP 桥接连通性尚未验收，状态保持 `VERIFY`。
+
+## D-014 · 已连接时可在镜像会话中驱动桌面 Agent（取代 D-012 第 1、2 条）
+
+状态：Accepted
+日期：2026-10-02
+取代：D-012 第 1 条（桥接客户端只读）与第 2 条（镜像会话只读）；D-012 第 3、4 条与 D-013 不变
+
+背景：
+用户需要在 iPhone 上继续桌面会话，而不只是阅读；桌面 DSH 是该会话的唯一主控（master），iPhone 只保存镜像日志。用户明确拒绝在手机上本地 fork 继续。`dsh-api-bridge` 已提供 `POST /bridge/v1/sessions/{id}/prompt`（阻塞至 `turn/end`，`mode: queue|steer`）与 `POST …/cancel`，由桌面同一个 `sessionController` 执行回合。
+
+决策：
+1. 对**已镜像的桌面会话**，在桥接已配置且启用时，输入框文本原样发送到 `POST …/prompt`；停止按钮发送 `POST …/cancel`。回合完全由桌面 Agent 用桌面的模型、工具和循环执行，并由桌面写入其日志。
+2. 手机不在镜像会话上运行本地 Agent 循环、不写本地轨迹、不发送本机工具集、模型配置、凭据或附件；回合产生的事件只通过既有 `stream` 信号 + `/export` 后缀导入（`admitSyncEnvelope`）回到手机。镜像会话的编辑/重跑与本地命令仍被拒绝。
+3. 这是**用户自己的桌面主机**上的会话控制，不是本机 Agent 的服务器执行回退：本地会话的模型推理、工具和命令边界（D-001、D-010、D-011）不变，桥接仍不实现 chat-completions、archive 或 `/sync/envelope` 上传。
+4. 未连接（未启用、无令牌或网络失败）时发送明确报错，镜像保持只读。
+
+后果：
+`BridgeClient` 增加 `prompt`/`cancel` 两条写路由；`BridgeMirrorCoordinator.sendPrompt` 在回合期间重启镜像跟随以实时显示中间事件；`AppModel.submit` 在镜像会话中转发到桌面，`isChatBusy`/`cancelActiveTurn` 只驱动聊天界面。桥接在客户端断开时会中止桌面回合，因此应用在回合期间申请有限的后台执行时间；超出后台宽限期仍会中止，需要桥接侧支持断开后继续才能消除。
+
+验证：
+`HarnessMobileTests/BridgeClientPromptTests.swift` 覆盖请求路径、方法、令牌头、请求体、409/404/401 映射。真实桌面桥接下的回合、取消、前后台切换尚未在真机验收，状态保持 `VERIFY`。
 
 ## 新决策模板
 
