@@ -19,6 +19,12 @@
 - **合成夹具**：`HarnessMobileTests/Fixtures/desktop-session-export-v4.jsonl`（头行 + 10 个事件，含 1 个 `surfaceOp.replace` 与 1 个未知类型）。全部为合成内容：无真实日志、无个人数据、无凭据。
 - **剩余边界**：① 本补丁未在 macOS/Xcode 上编译或跑测试（工作区只有 Windows，无 Swift 工具链），所有代码路径未经编译器验证，`swift test` 与 `xcodebuild` 结果未知；② 未对真实 `dsh-api-bridge` 发起任何请求，SSE 帧形状与 `since` 断线恢复未经真实桥验证；③ ATS `NSExceptionDomains` 行为、局域网/tailnet 可达性与明文 HTTP 例外未经真机验证；④ `NSExceptionDomains` 中的 `dsh-host.local` 是占位宿主机，部署时须替换为真实地址并运行 `Scripts/regenerate-project.sh`；⑤ 增量 follow 的实时帧不带 `surfaceOp`（保持只追加），桌面端中途 compaction 的收窄要等下一次完整 `import` 才生效；⑥ `HarnessSyncEnvelope` 会拒绝数据里含 `token`/`secret`/`api_key` 等字段名的事件（fail-closed），此类会话的导入会整体失败并报错。
 
+- **离线验证（本次补丁提交时执行，非 macOS 编译）**：
+  - `swiftc -parse`（Swift 6.0.3 Linux 工具链，仅语法）对全部 19 个新增/修改的 `.swift` 文件 → 全部通过；这不等于类型检查，Apple SDK 相关错误仍可能在 Xcode 中暴露。
+  - `mod-pbxproj` 解析 `HarnessMobile.xcodeproj/project.pbxproj` → 通过：365 个 `PBXFileReference`、363 个 `PBXBuildFile`、5 个 target，桥接文件全部存在、无重复引用（`project.yml` 的 `sources: {path: HarnessMobile}` 为目录 glob，因此 `Scripts/regenerate-project.sh` 也会自动纳入新文件）。
+  - `./Scripts/verify-capability-manifest.sh` → 通过（该脚本在补丁开发过程中曾捕获一次真实回归：`Docs/CAPABILITY_MANIFEST.json` 中单元素数组被压成字符串，已修复）。
+  - `git diff --check` 干净；`bash -n` 覆盖 `Scripts/*`；`Info.plist` 为合法 XML；敏感内容门禁（bridge token、凭据字面量、私有地址、真实会话文本）无命中。
+  - 仍无法在此环境运行：`./Scripts/audit-no-remote-execution.sh`（需要 vendored `HarnessISH.xcframework.zip`）与 `./Scripts/check-upstream-parity.sh`（需要 upstream checkout），以及 `swift test` / `xcodebuild` / 真机验证。
 ### PARITY-023 · file-upload binary route + staged receipt（2026-09-04）
 
 - **状态**：VERIFY
