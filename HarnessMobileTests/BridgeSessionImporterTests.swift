@@ -618,6 +618,50 @@ final class BridgeSessionImporterTests: XCTestCase {
         XCTAssertEqual(mapping?.importedThroughBridgeSeq, 9)
     }
 
+    // MARK: - Transcript integrity
+
+    func testMirrorKeepsMessagesAfterAnUnansweredToolCall() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        // A replaced draft that called a tool keeps its call without a result
+        // in an append-only mirror; everything after it must survive.
+        let messages = [
+            AgentMessage.user("check the board"),
+            AgentMessage.assistant("", toolCalls: [AgentToolCall(id: "draft-call", name: "read", arguments: "{}")]),
+            AgentMessage.assistant("final answer"),
+            AgentMessage.user("next question"),
+            AgentMessage.assistant("tail of the thread")
+        ]
+
+        let mirror = try await harness.sessionStore.createSession(
+            title: "Mirror",
+            bridgeMirror: BridgeSessionMirror(bridgeSessionID: bridgeSessionID),
+            makeActive: false
+        )
+        let savedMirror = try await harness.sessionStore.checkpointSession(
+            id: mirror.id,
+            checkpoint: ConversationCheckpoint(
+                messages: messages,
+                workState: ConversationWorkState(),
+                bridgeMirror: BridgeSessionMirror(bridgeSessionID: bridgeSessionID)
+            )
+        )
+        XCTAssertEqual(savedMirror.messages.count, 5)
+        XCTAssertEqual(savedMirror.messages.last?.content, "tail of the thread")
+
+        // A reload normalises every stored session; the mirror stays whole.
+        let reloaded = try await harness.sessionStore.session(id: mirror.id)
+        XCTAssertEqual(reloaded.messages.count, 5)
+
+        // A local session is still trimmed to a valid model history.
+        let local = try await harness.sessionStore.createSession(title: "Local", makeActive: false)
+        let savedLocal = try await harness.sessionStore.checkpointSession(
+            id: local.id,
+            checkpoint: ConversationCheckpoint(messages: messages, workState: ConversationWorkState())
+        )
+        XCTAssertEqual(savedLocal.messages.count, 1)
+    }
+
     // MARK: - Failure handling
 
     func testPartialImportIsRolledBackWhenAdmissionFails() async throws {

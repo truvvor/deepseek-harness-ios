@@ -280,6 +280,11 @@ extension AppModel {
                 ? nil
                 : result.failures.values.sorted().first
             await finishMirrorRemoval(result.pruned)
+            // The open mirror shows its in-memory copy; pick up what the sync
+            // just wrote.
+            if let activeSessionID, activeSessionIsDesktopMirror {
+                await reloadDesktopMirrorIfActive(activeSessionID)
+            }
             return summary
         } catch {
             desktopMirrorLastError = error.localizedDescription

@@ -7668,6 +7668,13 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
 
 
     private func persistSession() async {
+        // The importer is the only writer of a desktop mirror. The on-screen copy
+        // can lag a sync, so writing it back would undo the desktop's newest
+        // messages.
+        if activeSessionIsDesktopMirror {
+            await refreshSessionSummaries()
+            return
+        }
         do {
             workState = await workStateCoordinator.snapshot()
             let session = try await sessionStore.checkpointActiveSession(

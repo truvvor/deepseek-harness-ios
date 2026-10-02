@@ -758,14 +758,18 @@ actor SessionStore {
         if !checkpoint.messages.isEmpty {
             controlState.lockAgentPreset()
         }
-        snapshot.sessions[index].messages = ConversationCompactor.repairIncompleteToolTurn(
-            checkpoint.messages
-        )
-        snapshot.sessions[index].workState = checkpoint.workState
-        snapshot.sessions[index].controlState = controlState
         if let bridgeMirror = checkpoint.bridgeMirror {
             snapshot.sessions[index].bridgeMirror = bridgeMirror
         }
+        // A desktop mirror is a transcript of another host's log, never a model
+        // request: an unanswered tool call (a replaced draft, a turn still
+        // running on the desktop) is legitimate there. Trimming at the first
+        // such call would cut off everything after it.
+        snapshot.sessions[index].messages = snapshot.sessions[index].isDesktopMirror
+            ? checkpoint.messages
+            : ConversationCompactor.repairIncompleteToolTurn(checkpoint.messages)
+        snapshot.sessions[index].workState = checkpoint.workState
+        snapshot.sessions[index].controlState = controlState
         snapshot.sessions[index].updatedAt = now
         snapshot.sessions[index].revision += 1
         snapshot.updatedAt = now
@@ -867,9 +871,9 @@ actor SessionStore {
         }
 
         for index in snapshot.sessions.indices {
-            let repaired = ConversationCompactor.repairIncompleteToolTurn(
-                snapshot.sessions[index].messages
-            )
+            let repaired = snapshot.sessions[index].isDesktopMirror
+                ? snapshot.sessions[index].messages
+                : ConversationCompactor.repairIncompleteToolTurn(snapshot.sessions[index].messages)
             if repaired != snapshot.sessions[index].messages {
                 snapshot.sessions[index].messages = repaired
                 snapshot.sessions[index].updatedAt = .now
