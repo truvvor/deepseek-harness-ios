@@ -29,9 +29,9 @@ enum BridgeClientError: Error, LocalizedError, Sendable, Equatable {
         case .missingBaseURL:
             return "No desktop bridge address is configured."
         case .missingToken:
-            return "The desktop bridge bearer token is missing."
+            return "The desktop bridge access token is missing."
         case .unauthorized:
-            return "The desktop bridge rejected the bearer token (HTTP 401)."
+            return "The desktop bridge rejected the access token (HTTP 401)."
         case .forbidden:
             return "The desktop bridge refused the request (HTTP 403)."
         case .notFound:

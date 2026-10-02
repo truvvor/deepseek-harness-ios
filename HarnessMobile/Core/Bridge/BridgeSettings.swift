@@ -131,7 +131,7 @@ struct BridgeSettings: Codable, Sendable, Equatable {
         var normalized = URLComponents()
         normalized.scheme = scheme
         normalized.host = host
-        normalized.port = components.port ?? (scheme == "https" ? 443 : 80)
+        normalized.port = components.port
         if path.isEmpty {
             normalized.path = "/" + versionPath
         } else if path.lowercased().hasSuffix("/" + versionPath) {

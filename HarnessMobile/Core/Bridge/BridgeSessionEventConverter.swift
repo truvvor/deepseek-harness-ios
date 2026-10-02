@@ -125,7 +125,7 @@ enum BridgeSessionEventConverter {
                 WireEvent(
                     type: type,
                     seq: seq,
-                    time: max(0, time),
+                    time: time,
                     data: data,
                     surfaceStart: surface?.start,
                     surfaceEnd: surface?.end
@@ -180,7 +180,8 @@ enum BridgeSessionEventConverter {
 
             let isKnown = isKnownEventType(wire.type)
             if !isKnown { unknownTypes.insert(wire.type) }
-            let resolvedTime = wire.time == 0 ? fallbackTime : wire.time
+            // Negative clocks clamp to 0; an unset (0) time takes the import clock.
+            let resolvedTime = wire.time < 0 ? 0 : (wire.time == 0 ? fallbackTime : wire.time)
             do {
                 events.append(
                     try makeEvent(

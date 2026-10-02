@@ -104,9 +104,10 @@ final class BridgeSessionEventConverterTests: XCTestCase {
         let persisted = try await repository.allEvents(sessionID: sessionID)
         let messages = SessionTrajectoryConversationProjection.messages(from: persisted)
 
-        // The fixture has 8 message-producing events; the replacement at seq 7
-        // removes the draft at seq 6 from the surface, so 7 messages remain.
-        XCTAssertEqual(messages.count, 7)
+        // The fixture has five message events (user, assistant with a tool
+        // call, tool result, draft, final); the replacement at seq 7 removes
+        // the draft at seq 6 from the surface, so four messages remain.
+        XCTAssertEqual(messages.count, 4)
         XCTAssertEqual(messages.first?.content, "Summarise the fixture file.")
         XCTAssertEqual(messages.last?.content, "Final answer.")
         XCTAssertFalse(

@@ -94,7 +94,7 @@ final class BridgeSessionImporterTests: XCTestCase {
 
         let session = try await harness.sessionStore.session(id: localSessionID)
         XCTAssertEqual(session.title, "Fixture desktop session")
-        XCTAssertEqual(session.messages.count, 7)
+        XCTAssertEqual(session.messages.count, 4)
         XCTAssertEqual(session.messages.first?.content, "Summarise the fixture file.")
         XCTAssertEqual(session.messages.last?.content, "Final answer.")
 
@@ -165,20 +165,21 @@ final class BridgeSessionImporterTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
 
-        // A hand-written version 4 snapshot with no `bridgeMirror` key, i.e. the
-        // shape an older build wrote.
-        let legacyID = UUID()
-        let json = """
-        {"version":4,"activeSessionID":"\(legacyID.uuidString)","sessions":[
-          {"id":"\(legacyID.uuidString)","title":"Legacy","messages":[],"workState":
-            {"plan":[],"todos":[]},"controlState":{"interactionMode":"chat","permissionMode":"standard",
-            "queuedInputs":[],"isAgentPresetLocked":false},"createdAt":0,"updatedAt":0,"revision":1}
-        ],"updatedAt":0}
-        """
-        try Data(json.utf8).write(
-            to: root.appendingPathComponent("current-session.json"),
-            options: .atomic
+        // Write a real snapshot, then strip every `bridgeMirror` key so the
+        // file has exactly the shape an older build wrote.
+        let seed = SessionStore(root: root)
+        let legacyID = try await seed.createSession(title: "Legacy").id
+        let snapshotURL = root.appendingPathComponent("current-session.json")
+        var snapshot = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: Data(contentsOf: snapshotURL)) as? [String: Any]
         )
+        let sessions = try XCTUnwrap(snapshot["sessions"] as? [[String: Any]])
+        snapshot["sessions"] = sessions.map { row -> [String: Any] in
+            var row = row
+            row.removeValue(forKey: "bridgeMirror")
+            return row
+        }
+        try JSONSerialization.data(withJSONObject: snapshot).write(to: snapshotURL, options: .atomic)
 
         let store = SessionStore(root: root)
         let state = try await store.loadState()

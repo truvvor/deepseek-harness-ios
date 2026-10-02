@@ -103,7 +103,8 @@ final class BridgeClientDecodingTests: XCTestCase {
             followsSelectedMirrorAutomatically: true
         )
         try store.saveBridgeSettings(settings)
-        XCTAssertEqual(store.loadBridgeSettings(), settings)
+        // Saving stores the normalized address (with the /bridge/v1 path).
+        XCTAssertEqual(store.loadBridgeSettings(), try settings.validated())
 
         // A damaged row must fall back to the disabled defaults.
         defaults.set(Data("not-json".utf8), forKey: "bridge.desktop-mirror.v1")

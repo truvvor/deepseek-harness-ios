@@ -129,6 +129,11 @@ struct BridgeMessagePage: Decodable, Sendable, Equatable {
     let throughSeq: Int64?
     let hasMore: Bool?
     let messages: [Message]
+
+    private enum CodingKeys: String, CodingKey {
+        case sessionID = "sessionId"
+        case throughSeq, hasMore, messages
+    }
 }
 
 /// Header line of the canonical v4 session export (`{"type":"session",...}`).
