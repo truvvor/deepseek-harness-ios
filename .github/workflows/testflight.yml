@@ -1,0 +1,176 @@
+name: TestFlight
+
+# Archives HarnessMobile on a self-hosted Apple Silicon Mac runner and uploads
+# the build to App Store Connect / TestFlight.
+#
+# Required repository secrets:
+#   ASC_KEY_ID      App Store Connect API key ID
+#   ASC_ISSUER_ID   App Store Connect API issuer ID
+#   ASC_KEY_P8      Contents of the AuthKey_<id>.p8 file (raw PEM or base64)
+# Optional repository variables:
+#   APPLE_TEAM_ID   Team that signs the app (default: team in project.yml)
+#   BUNDLE_ID       Main app bundle ID; extensions and the app group derive
+#                   from it (default: com.llf.harnessmobile)
+#   DEVELOPER_DIR   Xcode to use (default: newest of Xcode.app / Xcode-beta.app)
+
+on:
+  push:
+    tags:
+      - "testflight/*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to build (empty = the ref the workflow runs on)
+        required: false
+        default: ""
+      marketing_version:
+        description: CFBundleShortVersionString override (empty = project.yml)
+        required: false
+        default: ""
+
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 120
+    env:
+      ORIGINAL_BUNDLE_ID: com.llf.harnessmobile
+      ORIGINAL_TEAM_ID: 2SH3TUR2JL
+      BUNDLE_ID: ${{ vars.BUNDLE_ID || 'com.llf.harnessmobile' }}
+      APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID || '2SH3TUR2JL' }}
+      BUILD_ROOT: ${{ runner.temp }}/harness-testflight
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          clean: true
+
+      - name: Select Xcode
+        run: |
+          set -euo pipefail
+          dev_dir="${{ vars.DEVELOPER_DIR }}"
+          if [ -z "$dev_dir" ]; then
+            best=""; best_major=0
+            for app in /Applications/Xcode.app /Applications/Xcode-beta.app; do
+              [ -d "$app" ] || continue
+              major="$(DEVELOPER_DIR="$app/Contents/Developer" xcodebuild -version | awk 'NR==1{split($2,v,"."); print v[1]}')"
+              if [ "$major" -gt "$best_major" ]; then best="$app"; best_major="$major"; fi
+            done
+            [ -n "$best" ] || { echo "::error::No Xcode found in /Applications"; exit 1; }
+            dev_dir="$best/Contents/Developer"
+          fi
+          echo "DEVELOPER_DIR=$dev_dir" >> "$GITHUB_ENV"
+          DEVELOPER_DIR="$dev_dir" xcodebuild -version
+
+      - name: Restore or build iSH sandbox artifacts
+        run: |
+          set -euo pipefail
+          key="$(cat Dependencies/upstreams.lock.json Scripts/build-ish-sandbox.sh | shasum -a 256 | cut -c1-16)"
+          cache="$HOME/Library/Caches/harness-mobile-ci/ish-$key"
+          target="Vendor/OpenMinisISH/Artifacts"
+          if [ -d "$cache/HarnessISH.xcframework" ]; then
+            echo "Using cached iSH artifacts: $cache"
+          else
+            Scripts/build-ish-sandbox.sh all
+            rm -rf "$cache.tmp" && mkdir -p "$(dirname "$cache")"
+            cp -R "$target" "$cache.tmp" && mv "$cache.tmp" "$cache"
+          fi
+          rm -rf "$target" && mkdir -p "$(dirname "$target")"
+          cp -R "$cache" "$target"
+
+      - name: Retarget signing identity
+        run: |
+          set -euo pipefail
+          if [ "$BUNDLE_ID" != "$ORIGINAL_BUNDLE_ID" ]; then
+            grep -rlF "$ORIGINAL_BUNDLE_ID" project.yml HarnessMobile.xcodeproj HarnessMobile HarnessMobileShare HarnessMobileLiveActivity \
+              | while IFS= read -r file; do
+                  sed -i '' "s/com\.llf\.harnessmobile/$BUNDLE_ID/g" "$file"
+                done
+          fi
+          if [ "$APPLE_TEAM_ID" != "$ORIGINAL_TEAM_ID" ]; then
+            sed -i '' "s/$ORIGINAL_TEAM_ID/$APPLE_TEAM_ID/g" project.yml HarnessMobile.xcodeproj/project.pbxproj
+          fi
+          grep -n "PRODUCT_BUNDLE_IDENTIFIER\|DEVELOPMENT_TEAM" HarnessMobile.xcodeproj/project.pbxproj | sort -u -k2 | head -20
+
+      - name: Install App Store Connect API key
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_KEY_P8" ] || { echo "::error::ASC_KEY_ID / ASC_KEY_P8 secrets are not set"; exit 1; }
+          mkdir -p "$BUILD_ROOT"
+          key_path="$BUILD_ROOT/AuthKey_$ASC_KEY_ID.p8"
+          if printf '%s' "$ASC_KEY_P8" | grep -q "BEGIN PRIVATE KEY"; then
+            printf '%s\n' "$ASC_KEY_P8" > "$key_path"
+          else
+            printf '%s' "$ASC_KEY_P8" | base64 --decode > "$key_path"
+          fi
+          chmod 600 "$key_path"
+          echo "ASC_KEY_PATH=$key_path" >> "$GITHUB_ENV"
+
+      - name: Archive
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          build_number="$(( ${{ github.run_number }} + 100 ))$(printf '.%s' "${{ github.run_attempt }}" | sed 's/^\.1$//')"
+          version_args=()
+          if [ -n "${{ inputs.marketing_version }}" ]; then
+            version_args+=("MARKETING_VERSION=${{ inputs.marketing_version }}")
+          fi
+          xcodebuild archive \
+            -project HarnessMobile.xcodeproj \
+            -scheme HarnessMobile \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$BUILD_ROOT/HarnessMobile.xcarchive" \
+            -derivedDataPath "$BUILD_ROOT/DerivedData" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="$build_number" \
+            ${version_args[@]+"${version_args[@]}"}
+          echo "Archived build $build_number"
+
+      - name: Export and upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          cat > "$BUILD_ROOT/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+            <key>testFlightInternalTestingOnly</key><false/>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath "$BUILD_ROOT/HarnessMobile.xcarchive" \
+            -exportPath "$BUILD_ROOT/export" \
+            -exportOptionsPlist "$BUILD_ROOT/ExportOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Clean up
+        if: always()
+        run: rm -rf "$BUILD_ROOT"
