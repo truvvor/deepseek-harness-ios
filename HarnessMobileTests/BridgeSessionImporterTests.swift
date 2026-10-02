@@ -271,6 +271,10 @@ final class BridgeSessionImporterTests: XCTestCase {
                 seq: UInt64(report.events.count + 1),
                 time: 1_735_689_601_100,
                 data: .object([
+                    // A DSH user message carries its id and role; the
+                    // projection skips one without them.
+                    "id": .string("66666666-6666-4666-8666-666666666666"),
+                    "role": .string("user"),
                     "content": .array([.object(["type": .string("text"), "text": .string("Follow-up")])])
                 ])
             )
