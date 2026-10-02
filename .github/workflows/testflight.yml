@@ -83,6 +83,7 @@ jobs:
           if [ -d "$cache/HarnessISH.xcframework" ]; then
             echo "Using cached iSH artifacts: $cache"
           else
+            Scripts/fetch-upstreams.sh ishArm64 openminis
             Scripts/build-ish-sandbox.sh all
             rm -rf "$cache.tmp" && mkdir -p "$(dirname "$cache")"
             cp -R "$target" "$cache.tmp" && mv "$cache.tmp" "$cache"
