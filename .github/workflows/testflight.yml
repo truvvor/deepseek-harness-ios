@@ -106,6 +106,16 @@ jobs:
           fi
           rm -rf "$target" && mkdir -p "$(dirname "$target")"
           cp -R "$cache" "$target"
+          # The artifacts were rebuilt on this runner from the locked upstream
+          # commits; byte-identical output to the committed lock needs the
+          # author's exact toolchain, so re-lock them in this checkout only.
+          for artifact in HarnessISH.xcframework.zip:openminis-ishArm64 RootfsPatch.bundle.zip:ishArm64 alpine-rootfs.zip:alpineRootfs-openminis-ishArm64; do
+            Scripts/record-artifact.sh "$target/${artifact%%:*}" "${artifact#*:}" false
+          done
+          if ! git diff --quiet -- Dependencies/artifacts.lock.json; then
+            echo "::warning::iSH artifacts were rebuilt on the runner and re-locked locally (toolchain differs from the committed lock)"
+            git diff -- Dependencies/artifacts.lock.json
+          fi
 
       - name: Retarget signing identity
         run: |
