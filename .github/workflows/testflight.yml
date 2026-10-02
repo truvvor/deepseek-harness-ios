@@ -21,6 +21,7 @@ on:
       - "testflight/*"
     branches:
       - claude/gifted-tesla-pzo0xz
+      - dsh-bridge-sync
     paths-ignore:
       - "**/*.md"
       - "HarnessMobileTests/**"

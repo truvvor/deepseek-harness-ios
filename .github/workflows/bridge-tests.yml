@@ -1,0 +1,45 @@
+name: Bridge unit tests
+
+# Runs the desktop-bridge XCTest cases through SwiftPM on the self-hosted Mac.
+on:
+  push:
+    branches:
+      - claude/gifted-tesla-pzo0xz
+      - dsh-bridge-sync
+    paths:
+      - "HarnessMobile/Core/**"
+      - "HarnessMobileTests/Bridge*"
+      - "HarnessMobileTests/Fixtures/**"
+      - "Package.swift"
+      - ".github/workflows/bridge-tests.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+jobs:
+  bridge-tests:
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          clean: true
+
+      - name: Select Xcode
+        run: |
+          set -euo pipefail
+          best=""; best_major=0
+          for app in /Applications/Xcode*.app; do
+            major="$(DEVELOPER_DIR="$app/Contents/Developer" xcodebuild -version 2>/dev/null | awk 'NR==1{split($2,v,"."); print v[1]}')"
+            [ -n "$major" ] || continue
+            if [ "$major" -gt "$best_major" ]; then best="$app"; best_major="$major"; fi
+          done
+          [ -n "$best" ] || { echo "::error::No Xcode found in /Applications"; exit 1; }
+          echo "DEVELOPER_DIR=$best/Contents/Developer" >> "$GITHUB_ENV"
+
+      - name: swift test --filter Bridge
+        run: |
+          set -euo pipefail
+          swift test --build-path "$RUNNER_TEMP/hm-build" --filter 'Bridge'
