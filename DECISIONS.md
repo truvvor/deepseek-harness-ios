@@ -117,7 +117,7 @@ P3：带 npm 依赖的真实 cordis 插件安装成功。
 2. 导入的会话是**只读镜像**：`ConversationSession.bridgeMirror` 记录来源，`isResumable` 恒为 `false`，`AppModel.send` 与重跑路径拒绝在镜像会话上启动本地 Agent 循环。桌面日志保持该会话的唯一历史权威。
 3. 事件写入复用既有追加式边界 `SessionTrajectoryRepository.admitSyncEnvelope`（连续后缀、≤512 事件、assets/tombstones fail-closed），不为桥接新增第二套轨迹写路径。
 4. 反向（手机轨迹 → 桌面）只允许用户显式触发的**单向上传**，且不携带任何凭据语义；本决策不开启该通道（`sessionLogEnabled` 保持关闭）。
-5. 明文 HTTP 只允许指向用户自己的桌面桥接地址，并由 `NSAllowsLocalNetworking` + 单个 `NSExceptionDomains` 条目限定；不使用 `NSAllowsArbitraryLoads`，模型 Provider 仍强制 HTTPS。令牌只存 Keychain（`WhenUnlockedThisDeviceOnly`），只出现在 `Authorization` 头，不进入 URL、日志、设置、轨迹或导出。
+5. （已被 D-013 取代）明文 HTTP 只允许指向用户自己的桌面桥接地址，并由 `NSAllowsLocalNetworking` + 单个 `NSExceptionDomains` 条目限定；不使用 `NSAllowsArbitraryLoads`，模型 Provider 仍强制 HTTPS。令牌只存 Keychain（`WhenUnlockedThisDeviceOnly`），只出现在 `Authorization` 头，不进入 URL、日志、设置、轨迹或导出。
 
 后果：
 `SECURITY_GUIDELINES.md` 第 5 条的“未配置不产生网络请求”对桥接同样成立：未启用或未存令牌时不创建客户端。`Docs/DESKTOP_PARITY_REMEDIATION.md` 记录实现与证据状态；脚本审计新增 `Core/Bridge/` 网络边界例外并注明只读理由。
@@ -125,6 +125,25 @@ P3：带 npm 依赖的真实 cordis 插件安装成功。
 验证：
 代码、转换器和导入路径已有窄单元测试（见 `Docs/DESKTOP_PARITY_REMEDIATION.md` 的 BRIDGE-001）。真实桌面桥、隧道/局域网、iOS 真机网络与 ATS 行为尚未验收，状态保持 `VERIFY`。
 
+## D-013 · 桌面桥接允许任意地址的明文 HTTP（取代 D-012 第 5 条）
+
+状态：Accepted
+日期：2026-10-02
+取代：D-012 第 5 条（ATS 范围）；D-012 其余条款不变
+
+背景：
+用户会把桌面 DSH Host 直接暴露在公网或局域网的裸 IP 上（例如 `http://203.0.113.7:19387`）。`NSExceptionDomains` 不能用通配符描述 IP，而 `NSAllowsLocalNetworking` 只覆盖 `.local`/非限定主机名；并且 iOS 10+ 只要存在 `NSAllowsLocalNetworking`，`NSAllowsArbitraryLoads` 就会被忽略。按 D-012 的 ATS 配置，裸 IP 桥接地址无法连通。
+
+决策：
+1. `Info.plist` 的 `NSAppTransportSecurity` 只设置 `NSAllowsArbitraryLoads = true`，移除 `NSAllowsLocalNetworking` 与 `dsh-host.local` 例外。
+2. HTTPS 约束改由代码执行，不再依赖 ATS：模型 Provider 仍只接受 `https` 源（`CredentialStore.validatedOrigin`），桥接地址由 `BridgeSettings.validatedBaseURL` 接受 `http`/`https`。
+3. 明文 HTTP 下 bearer 令牌与会话内容以明文传输；设置页明确提示，推荐 HTTPS（反向代理或 tailnet）。桥接仍只读，D-012 第 1–4 条不变。
+
+后果：
+`web_fetch` 与内置浏览器原本就允许 `http` 方案，此前被 ATS 拦截，现在可以访问明文 HTTP 页面，与桌面版行为一致。
+
+验证：
+真机上对裸 IP 的 HTTP 桥接连通性尚未验收，状态保持 `VERIFY`。
 
 ## 新决策模板
 

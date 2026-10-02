@@ -105,12 +105,11 @@ struct BridgeSettings: Codable, Sendable, Equatable {
 
     /// Normalizes a user-entered bridge address.
     ///
-    /// Plain HTTP is accepted here on purpose: the desktop bridge is a
-    /// token-protected loopback/LAN endpoint reached over a user-owned tunnel or
-    /// tailnet, and its own documentation states it has no TLS. This is the one
-    /// documented exception to the HTTPS-only model-provider rule; it is paired
-    /// with `NSAllowsLocalNetworking` in `project.yml` (never
-    /// `NSAllowsArbitraryLoads`).
+    /// Plain HTTP is accepted here on purpose, to any host including a bare
+    /// public IP: the desktop bridge has no TLS of its own. This is the one
+    /// documented exception to the HTTPS-only model-provider rule, which is
+    /// enforced in code (`AgentConfiguration`, `CredentialStore`) rather than by
+    /// ATS; `Info.plist` sets `NSAllowsArbitraryLoads` for it (DECISIONS D-013).
     static func validatedBaseURL(_ url: URL) throws -> URL {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let scheme = components.scheme?.lowercased(),

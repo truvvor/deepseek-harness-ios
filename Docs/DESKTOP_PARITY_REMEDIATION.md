@@ -32,6 +32,7 @@
   - 跟随：SSE 只作为变更信号；收到 `event`（≥3 s 节流）、`turn/end`、`closed` 或领先的 `snapshot` 时通过导入器重读 `/export` 追加后缀，不再把有损的 `{role, content}` 帧写入轨迹；空闲连接 2→32 s、失败 1→16 s 退避，不再 0.5 s 轮询。
   - 传输：`timeoutIntervalForResource` 改为 24 h 上限，静默由请求级 `timeoutInterval` 控制，SSE 不再每 120 s 被强制断开；启动时 `connectIfConfigured()` 构建客户端。
   - 只读门禁：`submit()`（含斜杠命令与 `@subagent`）、`startRun`、`appendCommandRun`、`hasResumableRun` 计算统一拒绝镜像会话（D-012）。
+  - ATS（D-013 取代 D-012 第 5 条）：为支持裸 IP（含公网）明文 HTTP 桥接地址，`NSAppTransportSecurity` 只保留 `NSAllowsArbitraryLoads = true`（存在 `NSAllowsLocalNetworking` 时该键会被 iOS 忽略）；模型 Provider 的 HTTPS 由 `AgentConfiguration`/`CredentialStore` 在代码中强制。设置页提示明文 HTTP 下令牌与内容不加密。
 
 ### PARITY-023 · file-upload binary route + staged receipt（2026-09-04）
 

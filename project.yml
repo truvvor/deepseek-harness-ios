@@ -92,20 +92,12 @@ targets:
         NSBluetoothAlwaysUsageDescription: 仅在你批准蓝牙工具时扫描或连接附近的 BLE 设备。
         NSBluetoothPeripheralUsageDescription: 仅在你批准蓝牙工具时与附近的 BLE 设备通信。
         NSLocalNetworkUsageDescription: 仅在你批准需要访问同一局域网设备的功能时使用本地网络。
-        # Desktop DSH bridge (read-only session mirror). ATS stays strict for
-        # everything except the user's own LAN/tailnet DSH host:
-        # `NSAllowsLocalNetworking` covers `.local` and unqualified hostnames but
-        # NOT a numeric IP address, so a plain-HTTP bridge by IP additionally
-        # needs that host in `NSExceptionDomains`.
-        # Prefer the HTTPS form (a tailnet name), which needs no ATS exception at
-        # all; then remove both keys below.
-        # `NSAllowsArbitraryLoads` is deliberately absent.
+        # Desktop DSH bridge over plain HTTP to arbitrary addresses, including
+        # bare public IPs (DECISIONS D-013). `NSAllowsLocalNetworking` must stay
+        # absent: when it is present iOS ignores `NSAllowsArbitraryLoads`.
+        # Model providers remain HTTPS-only in code (CredentialStore).
         NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
-          NSExceptionDomains:
-            dsh-host.local:
-              NSExceptionAllowsInsecureHTTPLoads: true
-              NSIncludesSubdomains: false
+          NSAllowsArbitraryLoads: true
         NSHealthShareUsageDescription: 仅在你调用并批准 Apple 健康工具时读取所选健康数据；工具结果会发送给当前配置的模型服务并保存在本机会话中。
         NSHealthUpdateUsageDescription: 仅在你调用并批准 Apple 健康写入工具时写入所选健康数据。
         NSHomeKitUsageDescription: 当前构建未获得 HomeKit capability；取得签名能力后，才会在你批准时查询或控制智能家居配件。

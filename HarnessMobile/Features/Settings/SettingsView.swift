@@ -290,7 +290,7 @@ private struct DesktopBridgeSettingsView: View {
             } header: {
                 Text("Bridge")
             } footer: {
-                Text("The address is the DSH host origin, for example http://192.0.2.10:19387 or a tailnet name. /bridge/v1 is appended automatically. Plain HTTP is accepted only for a local or tunnelled host; it is the one documented exception to the HTTPS-only model-provider rule.")
+                Text("The address is the DSH host origin, for example http://203.0.113.7:19387, a LAN IP, or a host name. /bridge/v1 is appended automatically. Over plain HTTP the bearer token and session content travel unencrypted, so prefer https:// (a reverse proxy or a tailnet) when the host is reachable from the internet. Model providers always require HTTPS.")
             }
 
             Section {
