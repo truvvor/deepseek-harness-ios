@@ -63,9 +63,11 @@ jobs:
           dev_dir="${{ vars.DEVELOPER_DIR }}"
           if [ -z "$dev_dir" ]; then
             best=""; best_major=0
-            for app in /Applications/Xcode.app /Applications/Xcode-beta.app; do
+            for app in /Applications/Xcode*.app; do
               [ -d "$app" ] || continue
-              major="$(DEVELOPER_DIR="$app/Contents/Developer" xcodebuild -version | awk 'NR==1{split($2,v,"."); print v[1]}')"
+              major="$(DEVELOPER_DIR="$app/Contents/Developer" xcodebuild -version 2>/dev/null | awk 'NR==1{split($2,v,"."); print v[1]}')"
+              echo "Found $app (Xcode ${major:-?})"
+              [ -n "$major" ] || continue
               if [ "$major" -gt "$best_major" ]; then best="$app"; best_major="$major"; fi
             done
             [ -n "$best" ] || { echo "::error::No Xcode found in /Applications"; exit 1; }
