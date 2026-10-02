@@ -467,6 +467,12 @@ final class SessionTrajectoryRepositoryTests: XCTestCase {
         ]
 
         let projected = SessionTrajectoryConversationProjection.messages(from: events)
+        // The readable transcript (desktop mirrors) keeps the compacted
+        // messages and shows the summary where the compaction happened.
+        XCTAssertEqual(
+            SessionTrajectoryConversationProjection.transcriptMessages(from: events).map(\.id),
+            [oldUser.id, oldReply.id, checkpoint.id, current.id]
+        )
         XCTAssertEqual(projected.map(\.id), [checkpoint.id, current.id])
         XCTAssertEqual(projected.map(\.content), [checkpoint.content, current.content])
         XCTAssertEqual(projected.map(\.role), [.user, .user])

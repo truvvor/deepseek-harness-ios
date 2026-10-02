@@ -11,6 +11,17 @@ enum SessionTrajectoryConversationProjection {
         surfaceNodes(from: events).map(\.message)
     }
 
+    /// Every final message in log order, ignoring `surfaceOp.replace`.
+    ///
+    /// A replacement (compaction) shortens the *model-facing* history; the
+    /// messages it covers are still part of the conversation a person reads.
+    /// Desktop mirrors are never sent to a local model (D-014), so they show
+    /// this full transcript, with the compaction summary at the point where
+    /// the desktop compacted.
+    static func transcriptMessages(from events: [SessionEvent]) -> [AgentMessage] {
+        surfaceNodes(from: events, honorsReplacements: false).map(\.message)
+    }
+
     /// The balanced model-visible prefix that an in-process fork child may
     /// inherit. Delegation happens while the parent's current tool-calling
     /// turn is still open, so copying messages after the newest `turn/end`
@@ -47,14 +58,17 @@ enum SessionTrajectoryConversationProjection {
         let message: AgentMessage
     }
 
-    private static func surfaceNodes(from events: [SessionEvent]) -> [SurfaceNode] {
+    private static func surfaceNodes(
+        from events: [SessionEvent],
+        honorsReplacements: Bool = true
+    ) -> [SurfaceNode] {
         var result: [SurfaceNode] = []
         var toolNames: [String: String] = [:]
 
         for event in events.sorted(by: { $0.seq < $1.seq }) {
             if let user = event.userMessageData,
                let message = decodeUserMessage(user) {
-                apply(event: event, message: message, to: &result)
+                apply(event: event, message: message, to: &result, honorsReplacements: honorsReplacements)
                 continue
             }
 
@@ -67,7 +81,7 @@ enum SessionTrajectoryConversationProjection {
                 for call in message.toolCalls {
                     toolNames[call.id] = call.name
                 }
-                apply(event: event, message: message, to: &result)
+                apply(event: event, message: message, to: &result, honorsReplacements: honorsReplacements)
                 continue
             }
 
@@ -81,7 +95,7 @@ enum SessionTrajectoryConversationProjection {
                 ) {
                 // A repaired interruption result is a real model-visible
                 // message and is therefore deliberately included here.
-                apply(event: event, message: message, to: &result)
+                apply(event: event, message: message, to: &result, honorsReplacements: honorsReplacements)
             }
         }
         return result
@@ -90,9 +104,10 @@ enum SessionTrajectoryConversationProjection {
     private static func apply(
         event: SessionEvent,
         message: AgentMessage,
-        to nodes: inout [SurfaceNode]
+        to nodes: inout [SurfaceNode],
+        honorsReplacements: Bool
     ) {
-        if case let .replace(start, end) = event.surfaceOp {
+        if honorsReplacements, case let .replace(start, end) = event.surfaceOp {
             nodes.removeAll { start...end ~= $0.sequence }
         }
         nodes.append(SurfaceNode(sequence: event.seq, message: message))

@@ -137,7 +137,7 @@ actor BridgeSessionImporter {
             // shell; mirroring it produced a conversation with zero messages in the
             // app list. Refreshing an existing mirror stays allowed.
             if try await self.mappings.mapping(bridgeSessionID: bridgeSessionID) == nil,
-               SessionTrajectoryConversationProjection.messages(from: report.events).isEmpty {
+               SessionTrajectoryConversationProjection.transcriptMessages(from: report.events).isEmpty {
                 throw BridgeImportError.notMirrorable("the desktop session has no messages yet")
             }
             return try await self.importConverted(
@@ -303,7 +303,10 @@ actor BridgeSessionImporter {
         titleIsFinal: Bool
     ) async throws {
         let persisted = try await trajectory.allEvents(sessionID: sessionID)
-        let messages = SessionTrajectoryConversationProjection.messages(from: persisted)
+        // A mirror shows the whole desktop conversation. The model-facing
+        // projection would drop everything a desktop compaction replaced, so a
+        // long thread would arrive as its summary plus the tail.
+        let messages = SessionTrajectoryConversationProjection.transcriptMessages(from: persisted)
         _ = try await sessionStore.checkpointSession(
             id: sessionID,
             checkpoint: ConversationCheckpoint(
