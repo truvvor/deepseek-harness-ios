@@ -172,7 +172,7 @@ private final class CapturedRequest: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         storedRequest = request
-        storedBody = request.httpBody ?? request.httpBodyStream.map(Self.drain)
+        storedBody = request.httpBody ?? request.httpBodyStream.flatMap(Self.drain)
     }
 
     var request: URLRequest? {
