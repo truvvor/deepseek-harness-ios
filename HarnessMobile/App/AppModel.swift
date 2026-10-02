@@ -253,6 +253,13 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         selectedRunPresentation?.lastBackgroundEvent ?? scheduleBackgroundEvent
     }
     var pendingDraft: String?
+    /// Desktop-bridge (read-only session mirror) projection. The coordinator is
+    /// the sole owner of bridge transport; these are UI state only.
+    var desktopMirrorSettings = BridgeSettings()
+    var desktopMirrorProgress: BridgeImportProgress?
+    var desktopMirrorLastError: String?
+    var followedMirrorSessionIDs: Set<UUID> = []
+    @ObservationIgnored private var desktopBridgeCoordinator: BridgeMirrorCoordinator?
     private var allStagedImageReferences: [AgentImageAttachmentRef] {
         (stagedImageReference.map { [$0] } ?? [])
             + (stagedShareAdmission?.imageAttachments ?? [])
@@ -1801,6 +1808,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         }
         await refreshProviderCredentialStatuses()
         await restoreLocalWebhookSecret()
+        await bootstrapDesktopMirror()
         await refreshWorkspace()
         await loadHookConfiguration()
         // `latest-image.*` is retained for the local camera_ocr tool, but it
@@ -2881,6 +2889,22 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         _ text: String,
         disposition: QueuedInputDisposition = .queued
     ) async -> Bool {
+        // A mirrored desktop session is read-only here: the local agent loop must
+        // never append its own turns to another host's canonical log. See
+        // `BridgeSessionMirror` and DECISIONS D-012.
+        if activeSessionIsDesktopMirror {
+            presentError(
+                NSError(
+                    domain: "HarnessMobile",
+                    code: 409,
+                    userInfo: [
+                        NSLocalizedDescriptionKey:
+                            "This session mirrors the desktop DeepSeek Harness and is read-only on this iPhone. Open a local session to run the on-device agent."
+                    ]
+                )
+            )
+            return false
+        }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasAnyStagedAttachment = !allStagedImageReferences.isEmpty || !allStagedFileReferences.isEmpty
         guard !trimmed.isEmpty || hasAnyStagedAttachment else { return false }
@@ -2954,6 +2978,21 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
 
     private func rerunFromUserMessage(id: UUID, replacementText: String?) {
         guard !isRunning, !isSubmitting else { return }
+        // Editing or re-running a message is another path into the local agent
+        // loop, so the mirror read-only gate applies here too.
+        guard !activeSessionIsDesktopMirror else {
+            presentError(
+                NSError(
+                    domain: "HarnessMobile",
+                    code: 409,
+                    userInfo: [
+                        NSLocalizedDescriptionKey:
+                            "This session mirrors the desktop DeepSeek Harness and is read-only on this iPhone."
+                    ]
+                )
+            )
+            return
+        }
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {

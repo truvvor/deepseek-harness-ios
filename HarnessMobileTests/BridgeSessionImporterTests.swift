@@ -1,0 +1,408 @@
+import Foundation
+import XCTest
+#if canImport(HarnessMobile)
+@testable import HarnessMobile
+#else
+@testable import HarnessMobileCore
+#endif
+
+/// Import-path contracts for the desktop session mirror: identity mapping,
+/// idempotency, the read-only provenance flag, and rollback of a partial import.
+///
+/// The client is a protocol-free seam: these tests drive
+/// `importConverted(...)`/`importSession(...)` through a stub `URLProtocol`, so no
+/// live desktop bridge and no real token is involved. The token value used by the
+/// stub is deliberately fake.
+final class BridgeSessionImporterTests: XCTestCase {
+    private let bridgeSessionID = "session-3f1c9a54-6b2e-4d77-9a10-8c5e2b7d4411"
+
+    /// Obviously fake, and never sent anywhere: the importer tests drive the
+    /// write path directly instead of opening a socket.
+    private static let fixtureToken = "fixture-token-not-a-real-credential"
+
+    private struct Harness {
+        let importer: BridgeSessionImporter
+        let sessionStore: SessionStore
+        let trajectory: SessionTrajectoryRepository
+        let mappings: BridgeSessionMirrorStore
+        let root: URL
+    }
+
+    private func fixtureData(_ name: String = "desktop-session-export-v4") throws -> Data {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures", isDirectory: true)
+            .appendingPathComponent("\(name).jsonl")
+        return try Data(contentsOf: url)
+    }
+
+    private func makeHarness() throws -> Harness {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("bridge-import-\(UUID().uuidString)", isDirectory: true)
+        let trajectory = SessionTrajectoryRepository(root: root)
+        let sessionStore = SessionStore(root: root)
+        let mappings = BridgeSessionMirrorStore(
+            fileURL: root.appendingPathComponent("bridge-sessions.json")
+        )
+        let client = BridgeClient(
+            configuration: try BridgeClientConfiguration(
+                settings: BridgeSettings(
+                    baseURL: try XCTUnwrap(URL(string: "http://127.0.0.1:19387")),
+                    isEnabled: true
+                )
+            ),
+            tokenProvider: { Self.fixtureToken }
+        )
+        let importer = BridgeSessionImporter(
+            client: client,
+            sessionStore: sessionStore,
+            trajectory: trajectory,
+            queryModel: nil,
+            mappings: mappings
+        )
+        return Harness(
+            importer: importer,
+            sessionStore: sessionStore,
+            trajectory: trajectory,
+            mappings: mappings,
+            root: root
+        )
+    }
+
+    private func converted(_ data: Data) throws -> BridgeSessionEventConverter.Report {
+        try BridgeSessionEventConverter.decodeLog(data)
+    }
+
+    // MARK: - First import
+
+    func testFirstImportCreatesALocalMirrorSessionWithDesktopTitleAndEvents() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+
+        let outcome = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+
+        guard case let .created(localSessionID) = outcome else {
+            return XCTFail("Expected a newly created mirror, got \(outcome)")
+        }
+
+        let session = try await harness.sessionStore.session(id: localSessionID)
+        XCTAssertEqual(session.title, "Fixture desktop session")
+        XCTAssertEqual(session.messages.count, 7)
+        XCTAssertEqual(session.messages.first?.content, "Summarise the fixture file.")
+        XCTAssertEqual(session.messages.last?.content, "Final answer.")
+
+        let events = try await harness.trajectory.allEvents(sessionID: localSessionID)
+        XCTAssertEqual(events.count, report.events.count)
+        XCTAssertEqual(events.map(\.seq), report.events.map(\.seq))
+    }
+
+    // MARK: - Provenance
+
+    func testMirrorSessionIsMarkedReadOnlyAndSaysWhereItCameFrom() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+
+        let outcome = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+
+        let session = try await harness.sessionStore.session(id: outcome.localSessionID)
+        XCTAssertTrue(session.isDesktopMirror)
+        XCTAssertEqual(session.bridgeMirror?.bridgeSessionID, bridgeSessionID)
+        XCTAssertFalse(
+            session.isResumable,
+            "A mirror must never look resumable: the local agent loop cannot run for it."
+        )
+
+        let summary = try await harness.sessionStore.listSessions()
+            .first { $0.id == outcome.localSessionID }
+        XCTAssertEqual(summary?.bridgeMirror?.bridgeSessionID, bridgeSessionID)
+        XCTAssertEqual(summary?.isDesktopMirror, true)
+    }
+
+    func testMirrorFlagSurvivesASnapshotRoundTripIncludingLegacyRows() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("bridge-store-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = SessionStore(root: root)
+        let mirrorID = UUID()
+
+        _ = try await store.createSession(
+            id: mirrorID,
+            title: "Desktop work",
+            bridgeMirror: BridgeSessionMirror(bridgeSessionID: bridgeSessionID),
+            makeActive: false
+        )
+        _ = try await store.createSession(title: "Local work", makeActive: false)
+
+        // A fresh actor over the same file proves the flag is persisted, not held
+        // in memory.
+        let reloaded = SessionStore(root: root)
+        let mirror = try await reloaded.session(id: mirrorID)
+        XCTAssertTrue(mirror.isDesktopMirror)
+
+        let readBack = try await reloaded.listSessions()
+        let local = try XCTUnwrap(readBack.first { $0.title == "Local work" })
+        XCTAssertFalse(local.isDesktopMirror)
+        XCTAssertNil(local.bridgeMirror)
+    }
+
+    func testSnapshotWrittenBeforeMirrorsExistedStillDecodesWithNilFlag() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("bridge-legacy-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+        // A hand-written version 4 snapshot with no `bridgeMirror` key, i.e. the
+        // shape an older build wrote.
+        let legacyID = UUID()
+        let json = """
+        {"version":4,"activeSessionID":"\(legacyID.uuidString)","sessions":[
+          {"id":"\(legacyID.uuidString)","title":"Legacy","messages":[],"workState":
+            {"plan":[],"todos":[]},"controlState":{"interactionMode":"chat","permissionMode":"standard",
+            "queuedInputs":[],"isAgentPresetLocked":false},"createdAt":0,"updatedAt":0,"revision":1}
+        ],"updatedAt":0}
+        """
+        try Data(json.utf8).write(
+            to: root.appendingPathComponent("current-session.json"),
+            options: .atomic
+        )
+
+        let store = SessionStore(root: root)
+        let state = try await store.loadState()
+        let session = try XCTUnwrap(state.sessions.first { $0.id == legacyID })
+        XCTAssertNil(session.bridgeMirror)
+        XCTAssertFalse(session.isDesktopMirror)
+    }
+
+    // MARK: - Mapping and idempotency
+
+    func testMappingRecordsBothIdentitiesAndTheFollowPosition() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+
+        let outcome = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+
+        let mapping = try XCTUnwrap(try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID))
+        XCTAssertEqual(mapping.localSessionID, outcome.localSessionID)
+        XCTAssertEqual(mapping.bridgeSessionID, bridgeSessionID)
+        XCTAssertEqual(mapping.importedThroughBridgeSeq, report.lastBridgeSequence)
+        XCTAssertEqual(mapping.importedEventCount, report.events.count)
+
+        // The correspondence is a file, not just in-memory state.
+        let reloaded = BridgeSessionMirrorStore(
+            fileURL: harness.root.appendingPathComponent("bridge-sessions.json")
+        )
+        XCTAssertEqual(try await reloaded.mapping(localSessionID: outcome.localSessionID)?.bridgeSessionID, bridgeSessionID)
+    }
+
+    func testSecondImportOfTheSameLogIsIdempotentAndCreatesNoSecondSession() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+
+        let first = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+        let second = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+
+        XCTAssertEqual(second, .unchanged(localSessionID: first.localSessionID))
+        let summaries = try await harness.sessionStore.listSessions()
+        XCTAssertEqual(summaries.count, 1)
+        let events = try await harness.trajectory.allEvents(sessionID: first.localSessionID)
+        XCTAssertEqual(events.count, report.events.count)
+    }
+
+    func testReimportWithNewDesktopSuffixAppendsOnlyTheSuffix() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+
+        let first = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+
+        // The desktop session grew by two events.
+        let grown = report.events + [
+            try SessionEvent(
+                type: SessionEventVocabulary.turnStart,
+                seq: UInt64(report.events.count),
+                time: 1_735_689_601_000,
+                data: .object(["turn": .number(2)])
+            ),
+            try SessionEvent(
+                type: SessionEventVocabulary.userMessage,
+                seq: UInt64(report.events.count + 1),
+                time: 1_735_689_601_100,
+                data: .object([
+                    "content": .array([.object(["type": .string("text"), "text": .string("Follow-up")])])
+                ])
+            )
+        ]
+
+        let second = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: grown,
+            lastBridgeSequence: Int64(grown.count - 1)
+        )
+
+        XCTAssertEqual(
+            second,
+            .refreshed(localSessionID: first.localSessionID, appendedEvents: 2)
+        )
+        let events = try await harness.trajectory.allEvents(sessionID: first.localSessionID)
+        XCTAssertEqual(events.count, grown.count)
+
+        let session = try await harness.sessionStore.session(id: first.localSessionID)
+        XCTAssertEqual(session.messages.last?.content, "Follow-up")
+        XCTAssertTrue(session.isDesktopMirror)
+    }
+
+    // MARK: - Failure handling
+
+    func testPartialImportIsRolledBackWhenAdmissionFails() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+
+        // A replacement reaching forward is rejected by `SessionEvent`, but this
+        // test bypasses the converter on purpose to exercise the rollback path.
+        let events = try [
+            SessionEvent(
+                type: SessionEventVocabulary.userMessage,
+                seq: 0,
+                time: 1,
+                data: .object(["content": .array([.object(["type": .string("text"), "text": .string("hi")])])])
+            ),
+            // Non-contiguous sequence: admission must fail closed.
+            SessionEvent(
+                type: SessionEventVocabulary.assistantMessage,
+                seq: 5,
+                time: 2,
+                data: .object(["message": .object(["content": .array([])])])
+            )
+        ]
+
+        do {
+            _ = try await harness.importer.importConverted(
+                bridgeSessionID: bridgeSessionID,
+                listTitle: nil,
+                header: nil,
+                events: events,
+                lastBridgeSequence: 5
+            )
+            XCTFail("Expected admission to fail for a non-contiguous suffix")
+        } catch {
+            // Expected: the local log is dense and append-only.
+        }
+
+        let summaries = try await harness.sessionStore.listSessions()
+        XCTAssertTrue(summaries.isEmpty, "A failed import must not leave a half-written session")
+        XCTAssertNil(try await harness.mappings.mapping(bridgeSessionID: bridgeSessionID))
+    }
+
+    func testTitleFallsBackToTheFirstUserMessageThenToTheBridgeListTitle() async throws {
+        let withoutTitleEvent = try converted(try fixtureData())
+            .events
+            .filter { $0.type != "session/title" }
+            .enumerated()
+            .map { index, event in
+                try SessionEvent(
+                    type: event.type,
+                    seq: UInt64(index),
+                    time: event.time,
+                    data: event.data,
+                    ignorable: event.ignorable,
+                    surfaceOp: nil
+                )
+            }
+
+        let fromUserMessage = BridgeSessionImporter.resolvedTitle(
+            events: withoutTitleEvent,
+            listTitle: nil,
+            header: nil,
+            bridgeSessionID: bridgeSessionID
+        )
+        XCTAssertEqual(fromUserMessage, "Summarise the fixture file.")
+
+        // With no user message at all, the bridge list title is used.
+        let empty = withoutTitleEvent.filter { $0.type != SessionEventVocabulary.userMessage }
+        XCTAssertEqual(
+            BridgeSessionImporter.resolvedTitle(
+                events: empty,
+                listTitle: "  Desktop list title  ",
+                header: nil,
+                bridgeSessionID: bridgeSessionID
+            ),
+            "Desktop list title"
+        )
+
+        // And a mirror with nothing usable still gets a stable, explicit label.
+        XCTAssertEqual(
+            BridgeSessionImporter.provisionalTitle(
+                events: empty,
+                listTitle: nil,
+                header: nil,
+                bridgeSessionID: bridgeSessionID
+            ),
+            "Desktop Session"
+        )
+    }
+
+    func testTitlePrefersTheExplicitDesktopTitleEvent() throws {
+        let report = try converted(try fixtureData())
+        XCTAssertEqual(
+            BridgeSessionImporter.resolvedTitle(
+                events: report.events,
+                listTitle: "Bridge list title",
+                header: report.header,
+                bridgeSessionID: bridgeSessionID
+            ),
+            "Fixture desktop session"
+        )
+    }
+
+    // MARK: - Envelope chunking limits
+
+    func testSingleEnvelopeCannotExceedTheSyncEventLimit() {
+        XCTAssertEqual(
+            BridgeSessionImporter.maximumEventsPerEnvelope,
+            HarnessSyncEnvelope.maximumEvents
+        )
+        XCTAssertLessThanOrEqual(BridgeSessionImporter.maximumEventsPerEnvelope, 512)
+    }
+}

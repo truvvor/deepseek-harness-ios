@@ -97,6 +97,15 @@ struct SettingsView: View {
 
             Section {
                 NavigationLink {
+                    DesktopBridgeSettingsView()
+                } label: {
+                    SettingsLinkLabel(title: "Desktop DSH Bridge", systemImage: "desktopcomputer", tint: .blue)
+                }
+                .accessibilityIdentifier("settings-desktop-bridge")
+            } header: { Label("Desktop Mirror", systemImage: "desktopcomputer") }
+
+            Section {
+                NavigationLink {
                     WorkspaceView()
                 } label: {
                     SettingsLinkLabel(title: "Local Workspace", systemImage: "folder", tint: .orange)
@@ -109,8 +118,8 @@ struct SettingsView: View {
                 }
                 .accessibilityIdentifier("settings-memory")
                 LabeledContent("Session Storage", value: "On-Device")
-                LabeledContent("Sync", value: "Off")
-                Text("Sessions, trajectories, and workspace files are stored on this iPhone. This version never uploads credentials or session content to a sync service.")
+                LabeledContent("Desktop Mirror", value: mirroredSessionCount > 0 ? "\(mirroredSessionCount) Read-Only" : "Off")
+                Text("Sessions, trajectories, and workspace files are stored on this iPhone. The optional Desktop DSH Bridge only reads sessions that the DeepSeek Harness desktop already produced: it never sends your prompts, tools, or agent loop to another machine, and mirrored sessions are read-only here.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } header: { Label("Storage & Sync", systemImage: "externaldrive") }
@@ -205,6 +214,10 @@ struct SettingsView: View {
         URLComponents(string: model.configuration.baseURL)?.host ?? "Invalid URL"
     }
 
+    private var mirroredSessionCount: Int {
+        model.sessions.filter(\.isDesktopMirror).count
+    }
+
     private var backgroundStatusLabel: String {
         switch model.backgroundSystemProjection.survivalTier {
         case .foreground: "Foreground"
@@ -230,6 +243,256 @@ private struct SettingsLinkLabel: View {
             Spacer(minLength: 8)
         }
         .contentShape(Rectangle())
+    }
+}
+
+/// Read-only desktop DeepSeek Harness bridge.
+///
+/// This screen can only *read* desktop sessions. It deliberately offers no
+/// prompt, cancel or chat-completions entry point, because the product boundary
+/// forbids sending this app's prompts, tools or agent loop to another machine.
+private struct DesktopBridgeSettingsView: View {
+    @Environment(AppModel.self) private var model
+
+    @State private var isEnabled = false
+    @State private var baseURLText = ""
+    @State private var includesArchived = false
+    @State private var autoFollow = false
+    @State private var token = ""
+    @State private var tokenConfigured = false
+    @State private var isSavingToken = false
+    @State private var isImporting = false
+    @State private var isProbing = false
+    @State private var healthSummary: String?
+    @State private var errorMessage: String?
+    @State private var importSummary: String?
+    @State private var mirrorSessions: [ConversationSessionSummary] = []
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Enable Desktop Bridge", isOn: $isEnabled)
+                    .accessibilityIdentifier("desktop-bridge-enabled")
+                TextField("Bridge URL", text: $baseURLText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .accessibilityIdentifier("desktop-bridge-url")
+                Toggle("Include Archived Desktop Sessions", isOn: $includesArchived)
+                Toggle("Follow Open Mirror Automatically", isOn: $autoFollow)
+                HStack {
+                    Button("Save") { saveSettings() }
+                        .buttonStyle(.borderedProminent)
+                    Button("Test Connection") { probe() }
+                        .disabled(isProbing || !isEnabled)
+                    if isProbing { ProgressView().controlSize(.small) }
+                }
+            } header: {
+                Text("Bridge")
+            } footer: {
+                Text("The address is the DSH host origin, for example http://192.0.2.10:19387 or a tailnet name. /bridge/v1 is appended automatically. Plain HTTP is accepted only for a local or tunnelled host; it is the one documented exception to the HTTPS-only model-provider rule.")
+            }
+
+            Section {
+                SecureField("Bearer Token", text: $token)
+                    .textContentType(.password)
+                    .accessibilityIdentifier("desktop-bridge-token")
+                LabeledContent("Token", value: tokenConfigured ? "In Keychain" : "Not Configured")
+                HStack {
+                    Button("Save Token") { saveToken() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSavingToken)
+                    if tokenConfigured {
+                        Button("Delete Token", role: .destructive) { deleteToken() }
+                            .disabled(isSavingToken)
+                    }
+                    if isSavingToken { ProgressView().controlSize(.small) }
+                }
+            } header: {
+                Text("Credential")
+            } footer: {
+                Text("The token is the content of api-bridge.token on the DSH host. It is stored only in this device's Keychain (WhenUnlockedThisDeviceOnly) and is sent only as the Authorization header of a bridge request; it is never written to settings, logs, URLs, session content or exports.")
+            }
+
+            Section {
+                Button {
+                    importSessions()
+                } label: {
+                    Label("Import Desktop Sessions", systemImage: "arrow.down.circle")
+                }
+                .disabled(isImporting || !isEnabled)
+
+                if isImporting {
+                    if let progress = model.desktopMirrorProgress {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ProgressView(value: progress.fraction)
+                            Text(progress.currentTitle ?? "Finishing…")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Importing desktop sessions")
+                    } else {
+                        ProgressView()
+                    }
+                }
+                if let importSummary {
+                    Text(importSummary)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                if let healthSummary {
+                    Text(healthSummary)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Import")
+            } footer: {
+                Text("Importing copies the desktop session log into this app as a local trajectory plus a search index entry. It is a read: nothing is written back to the desktop, and the imported session is marked as a read-only mirror.")
+            }
+
+            Section {
+                if mirrorSessions.isEmpty {
+                    Text("No desktop sessions have been mirrored yet.")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(mirrorSessions) { session in
+                    Button {
+                        Task { await model.openDesktopMirrorSession(session.id) }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(session.title).font(.body.weight(.semibold))
+                            HStack(spacing: 6) {
+                                Label("Desktop Mirror", systemImage: "desktopcomputer")
+                                Text("·")
+                                Text("\(session.messageCount) messages")
+                                if model.followedMirrorSessionIDs.contains(session.id) {
+                                    Text("·")
+                                    Label("Following", systemImage: "dot.radiowaves.left.and.right")
+                                }
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens the read-only mirror of this desktop session")
+                    .swipeActions(edge: .trailing) {
+                        Button("Forget", role: .destructive) {
+                            Task { await model.removeDesktopMirrorSession(session.id) }
+                        }
+                    }
+                }
+            } header: {
+                Text("Mirrored Sessions")
+            } footer: {
+                Text("A mirrored session is read-only on this iPhone: the local agent loop never runs for it, so the desktop log stays the single history. Forget removes the local copy only.")
+            }
+        }
+        .listStyle(.insetGrouped)
+        .environment(\.defaultMinListRowHeight, 44)
+        .scrollContentBackground(.hidden)
+        .background(HarnessTheme.pageBackground)
+        .navigationTitle("Desktop DSH Bridge")
+        .task {
+            let settings = model.desktopMirrorSettings
+            isEnabled = settings.isEnabled
+            baseURLText = settings.baseURL?.absoluteString ?? ""
+            includesArchived = settings.includesArchivedSessions
+            autoFollow = settings.followsSelectedMirrorAutomatically
+            tokenConfigured = await model.desktopMirrorTokenConfigured()
+            await reloadMirrorSessions()
+        }
+        .alert("Desktop Bridge", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
+    }
+
+    private func saveSettings() {
+        let settings = BridgeSettings(
+            baseURL: URL(string: baseURLText.trimmingCharacters(in: .whitespacesAndNewlines)),
+            isEnabled: isEnabled,
+            includesArchivedSessions: includesArchived,
+            followsSelectedMirrorAutomatically: autoFollow
+        )
+        if isEnabled, settings.baseURL == nil {
+            errorMessage = BridgeSettingsError.invalidBaseURL.errorDescription
+            return
+        }
+        Task {
+            guard await model.saveDesktopMirrorSettings(settings) else {
+                errorMessage = model.desktopMirrorLastError
+                return
+            }
+            // Show the normalized address so the user can see what will be used.
+            baseURLText = model.desktopMirrorSettings.baseURL?.absoluteString ?? baseURLText
+            errorMessage = nil
+            await reloadMirrorSessions()
+        }
+    }
+
+    private func saveToken() {
+        isSavingToken = true
+        Task {
+            let success = await model.saveDesktopMirrorToken(token)
+            if success {
+                token = ""
+                tokenConfigured = true
+            } else {
+                errorMessage = model.desktopMirrorLastError
+            }
+            isSavingToken = false
+        }
+    }
+
+    private func deleteToken() {
+        isSavingToken = true
+        Task {
+            await model.deleteDesktopMirrorToken()
+            tokenConfigured = false
+            isSavingToken = false
+        }
+    }
+
+    private func probe() {
+        isProbing = true
+        healthSummary = nil
+        Task {
+            if let health = await model.checkDesktopMirrorHealth() {
+                let services = health.services?.keys.sorted().joined(separator: ", ") ?? "unknown"
+                healthSummary = "Bridge \(health.status ?? "unavailable") · services: \(services)"
+            } else {
+                errorMessage = model.desktopMirrorLastError ?? "The bridge did not answer."
+            }
+            isProbing = false
+        }
+    }
+
+    private func importSessions() {
+        isImporting = true
+        importSummary = nil
+        Task {
+            let result = await model.importDesktopMirrorSessions()
+            importSummary = "Created \(result.created), refreshed \(result.refreshed), failed \(result.failures.count)."
+            if !result.failures.isEmpty {
+                errorMessage = result.failures.values.sorted().first
+            }
+            isImporting = false
+            await reloadMirrorSessions()
+        }
+    }
+
+    private func reloadMirrorSessions() async {
+        mirrorSessions = model.sessions.filter(\.isDesktopMirror)
     }
 }
 

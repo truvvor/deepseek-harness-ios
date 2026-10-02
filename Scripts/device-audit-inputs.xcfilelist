@@ -1,3 +1,4 @@
+$(SRCROOT)/HarnessMobile/App/AppModel+Bridge.swift
 $(SRCROOT)/HarnessMobile/App/AppModel.swift
 $(SRCROOT)/HarnessMobile/App/AppModel+Memory.swift
 $(SRCROOT)/HarnessMobile/App/AppModel+ProviderBundles.swift
@@ -18,6 +19,14 @@ $(SRCROOT)/HarnessMobile/Core/Agent/ConversationCompactor.swift
 $(SRCROOT)/HarnessMobile/Core/Agent/ConversationMessageWindow.swift
 $(SRCROOT)/HarnessMobile/Core/Agent/ConversationControls.swift
 $(SRCROOT)/HarnessMobile/Core/Agent/HarnessReferenceSyntax.swift
+$(SRCROOT)/HarnessMobile/Core/Bridge/BridgeClient.swift
+$(SRCROOT)/HarnessMobile/Core/Bridge/BridgeMirrorCoordinator.swift
+$(SRCROOT)/HarnessMobile/Core/Bridge/BridgeSessionEventConverter.swift
+$(SRCROOT)/HarnessMobile/Core/Bridge/BridgeSessionImporter.swift
+$(SRCROOT)/HarnessMobile/Core/Bridge/BridgeSessionMirrorStore.swift
+$(SRCROOT)/HarnessMobile/Core/Bridge/BridgeSessionModel.swift
+$(SRCROOT)/HarnessMobile/Core/Bridge/BridgeSessionSync.swift
+$(SRCROOT)/HarnessMobile/Core/Bridge/BridgeSettings.swift
 $(SRCROOT)/HarnessMobile/Core/Hooks/HookProtocol.swift
 $(SRCROOT)/HarnessMobile/Core/Hooks/ClaudeCodeHookConfigParser.swift
 $(SRCROOT)/HarnessMobile/Core/Hooks/CodexHookConfigParser.swift
@@ -137,6 +146,10 @@ $(SRCROOT)/HarnessMobile/Core/Tools/DeviceTimeTool.swift
 $(SRCROOT)/HarnessMobile/Core/Tools/FileSystemTools.swift
 $(SRCROOT)/HarnessMobile/Core/Tools/DeliverableTools.swift
 $(SRCROOT)/HarnessMobile/Core/Tools/ToolResultOutputPolicy.swift
+$(SRCROOT)/HarnessMobileTests/BridgeClientDecodingTests.swift
+$(SRCROOT)/HarnessMobileTests/BridgeSessionEventConverterTests.swift
+$(SRCROOT)/HarnessMobileTests/BridgeSessionImporterTests.swift
+$(SRCROOT)/HarnessMobileTests/BridgeSessionSyncTests.swift
 $(SRCROOT)/HarnessMobileTests/ToolResultOutputPolicyTests.swift
 $(SRCROOT)/HarnessMobileTests/ConversationMessageWindowTests.swift
 $(SRCROOT)/HarnessMobileTests/ControllerSplitTests.swift

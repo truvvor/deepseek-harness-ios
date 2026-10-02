@@ -131,15 +131,20 @@ struct ConversationCheckpoint: Sendable, Equatable {
     var messages: [AgentMessage]
     var workState: ConversationWorkState
     var controlState: ConversationControlState
+    /// Non-nil to keep (or set) the read-only desktop-mirror provenance of the
+    /// session this checkpoint is written to.
+    var bridgeMirror: BridgeSessionMirror?
 
     init(
         messages: [AgentMessage],
         workState: ConversationWorkState = ConversationWorkState(),
-        controlState: ConversationControlState = ConversationControlState()
+        controlState: ConversationControlState = ConversationControlState(),
+        bridgeMirror: BridgeSessionMirror? = nil
     ) {
         self.messages = messages
         self.workState = workState
         self.controlState = controlState
+        self.bridgeMirror = bridgeMirror
     }
 }
 
@@ -161,6 +166,11 @@ struct ConversationSession: Codable, Sendable, Equatable, Identifiable {
     var titleSource: ConversationSessionTitleSource?
     var archivedAt: Date?
     let forkedFromSessionID: UUID?
+    /// Set for a session mirrored from the DeepSeek Harness desktop bridge. Such
+    /// a session is read-only on this device and never starts the local agent
+    /// loop. Optional so snapshot version 4 stays readable in both directions:
+    /// a snapshot written before mirrors existed decodes with `nil`.
+    var bridgeMirror: BridgeSessionMirror?
 
     init(
         id: UUID,
@@ -173,7 +183,8 @@ struct ConversationSession: Codable, Sendable, Equatable, Identifiable {
         revision: Int,
         titleSource: ConversationSessionTitleSource? = nil,
         archivedAt: Date? = nil,
-        forkedFromSessionID: UUID? = nil
+        forkedFromSessionID: UUID? = nil,
+        bridgeMirror: BridgeSessionMirror? = nil
     ) {
         self.id = id
         self.title = title
@@ -186,11 +197,16 @@ struct ConversationSession: Codable, Sendable, Equatable, Identifiable {
         self.titleSource = titleSource
         self.archivedAt = archivedAt
         self.forkedFromSessionID = forkedFromSessionID
+        self.bridgeMirror = bridgeMirror
     }
 
     var isArchived: Bool { archivedAt != nil }
 
+    /// A mirror is written by the desktop host, not by this device.
+    var isDesktopMirror: Bool { bridgeMirror != nil }
+
     var isResumable: Bool {
+        guard !isDesktopMirror else { return false }
         guard let last = messages.last else { return false }
         return last.role == .user || last.role == .tool
     }
@@ -205,6 +221,7 @@ struct ConversationSession: Codable, Sendable, Equatable, Identifiable {
             revision: revision,
             archivedAt: archivedAt,
             forkedFromSessionID: forkedFromSessionID,
+            bridgeMirror: bridgeMirror,
             queuedInputCount: controlState.queuedInputs.count,
             isResumable: isResumable
         )
@@ -220,10 +237,14 @@ struct ConversationSessionSummary: Sendable, Equatable, Identifiable {
     let revision: Int
     let archivedAt: Date?
     let forkedFromSessionID: UUID?
+    /// Present when this session is a read-only mirror of a desktop session.
+    let bridgeMirror: BridgeSessionMirror?
     let queuedInputCount: Int
     let isResumable: Bool
 
     var isArchived: Bool { archivedAt != nil }
+
+    var isDesktopMirror: Bool { bridgeMirror != nil }
 }
 
 struct ConversationSessionSearchResult: Sendable, Equatable, Identifiable {
@@ -487,6 +508,7 @@ actor SessionStore {
         id: UUID = UUID(),
         title: String = "New Session",
         titleSource: ConversationSessionTitleSource? = nil,
+        bridgeMirror: BridgeSessionMirror? = nil,
         workState: ConversationWorkState = ConversationWorkState(),
         controlState: ConversationControlState = ConversationControlState(),
         makeActive: Bool = true
@@ -504,7 +526,8 @@ actor SessionStore {
             createdAt: now,
             updatedAt: now,
             revision: 0,
-            titleSource: titleSource ?? (resolvedTitle == "New Session" ? .fallback : .user)
+            titleSource: titleSource ?? (resolvedTitle == "New Session" ? .fallback : .user),
+            bridgeMirror: bridgeMirror
         )
         snapshot.sessions.append(session)
         if makeActive || snapshot.activeSessionID == nil {
@@ -740,6 +763,9 @@ actor SessionStore {
         )
         snapshot.sessions[index].workState = checkpoint.workState
         snapshot.sessions[index].controlState = controlState
+        if let bridgeMirror = checkpoint.bridgeMirror {
+            snapshot.sessions[index].bridgeMirror = bridgeMirror
+        }
         snapshot.sessions[index].updatedAt = now
         snapshot.sessions[index].revision += 1
         snapshot.updatedAt = now
@@ -851,7 +877,10 @@ actor SessionStore {
                 changed = true
             }
             if !snapshot.sessions[index].messages.isEmpty,
-               !snapshot.sessions[index].controlState.isAgentPresetLocked {
+               !snapshot.sessions[index].controlState.isAgentPresetLocked,
+               // A desktop mirror is read-only here, so locking its preset would
+               // report a local agent-loop state the session can never enter.
+               !snapshot.sessions[index].isDesktopMirror {
                 snapshot.sessions[index].controlState.lockAgentPreset()
                 snapshot.sessions[index].updatedAt = .now
                 snapshot.sessions[index].revision += 1

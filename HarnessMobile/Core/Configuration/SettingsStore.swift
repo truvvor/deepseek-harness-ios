@@ -9,6 +9,11 @@ struct SettingsStore {
     private let sessionTitleSettingsKey = "agent.session-title.v1"
     private let toolApprovalGrantsKey = "tool.approval-grants.v1"
     private let defaultAgentPresetKey = "agent.default-preset.v1"
+    /// Desktop-bridge (read-only session mirror) preferences. A new key, so no
+    /// existing setting is renamed, moved or reinterpreted by this addition.
+    /// `bridge.desktop-mirror.v1` never contains the bearer token: that lives in
+    /// the Keychain (`CredentialStore.bridgeTokenAccount`).
+    private let bridgeSettingsKey = "bridge.desktop-mirror.v1"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -163,6 +168,26 @@ struct SettingsStore {
         defaults.set(id, forKey: defaultAgentPresetKey)
     }
 
+    /// Missing, corrupt, or out-of-bounds values fall back to the disabled
+    /// defaults, so a damaged row can never silently switch on bridge traffic.
+    func loadBridgeSettings() -> BridgeSettings {
+        guard let data = defaults.data(forKey: bridgeSettingsKey),
+              let decoded = try? JSONDecoder().decode(BridgeSettings.self, from: data),
+              let validated = try? decoded.validated() else {
+            return BridgeSettings()
+        }
+        return validated
+    }
+
+    func saveBridgeSettings(_ settings: BridgeSettings) throws {
+        let validated = try settings.validated()
+        defaults.set(try JSONEncoder().encode(validated), forKey: bridgeSettingsKey)
+    }
+
+    func clearBridgeSettings() {
+        defaults.removeObject(forKey: bridgeSettingsKey)
+    }
+
     func clear() {
         defaults.removeObject(forKey: legacyConfigurationKey)
         defaults.removeObject(forKey: providerDirectoryKey)
@@ -170,6 +195,7 @@ struct SettingsStore {
         defaults.removeObject(forKey: timeContextSettingsKey)
         defaults.removeObject(forKey: sessionTitleSettingsKey)
         defaults.removeObject(forKey: defaultAgentPresetKey)
+        defaults.removeObject(forKey: bridgeSettingsKey)
     }
 
     private func loadLegacyConfiguration() -> AgentConfiguration? {

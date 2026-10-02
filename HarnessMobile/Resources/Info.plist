@@ -31,6 +31,21 @@
 	<string>Starts a one-time system scan session only when you explicitly approve the NFC tool.</string>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>Accesses your on-device music library only when you approve the media tool.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>dsh-host.local</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<false/>
+			</dict>
+		</dict>
+	</dict>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Scans for or connects to nearby BLE devices only when you approve the Bluetooth tool.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
