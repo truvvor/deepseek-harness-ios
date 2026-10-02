@@ -166,6 +166,44 @@ actor CredentialStore {
         try delete(account: validatedAccount(origin))
     }
 
+    // MARK: - Desktop bridge bearer token
+
+    /// Keychain account for the DeepSeek Harness desktop bridge bearer token.
+    ///
+    /// This is deliberately separate from the model-provider namespace:
+    /// `validatedOrigin` requires HTTPS and a root path, while the desktop bridge
+    /// is an `http` loopback/LAN endpoint with the `/bridge/v1` path. The token
+    /// still uses the same Keychain service and the same
+    /// `WhenUnlockedThisDeviceOnly` accessibility, and it is never logged, never
+    /// placed in a URL, and only ever sent as the `Authorization` header of a
+    /// bridge request.
+    static let bridgeTokenAccount = "desktop-bridge-token"
+
+    func saveBridgeToken(_ token: String) throws {
+        let normalized = try normalizedKey(token)
+        try upsert(data: Data(normalized.utf8), account: Self.bridgeTokenAccount)
+    }
+
+    func readBridgeToken() throws -> String? {
+        guard let data = try readData(account: Self.bridgeTokenAccount) else { return nil }
+        guard let token = String(data: data, encoding: .utf8), !token.isEmpty else {
+            throw CredentialStoreError.keychain(errSecDecode)
+        }
+        return token
+    }
+
+    func deleteBridgeToken() throws {
+        try delete(account: Self.bridgeTokenAccount)
+    }
+
+    func bridgeTokenConfigured() -> Bool {
+        do {
+            return try readBridgeToken() != nil
+        } catch {
+            return false
+        }
+    }
+
     @discardableResult
     func migrateLegacyAPIKey(
         from origin: String,

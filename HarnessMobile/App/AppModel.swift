@@ -253,6 +253,13 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         selectedRunPresentation?.lastBackgroundEvent ?? scheduleBackgroundEvent
     }
     var pendingDraft: String?
+    /// Desktop-bridge (read-only session mirror) projection. The coordinator is
+    /// the sole owner of bridge transport; these are UI state only.
+    var desktopMirrorSettings = BridgeSettings()
+    var desktopMirrorProgress: BridgeImportProgress?
+    var desktopMirrorLastError: String?
+    var followedMirrorSessionIDs: Set<UUID> = []
+    @ObservationIgnored var desktopBridgeCoordinator: BridgeMirrorCoordinator?
     private var allStagedImageReferences: [AgentImageAttachmentRef] {
         (stagedImageReference.map { [$0] } ?? [])
             + (stagedShareAdmission?.imageAttachments ?? [])
@@ -518,18 +525,18 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         await refreshVisibleJobs()
     }
 
-    @ObservationIgnored private let settingsStore: SettingsStore
+    @ObservationIgnored let settingsStore: SettingsStore
     // Internal only so `AppModel+ProviderBundles.swift` can own the provider
     // installation coordination without reopening the full composition root.
     @ObservationIgnored let providerBundleStore: AgentProviderBundleStore
     @ObservationIgnored let providerBundleInstaller: AgentProviderBundleInstaller
     @ObservationIgnored private let agentPresetStore: AgentPresetRegistryStore
-    @ObservationIgnored private let credentialStore: CredentialStore
+    @ObservationIgnored let credentialStore: CredentialStore
     @ObservationIgnored private let oauthRefreshCoordinator = ProviderOAuthRefreshCoordinator()
     @ObservationIgnored private let oauthRefreshClient = ProviderOAuthRefreshClient()
-    @ObservationIgnored private let sessionStore: SessionStore
+    @ObservationIgnored let sessionStore: SessionStore
     @ObservationIgnored private let appIntentInboxStore: AppIntentInboxStore
-    @ObservationIgnored private let sessionQueryReadModel: SessionQueryReadModel
+    @ObservationIgnored let sessionQueryReadModel: SessionQueryReadModel
     @ObservationIgnored private let feedbackSidecarStore: MessageFeedbackSidecarStore
     // Narrow internal seams for the focused native-plugin and marketplace
     // extensions. The implementations remain AppModel-owned UI coordination.
@@ -1801,6 +1808,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         }
         await refreshProviderCredentialStatuses()
         await restoreLocalWebhookSecret()
+        await bootstrapDesktopMirror()
         await refreshWorkspace()
         await loadHookConfiguration()
         // `latest-image.*` is retained for the local camera_ocr tool, but it
@@ -2601,6 +2609,13 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         disposition: QueuedInputDisposition = .queued
     ) async -> Bool {
         guard !isSubmitting else { return false }
+        // Every composer path (plain send, slash command, `@subagent`) starts
+        // here, and each can run the local agent loop or write `command/run`
+        // into the trajectory. A desktop mirror is read-only (D-012).
+        guard !activeSessionIsDesktopMirror else {
+            refuseDesktopMirrorMutation()
+            return false
+        }
         isSubmitting = true
         submissionStatus = "Parsing commands and skills"
         defer {
@@ -2881,6 +2896,13 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         _ text: String,
         disposition: QueuedInputDisposition = .queued
     ) async -> Bool {
+        // A mirrored desktop session is read-only here: the local agent loop must
+        // never append its own turns to another host's canonical log. See
+        // `BridgeSessionMirror` and DECISIONS D-012.
+        if activeSessionIsDesktopMirror {
+            refuseDesktopMirrorMutation()
+            return false
+        }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasAnyStagedAttachment = !allStagedImageReferences.isEmpty || !allStagedFileReferences.isEmpty
         guard !trimmed.isEmpty || hasAnyStagedAttachment else { return false }
@@ -2954,6 +2976,12 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
 
     private func rerunFromUserMessage(id: UUID, replacementText: String?) {
         guard !isRunning, !isSubmitting else { return }
+        // Editing or re-running a message is another path into the local agent
+        // loop, so the mirror read-only gate applies here too.
+        guard !activeSessionIsDesktopMirror else {
+            refuseDesktopMirrorMutation()
+            return
+        }
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
@@ -7392,6 +7420,9 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         sessionID: UUID,
         imageAttachments: [AgentImageAttachmentRef] = []
     ) async throws {
+        if sessions.first(where: { $0.id == sessionID })?.isDesktopMirror == true {
+            throw DesktopMirrorReadOnlyError()
+        }
         _ = try await trajectoryRepository.append(
             .commandRun(
                 commandID: invocation.commandID,
@@ -8421,6 +8452,13 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         useContinuedProcessing: Bool = true
     ) async {
         guard let sessionID = activeSessionID else { return }
+        // Last line of defence for D-012: no local run may start on a mirror,
+        // whichever entry point (send, resume, background resume) got here.
+        guard !activeSessionIsDesktopMirror else {
+            hasResumableRun = false
+            refuseDesktopMirrorMutation()
+            return
+        }
         hasResumableRun = false
         let identity = await sessionRunRegistry.allocateIdentity(sessionID: sessionID)
         let questionContext = SessionRunQuestionContext()
@@ -8987,7 +9025,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
 
         if activeSessionID == identity.sessionID,
            selectedRunPresentation?.identity == identity {
-            hasResumableRun = Self.canResume(messages)
+            hasResumableRun = !activeSessionIsDesktopMirror && Self.canResume(messages)
             await refreshTrajectory(for: identity.sessionID)
             await refreshHarnessTrace(for: identity)
         }
@@ -9361,7 +9399,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         controlState = session.controlState
         selectedRunPresentation = nil
         omittedContextMessages = 0
-        hasResumableRun = Self.canResume(session.messages)
+        hasResumableRun = !session.isDesktopMirror && Self.canResume(session.messages)
     }
 
     private func restoreRunPresentation(for sessionID: UUID) async {
@@ -9408,7 +9446,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         }
     }
 
-    private func refreshSessionSummaries() async {
+    func refreshSessionSummaries() async {
         do {
             await refreshSessionRunProjection()
             _ = try await sessionQueryReadModel.rebuild(persistence: trajectoryRepository)

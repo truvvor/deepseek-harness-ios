@@ -527,6 +527,9 @@ struct SessionsView: View {
     }
 
     private func accessibilityHint(for session: ConversationSessionSummary) -> String {
+        if session.isDesktopMirror {
+            return "Read-only mirror of a DeepSeek Harness desktop session"
+        }
         if session.isArchived {
             return "Restore and open this project"
         }
@@ -861,6 +864,11 @@ private struct SessionRow: View {
                         tint: status.color
                     )
                     Text("\(session.messageCount) messages")
+                    if session.isDesktopMirror {
+                        Text("·").accessibilityHidden(true)
+                        Label("Desktop Mirror", systemImage: "desktopcomputer")
+                            .labelStyle(.titleAndIcon)
+                    }
                     if session.forkedFromSessionID != nil {
                         Text("·").accessibilityHidden(true)
                         Label("Fork", systemImage: "arrow.triangle.branch")

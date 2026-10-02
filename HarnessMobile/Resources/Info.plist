@@ -24,13 +24,18 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NFCReaderUsageDescription</key>
 	<string>Starts a one-time system scan session only when you explicitly approve the NFC tool.</string>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>Accesses your on-device music library only when you approve the media tool.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Scans for or connects to nearby BLE devices only when you approve the Bluetooth tool.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>

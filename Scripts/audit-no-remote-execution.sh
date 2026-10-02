@@ -93,6 +93,13 @@ scan_files() {
       # only (requiredInterfaceType = .loopback) and serves read-only GET
       # endpoints; it cannot execute, forward, or receive remote traffic.
       outside-network:*/Core/LocalServer/*.swift) continue ;;
+      # The desktop DSH bridge mirror is read-only by construction: the client
+      # exposes only health/sessions/messages/export/stream (no prompt, cancel or
+      # chat-completions route), so this app can never send its prompts, tools or
+      # agent loop to another machine. Session import reuses the audited
+      # SessionTrajectoryRepository.admitSyncEnvelope seam and the mirror
+      # supervisor never posts. See DECISIONS D-012.
+      outside-network:*/Core/Bridge/*.swift) continue ;;
       # Session-log delivery is the dedicated suffix-upload boundary. It
       # sends only the user-configured session-log endpoint and never executes
       # model/tool traffic; keep it separate from provider I/O accounting.
@@ -116,6 +123,13 @@ scan_files() {
       # URLProtocol is used here only to provide an in-process fixture for the
       # native web-fetch tests; it does not create a production network path.
       outside-network:*/HarnessMobileTests/WebFetchToolTests.swift) continue ;;
+      # The desktop-bridge tests construct a `BridgeClient` to exercise
+      # configuration/decoding, but they never open a socket: they drive the
+      # import and follow write paths directly with an in-process fixture.
+      outside-network:*/HarnessMobileTests/BridgeClientDecodingTests.swift) continue ;;
+      outside-network:*/HarnessMobileTests/BridgeSessionEventConverterTests.swift) continue ;;
+      outside-network:*/HarnessMobileTests/BridgeSessionImporterTests.swift) continue ;;
+      outside-network:*/HarnessMobileTests/BridgeSessionSyncTests.swift) continue ;;
       # In-process URLProtocol fixture for provider discovery status/body/size
       # contracts. Production provider networking remains in Core/Network.
       outside-network:*/HarnessMobileTests/ProviderModelDiscoveryTests.swift) continue ;;
