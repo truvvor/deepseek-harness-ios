@@ -51,6 +51,9 @@ jobs:
       - name: Select Xcode
         run: |
           set -euo pipefail
+          for dir in /opt/homebrew/bin /opt/homebrew/opt/lld/bin /opt/homebrew/opt/llvm/bin; do
+            [ -d "$dir" ] && echo "$dir" >> "$GITHUB_PATH"
+          done
           dev_dir="${{ vars.DEVELOPER_DIR }}"
           if [ -z "$dev_dir" ]; then
             best=""; best_major=0

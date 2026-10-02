@@ -1033,3 +1033,10 @@ git diff --check
 - **根因**：iPhone 真机启动注册完整生产工具目录时，`ProductionToolCatalog` 的审计白名单遗漏已存在的 `list_subagent_models`，触发 `precondition` 并以 signal 5 退出。
 - **修复**：将 `list_subagent_models` 补入 `baseApprovedNames`；不改变工具实现、权限或执行边界。
 - **验证**：Xcode `ProductionToolCatalogTests` 3/3 通过；iphoneos arm64 构建成功；iPhone 16 Pro 覆盖安装成功并启动稳定。`devicectl --console` 捕获真实 DeepSeek 流式响应（HTTP 200）、iSH rootfs 初始化和工作区挂载；20 秒观察命令因应用持续运行而超时退出，不是应用崩溃。
+
+### L10N-EN · 英文界面本地化 + TestFlight 发布流水线（2026-10-02）
+
+- **状态**：VERIFY
+- **变更**：`HarnessMobile/`、`HarnessMobileLiveActivity/`、`HarnessMobileShare/` 中全部用户可见中文文案、错误信息、工具描述、系统提示词与 Info.plist 权限说明原位翻译为英文；识别用户输入的中文匹配词（反馈别名、预设别名、旧默认标题 `新会话`、marketplace 中文分类、NativeAgent 关键词）保留并补英文等价词。`ChatView` 的 accessibilityIdentifier 改为英文。测试断言同步为英文。
+- **发布**：新增 `.github/workflows/testflight.yml`，在 self-hosted Apple Silicon Mac runner 上构建/缓存 iSH 产物、按仓库变量重写 bundle ID / Team、用 App Store Connect API key 自动签名、archive 并 `exportArchive destination=upload` 上传 TestFlight。
+- **验证**：Linux 环境无 Xcode，仅完成 Han 字符扫描、引号/插值静态检查、`git diff --check`、`node --check marketplace.mjs`；Swift 编译、`swift test` 与 iPhone 16 Pro 真机证据待 Mac runner，继续保持 `VERIFY`。
