@@ -374,6 +374,15 @@ final class TelemetrySessionPersistence: SessionPersistence, @unchecked Sendable
         self.redactors = redactors
     }
 
+    /// The canonical append-only repository behind this decorator. Seams that
+    /// need repository-only operations (for example the desktop mirror's
+    /// `admitSyncEnvelope`) reach it here instead of downcasting the
+    /// decorator, which is never a `SessionTrajectoryRepository` itself.
+    var canonicalRepository: SessionTrajectoryRepository? {
+        if let repository = base as? SessionTrajectoryRepository { return repository }
+        return (base as? TelemetrySessionPersistence)?.canonicalRepository
+    }
+
     func prepare(sessionID: UUID) async throws -> SessionTrajectoryPreparation {
         try await base.prepare(sessionID: sessionID)
     }

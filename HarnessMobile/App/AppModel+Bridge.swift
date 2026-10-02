@@ -26,7 +26,8 @@ extension AppModel {
             tokenStore: credentialStore,
             mappings: BridgeSessionMirrorStore(),
             sessionStore: sessionStore,
-            trajectory: trajectoryRepository as? SessionTrajectoryRepository,
+            trajectory: (trajectoryRepository as? SessionTrajectoryRepository)
+                ?? (trajectoryRepository as? TelemetrySessionPersistence)?.canonicalRepository,
             queryModel: sessionQueryReadModel
         )
         desktopBridgeCoordinator = coordinator
