@@ -470,7 +470,7 @@ final class BridgeSessionImporterTests: XCTestCase {
         XCTAssertEqual(empty?.events.count, 0)
         XCTAssertEqual(empty?.lastBridgeSequence, 9)
         // The bridge answers an up-to-date cursor with the header line only.
-        let headerOnly = Data(#"{"type":"session","version":4,"id":"session-3f1c9a54-6b2e-4d77-9a10-8c5e2b7d4411"}"#.utf8 + "\n".utf8)
+        let headerOnly = Data((#"{"type":"session","version":4,"id":"session-3f1c9a54-6b2e-4d77-9a10-8c5e2b7d4411"}"# + "\n").utf8)
         let caughtUp = try? BridgeSessionEventConverter.decodeLog(headerOnly, firstSequence: 10)
         XCTAssertEqual(caughtUp?.events.count, 0)
         XCTAssertNotNil(caughtUp?.header)
