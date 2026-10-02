@@ -76,34 +76,34 @@ targets:
         CFBundleDisplayName: Harness Mobile
         ITSAppUsesNonExemptEncryption: false
         NSSupportsLiveActivities: true
-        NSCameraUsageDescription: 仅在你主动拍照并交给本地 OCR 工具时使用相机。
-        NSPhotoLibraryUsageDescription: 仅在你主动选择图片供本地 OCR 分析时读取所选内容。
-        NSPhotoLibraryAddUsageDescription: 仅在你批准照片工具保存结果时写入照片图库。
-        NSContactsUsageDescription: 仅在你批准联系人搜索工具时读取有限的姓名、电话和邮箱。
-        NSLocationWhenInUseUsageDescription: 仅在你批准定位工具时获取一次当前定位，不进行后台跟踪。
-        NSLocationAlwaysAndWhenInUseUsageDescription: 仅在你明确开启后台粗略定位保活并允许 Always 定位后，于后台任务运行期间使用约 3 公里精度的位置服务；不会存储或显示位置坐标。
-        NSMotionUsageDescription: 仅在你批准运动工具时读取最近的本机运动活动估计。
-        NSMicrophoneUsageDescription: 仅在你主动使用语音输入时访问麦克风。
-        NSSpeechRecognitionUsageDescription: 仅在你主动使用语音转文字时进行语音识别。
-        NSCalendarsUsageDescription: 仅在你批准日历工具时查询或修改日程。
-        NSCalendarsFullAccessUsageDescription: 仅在你批准日历工具时查询或修改日程。
-        NSRemindersUsageDescription: 仅在你批准提醒事项工具时查询或修改提醒。
-        NSRemindersFullAccessUsageDescription: 仅在你批准提醒事项工具时查询或修改提醒。
-        NSAppleMusicUsageDescription: 仅在你批准媒体工具时访问本机音乐资料库。
-        NSBluetoothAlwaysUsageDescription: 仅在你批准蓝牙工具时扫描或连接附近的 BLE 设备。
-        NSBluetoothPeripheralUsageDescription: 仅在你批准蓝牙工具时与附近的 BLE 设备通信。
-        NSLocalNetworkUsageDescription: 仅在你批准需要访问同一局域网设备的功能时使用本地网络。
+        NSCameraUsageDescription: "Uses the camera only when you take a photo and hand it to the local OCR tool."
+        NSPhotoLibraryUsageDescription: "Reads only the images you choose for local OCR analysis."
+        NSPhotoLibraryAddUsageDescription: "Writes to your photo library only when you approve the photos tool to save a result."
+        NSContactsUsageDescription: "Reads limited names, phone numbers, and email addresses only when you approve the contacts search tool."
+        NSLocationWhenInUseUsageDescription: "Gets your current location once only when you approve the location tool. No background tracking."
+        NSLocationAlwaysAndWhenInUseUsageDescription: "Only after you explicitly enable background coarse-location keep-alive and allow Always location, location services with about 3 km accuracy are used while background tasks run. Coordinates are never stored or displayed."
+        NSMotionUsageDescription: "Reads recent on-device motion activity estimates only when you approve the motion tool."
+        NSMicrophoneUsageDescription: "Accesses the microphone only when you actively use voice input."
+        NSSpeechRecognitionUsageDescription: "Performs speech recognition only when you actively use speech-to-text."
+        NSCalendarsUsageDescription: "Reads or modifies calendar events only when you approve the calendar tool."
+        NSCalendarsFullAccessUsageDescription: "Reads or modifies calendar events only when you approve the calendar tool."
+        NSRemindersUsageDescription: "Reads or modifies reminders only when you approve the Reminders tool."
+        NSRemindersFullAccessUsageDescription: "Reads or modifies reminders only when you approve the Reminders tool."
+        NSAppleMusicUsageDescription: "Accesses your on-device music library only when you approve the media tool."
+        NSBluetoothAlwaysUsageDescription: "Scans for or connects to nearby BLE devices only when you approve the Bluetooth tool."
+        NSBluetoothPeripheralUsageDescription: "Communicates with nearby BLE devices only when you approve the Bluetooth tool."
+        NSLocalNetworkUsageDescription: "Uses the local network only when you approve a feature that needs to reach devices on the same LAN."
         # Desktop DSH bridge over plain HTTP to arbitrary addresses, including
         # bare public IPs (DECISIONS D-013). `NSAllowsLocalNetworking` must stay
         # absent: when it is present iOS ignores `NSAllowsArbitraryLoads`.
         # Model providers remain HTTPS-only in code (CredentialStore).
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
-        NSHealthShareUsageDescription: 仅在你调用并批准 Apple 健康工具时读取所选健康数据；工具结果会发送给当前配置的模型服务并保存在本机会话中。
-        NSHealthUpdateUsageDescription: 仅在你调用并批准 Apple 健康写入工具时写入所选健康数据。
-        NSHomeKitUsageDescription: 当前构建未获得 HomeKit capability；取得签名能力后，才会在你批准时查询或控制智能家居配件。
-        NFCReaderUsageDescription: 仅在你主动批准 NFC 工具时开启一次系统扫描会话。
-        NSFaceIDUsageDescription: 用于在执行敏感本机操作前验证设备所有者。
+        NSHealthShareUsageDescription: "Reads selected health data only when you invoke and approve the Apple Health tool. Tool results are sent to the currently configured model service and saved in the on-device session."
+        NSHealthUpdateUsageDescription: "Writes selected health data only when you invoke and approve the Apple Health write tool."
+        NSHomeKitUsageDescription: "This build does not have the HomeKit capability. Once the signing capability is granted, smart home accessories are queried or controlled only when you approve."
+        NFCReaderUsageDescription: "Starts a one-time system scan session only when you explicitly approve the NFC tool."
+        NSFaceIDUsageDescription: "Used to verify the device owner before performing sensitive on-device operations."
         BGTaskSchedulerPermittedIdentifiers:
           - com.llf.harnessmobile.continued-processing.*
           - com.llf.harnessmobile.schedule-processing
@@ -156,7 +156,7 @@ targets:
       path: HarnessMobileShare/Info.plist
       properties:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        CFBundleDisplayName: 分享到 Harness
+        CFBundleDisplayName: "Share to Harness"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.share-services
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
