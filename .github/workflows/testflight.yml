@@ -159,6 +159,8 @@ jobs:
           fi
           chmod 600 "$key_path"
           echo "ASC_KEY_PATH=$key_path" >> "$GITHUB_ENV"
+          Scripts/ci-signing-keychain.sh setup
+          echo "CI_KEYCHAIN=1" >> "$GITHUB_ENV"
 
       - name: Compile check (unsigned, only without an API key)
         if: env.ASC_KEY_PATH == ''
@@ -188,7 +190,20 @@ jobs:
           if [ -n "${{ inputs.marketing_version }}" ]; then
             version_args+=("MARKETING_VERSION=${{ inputs.marketing_version }}")
           fi
-          xcodebuild archive \
+          # Xcode may create a signing key mid-build; codesign can only use it
+          # after the CI keychain re-authorizes Apple tools, so retry once.
+          signed_xcodebuild() {
+            local log="$BUILD_ROOT/xcodebuild-$1.log"; shift
+            if xcodebuild "$@" 2>&1 | tee "$log"; then return 0; fi
+            if [ -n "${CI_KEYCHAIN:-}" ] && grep -q errSecInternalComponent "$log"; then
+              echo "::warning::codesign could not use a new key yet; re-authorizing the CI keychain and retrying"
+              Scripts/ci-signing-keychain.sh grant
+              xcodebuild "$@"
+            else
+              return 1
+            fi
+          }
+          signed_xcodebuild archive archive \
             -project HarnessMobile.xcodeproj \
             -scheme HarnessMobile \
             -configuration Release \
@@ -229,7 +244,20 @@ jobs:
           </dict>
           </plist>
           EOF
-          xcodebuild -exportArchive \
+          # Xcode may create a signing key mid-build; codesign can only use it
+          # after the CI keychain re-authorizes Apple tools, so retry once.
+          signed_xcodebuild() {
+            local log="$BUILD_ROOT/xcodebuild-$1.log"; shift
+            if xcodebuild "$@" 2>&1 | tee "$log"; then return 0; fi
+            if [ -n "${CI_KEYCHAIN:-}" ] && grep -q errSecInternalComponent "$log"; then
+              echo "::warning::codesign could not use a new key yet; re-authorizing the CI keychain and retrying"
+              Scripts/ci-signing-keychain.sh grant
+              xcodebuild "$@"
+            else
+              return 1
+            fi
+          }
+          signed_xcodebuild export -exportArchive \
             -archivePath "$BUILD_ROOT/HarnessMobile.xcarchive" \
             -exportPath "$BUILD_ROOT/export" \
             -exportOptionsPlist "$BUILD_ROOT/ExportOptions.plist" \
@@ -238,4 +266,6 @@ jobs:
 
       - name: Clean up
         if: always()
-        run: rm -rf "$BUILD_ROOT"
+        run: |
+          if [ -n "${CI_KEYCHAIN:-}" ]; then Scripts/ci-signing-keychain.sh restore || true; fi
+          rm -rf "$BUILD_ROOT"
