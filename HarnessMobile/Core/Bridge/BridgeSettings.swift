@@ -36,7 +36,7 @@ struct BridgeSettings: Codable, Sendable, Equatable {
         baseURL: URL? = nil,
         isEnabled: Bool = false,
         includesArchivedSessions: Bool = false,
-        followsSelectedMirrorAutomatically: Bool = false,
+        followsSelectedMirrorAutomatically: Bool = true,
         requestTimeoutSeconds: TimeInterval = Self.defaultRequestTimeoutSeconds,
         streamIdleTimeoutSeconds: TimeInterval = Self.defaultStreamIdleTimeoutSeconds
     ) {
@@ -67,7 +67,7 @@ struct BridgeSettings: Codable, Sendable, Equatable {
         includesArchivedSessions = try container
             .decodeIfPresent(Bool.self, forKey: .includesArchivedSessions) ?? false
         followsSelectedMirrorAutomatically = try container
-            .decodeIfPresent(Bool.self, forKey: .followsSelectedMirrorAutomatically) ?? false
+            .decodeIfPresent(Bool.self, forKey: .followsSelectedMirrorAutomatically) ?? true
         requestTimeoutSeconds = try container
             .decodeIfPresent(TimeInterval.self, forKey: .requestTimeoutSeconds)
             ?? Self.defaultRequestTimeoutSeconds

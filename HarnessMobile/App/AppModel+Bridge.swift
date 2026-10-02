@@ -65,6 +65,49 @@ extension AppModel {
         }
         await coordinator.connectIfConfigured()
         await refreshDesktopMirrorProjection()
+        await followDesktopMirrorIfSelected()
+        await catchUpDesktopMirrorsInBackground()
+    }
+
+    /// Follows the selected session when it is a mirror and automatic follow
+    /// is on, so a mirror opened from any list streams desktop events live.
+    func followDesktopMirrorIfSelected() async {
+        guard let activeSessionID, activeSessionIsDesktopMirror,
+              desktopMirrorSettings.followsSelectedMirrorAutomatically,
+              !followedMirrorSessionIDs.contains(activeSessionID) else { return }
+        await startFollowingDesktopMirror(activeSessionID)
+    }
+
+    /// Minimum spacing between automatic catch-ups (launch, foreground).
+    static let desktopMirrorCatchUpInterval: TimeInterval = 20
+
+    /// Pulls every mirror's new desktop tail without any UI: a short
+    /// `export?since=<cursor>` per session. Runs at launch and whenever the app
+    /// returns to the foreground, so the phone shows what the desktop wrote
+    /// while the app was away, without the user pressing Sync.
+    func catchUpDesktopMirrorsInBackground() async {
+        guard let coordinator = desktopBridgeCoordinator,
+              await coordinator.availability == nil,
+              await coordinator.isConfigured,
+              !desktopMirrorCatchUpInFlight else { return }
+        if let last = desktopMirrorLastCatchUp,
+           Date.now.timeIntervalSince(last) < Self.desktopMirrorCatchUpInterval {
+            return
+        }
+        desktopMirrorCatchUpInFlight = true
+        defer { desktopMirrorCatchUpInFlight = false }
+        desktopMirrorLastCatchUp = .now
+        do {
+            let result = try await coordinator.importAll()
+            await finishMirrorRemoval(result.pruned)
+            if let activeSessionID, activeSessionIsDesktopMirror {
+                await reloadDesktopMirrorIfActive(activeSessionID)
+            }
+        } catch {
+            // Silent by design: the user did not ask for this sync. The next
+            // manual Sync reports its errors in Settings.
+            desktopMirrorLastError = error.localizedDescription
+        }
     }
 
     func desktopMirrorAvailability() async -> BridgeMirrorAvailability? {

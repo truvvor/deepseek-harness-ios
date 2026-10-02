@@ -261,6 +261,8 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     var followedMirrorSessionIDs: Set<UUID> = []
     /// Desktop turns started from this iPhone that have not ended yet (D-014).
     var desktopMirrorTurns: [UUID: DesktopMirrorTurn] = [:]
+    @ObservationIgnored var desktopMirrorLastCatchUp: Date?
+    @ObservationIgnored var desktopMirrorCatchUpInFlight = false
     @ObservationIgnored var desktopBridgeCoordinator: BridgeMirrorCoordinator?
     private var allStagedImageReferences: [AgentImageAttachmentRef] {
         (stagedImageReference.map { [$0] } ?? [])
@@ -3562,6 +3564,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 await refreshISHPluginHost()
             }
             await deliverPendingJobCompletions(for: id)
+            await followDesktopMirrorIfSelected()
         } catch {
             presentError(error)
         }
@@ -3766,8 +3769,14 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     }
 
     func updateApplicationActivity(isActive: Bool, isBackgrounded: Bool = false) {
+        let becameActive = isActive && !appIsActive
         appIsActive = isActive
         appIsBackgrounded = isBackgrounded
+        if becameActive {
+            Task { @MainActor [weak self] in
+                await self?.catchUpDesktopMirrorsInBackground()
+            }
+        }
         runtimeHangWatchdog.setApplicationActive(isActive && !isBackgrounded)
         Task { [runtimeTelemetryStore] in
             await runtimeTelemetryStore.recordPerformanceSample(

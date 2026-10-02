@@ -466,13 +466,12 @@ actor BridgeSessionImporter {
                 bridgeMirror: BridgeSessionMirror(bridgeSessionID: bridgeSessionID)
             )
         )
-        if !titleIsFinal,
-           let title = Self.resolvedTitle(
-               events: events,
-               listTitle: listTitle,
-               header: header,
-               bridgeSessionID: bridgeSessionID
-           ) {
+        // A new mirror takes its title from the first page; an existing one
+        // follows a desktop rename, which arrives through the list title.
+        if let title = titleIsFinal ? listTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
+            : Self.resolvedTitle(events: events, listTitle: listTitle, header: header, bridgeSessionID: bridgeSessionID),
+           !title.isEmpty,
+           title != (try await sessionStore.session(id: sessionID)).title {
             _ = try await sessionStore.renameSession(id: sessionID, title: title, source: .user)
         }
         if let queryModel {
@@ -490,6 +489,13 @@ actor BridgeSessionImporter {
         header: BridgeSessionLogHeader?,
         bridgeSessionID: String
     ) -> String? {
+        // The bridge list title is what the desktop sidebar shows (a fork is
+        // "Title (1)" there while its log still carries the parent's title
+        // event), so the phone list matches the desktop one.
+        if let listTitle {
+            let trimmed = listTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return String(trimmed.prefix(80)) }
+        }
         if let explicit = events.reversed().first(where: { $0.type == "session/title" })?
             .data.objectValue?["title"]?.stringValue {
             let trimmed = explicit.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -498,10 +504,6 @@ actor BridgeSessionImporter {
         for event in events where event.type == SessionEventVocabulary.userMessage {
             let text = SessionQueryText.firstText(in: event.data.objectValue?["content"])
             if !text.isEmpty { return String(text.prefix(80)) }
-        }
-        if let listTitle {
-            let trimmed = listTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty { return String(trimmed.prefix(80)) }
         }
         if let cwd = header?.cwd, !cwd.isEmpty {
             // The desktop host may be Windows: split on both separators so a

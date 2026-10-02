@@ -753,17 +753,53 @@ final class BridgeSessionImporterTests: XCTestCase {
         )
     }
 
-    func testTitlePrefersTheExplicitDesktopTitleEvent() throws {
+    func testTitlePrefersTheSidebarNameOverTheLogTitleEvent() throws {
         let report = try converted(try fixtureData())
+        // A fork is "Title (1)" in the desktop sidebar while its log still
+        // carries the parent's title event; the phone list follows the sidebar.
         XCTAssertEqual(
             BridgeSessionImporter.resolvedTitle(
                 events: report.events,
-                listTitle: "Bridge list title",
+                listTitle: "Fixture desktop session (1)",
+                header: report.header,
+                bridgeSessionID: bridgeSessionID
+            ),
+            "Fixture desktop session (1)"
+        )
+        XCTAssertEqual(
+            BridgeSessionImporter.resolvedTitle(
+                events: report.events,
+                listTitle: nil,
                 header: report.header,
                 bridgeSessionID: bridgeSessionID
             ),
             "Fixture desktop session"
         )
+    }
+
+    func testRefreshFollowsADesktopRename() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+        let first = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: "Before",
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+        let before = try await harness.sessionStore.session(id: first.localSessionID)
+        XCTAssertEqual(before.title, "Before")
+
+        _ = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: "After",
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+        let after = try await harness.sessionStore.session(id: first.localSessionID)
+        XCTAssertEqual(after.title, "After")
     }
 
     // MARK: - Envelope chunking limits

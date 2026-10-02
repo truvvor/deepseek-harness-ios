@@ -68,7 +68,8 @@ final class BridgeClientDecodingTests: XCTestCase {
 
         XCTAssertTrue(decoded.isEnabled)
         XCTAssertTrue(decoded.includesArchivedSessions)
-        XCTAssertFalse(decoded.followsSelectedMirrorAutomatically)
+        // Follow is on unless the user turned it off: a mirror should stay live.
+        XCTAssertTrue(decoded.followsSelectedMirrorAutomatically)
         XCTAssertEqual(decoded.requestTimeoutSeconds, BridgeSettings.defaultRequestTimeoutSeconds)
         XCTAssertEqual(decoded.streamIdleTimeoutSeconds, BridgeSettings.defaultStreamIdleTimeoutSeconds)
     }

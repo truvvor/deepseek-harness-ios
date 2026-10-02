@@ -12,6 +12,7 @@
 - **增量导出**：桥接 rev-2026-10-02-m 支持 `GET …/export?since=<seq>`（响应头 `x-dsh-since`/`x-dsh-through-seq`）。已映射且本地头部等于桌面游标的镜像只拉取尾部（实测 30.8 MB → 214 KB）；后缀必须从 `since+1` 连续，否则（或桥接忽略 `since`）回退全量导出。首次导入仍需全量，受 128 MiB / 200 000 事件上限约束。桌面日志回退（`x-dsh-through-seq` 或全量导出头部小于本地游标）时，清空该镜像本地轨迹、保留会话与映射身份，再全量重建。
 - **分页导入与镜像不修复**：桥接 rev-2026-10-02-n 支持 `?since=&limit=`（`x-dsh-head-seq`/`x-dsh-has-more`/`x-dsh-through-seq` 空页回显 since）。导入改为每页 1000 事件循环、每页后记录映射游标，失败只丢当前页、下次从最后成功处继续。`SessionEventJSONLStore` 冷启动会为未闭合回合追加合成 closer，这会占用桌面下一事件的 seq，使镜像永久卡住（“541 条”）；镜像日志旁写 `<id>.mirror` 标记，仓库据此关闭该修复；无标记的旧镜像若本地头部与游标不符则清空重建。
 - **镜像消息不截断**：`SessionStore` 在保存和加载规范化时对所有会话执行 `ConversationCompactor.repairIncompleteToolTurn`，遇到第一个未应答的工具调用（append-only 镜像中被替换的草稿、桌面仍在运行的回合）就截掉之后的全部消息，镜像因此永远停在同一前缀。镜像会话现在跳过该修复；`AppModel.persistSession` 不再回写镜像（导入器是唯一写入者），Sync 后重新加载打开的镜像。
+- **实时跟随与自动追平**：`followsSelectedMirrorAutomatically` 默认改为开启；从任何列表打开镜像即启动 `/stream` 跟随；启动与回到前台时静默执行增量 Sync（最小间隔 20 s），镜像不再停在上次手动 Sync 的位置。标题优先使用桥接列表（桌面侧边栏）名称，刷新时跟随桌面重命名。
 - **健康探针**：`BridgeSessionHealth.displayStatus`，无 `status` 字段的 200 响应显示为 `reachable`（此前误显示 `unavailable`）。
 - **测试命令**：`swift test --build-path $RUNNER_TEMP/hm-build --filter Bridge`（CI `bridge-tests.yml`），新增 `BridgeClientPromptTests`。
 - **剩余真机边界**：真实桌面回合/取消/排队与 steer；后台超过 iOS 宽限期时桥接因客户端断开而中止回合（需桥接侧支持断开后继续）；超大会话导入的内存峰值。
