@@ -17,6 +17,12 @@ on:
   push:
     tags:
       - "testflight/*"
+    branches:
+      - claude/gifted-tesla-pzo0xz
+    paths-ignore:
+      - "**/*.md"
+      - "HarnessMobileTests/**"
+      - "HarnessMobileUITests/**"
   workflow_dispatch:
     inputs:
       ref:
