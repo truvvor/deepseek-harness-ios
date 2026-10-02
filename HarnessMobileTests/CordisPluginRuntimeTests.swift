@@ -64,7 +64,9 @@ final class CordisPluginRuntimeTests: XCTestCase {
 
         let upstream = ToolCancellationSignal()
         let cancelledExecution = timeoutExecution(name: "fast", signal: upstream)
-        let task = Task {
+        // Explicit captures: Swift 6.3's region isolation checker cannot analyse
+        // the implicit capture of this pattern ("Please file a bug").
+        let task = Task { [runtime, cancelledExecution] in
             try await Self.runTimeoutExecute(runtime, execution: cancelledExecution) {
                 try await cancelledExecution.signal.runCooperatively {
                     while !cancelledExecution.signal.isCancelled {
