@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: testflight
+  group: bridge-tests-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
