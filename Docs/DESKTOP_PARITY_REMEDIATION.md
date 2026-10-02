@@ -34,6 +34,7 @@
   - 只读门禁：`submit()`（含斜杠命令与 `@subagent`）、`startRun`、`appendCommandRun`、`hasResumableRun` 计算统一拒绝镜像会话（D-012）。
   - ATS（D-013 取代 D-012 第 5 条）：为支持裸 IP（含公网）明文 HTTP 桥接地址，`NSAppTransportSecurity` 只保留 `NSAllowsArbitraryLoads = true`（存在 `NSAllowsLocalNetworking` 时该键会被 iOS 忽略）；模型 Provider 的 HTTPS 由 `AgentConfiguration`/`CredentialStore` 在代码中强制。设置页提示明文 HTTP 下令牌与内容不加密。
 
+- **镜像语义修正（2026-10-02）**：桌面是主库，其 GUI 渲染完整日志；应用自身的投影会**遵守** `surfaceOp.replace`（压缩会把被替换的前缀从模型可见面移除）。此前镜像沿用了该替换，导致被压缩的桌面会话在手机上只剩压缩后的尾巴（实测：某会话原始日志 458 条 user/assistant，`seq=1769` 的替换覆盖 `15..1093`，surface 视图 50 条，而应用只显示 1 条）。现在镜像导入严格 append-only：替换范围仍会被解析与校验（非法范围照旧计入 `droppedSurfaceOperations`），但不再安装到镜像事件上，因此两端看到同一份完整历史与相同顺序。相应的转换器与 4 处测试期望已同步更新；桌面端无需改动（`bridge/dsh-api-bridge` 一直导出完整日志）。
 ### PARITY-023 · file-upload binary route + staged receipt（2026-09-04）
 
 - **状态**：VERIFY

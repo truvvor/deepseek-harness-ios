@@ -252,6 +252,17 @@ enum BridgeSessionEventConverter {
     /// dropping the event. The `surfaceOp` is only represented when its range can
     /// point at an earlier local sequence, because `SessionEvent.validateEnvelope`
     /// rejects a replacement that reaches forward.
+    /// Builds one mirrored event.
+    ///
+    /// Mirror transcripts are deliberately **append-only**: the desktop is the
+    /// master and its GUI renders the whole log, while the app's own projection
+    /// *honours* `surfaceOp.replace` (compaction removes the replaced prefix from
+    /// the model-visible surface). Carrying the replacement into a read-only
+    /// mirror therefore hid everything the desktop had compacted — a 458-message
+    /// session arrived as a single message. The range is still parsed and
+    /// validated by `decodeLog` (invalid ranges are counted in
+    /// `droppedSurfaceOperations`); it is simply not installed on the mirrored
+    /// event, so the mirror shows the desktop's full history in log order.
     static func makeEvent(
         type: String,
         seq: UInt64,
@@ -262,17 +273,7 @@ enum BridgeSessionEventConverter {
         surfaceEnd: UInt64?
     ) throws -> SessionEvent {
         let ignorable: Bool? = isKnown ? nil : true
-        if let start = surfaceStart, let end = surfaceEnd,
-           start <= end, end < seq, seq >= 2 {
-            return try SessionEvent(
-                type: type,
-                seq: seq,
-                time: time,
-                data: data,
-                ignorable: ignorable,
-                surfaceOp: .replace(start: start, end: end)
-            )
-        }
+        _ = (surfaceStart, surfaceEnd) // validated upstream; never applied to a mirror
         return try SessionEvent(
             type: type,
             seq: seq,
