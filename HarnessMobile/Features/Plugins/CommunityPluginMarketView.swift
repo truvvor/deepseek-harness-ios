@@ -345,7 +345,7 @@ private struct CommunityPluginCompilationTraceSection: View {
                                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                                     Text(entry.timestamp.formatted(
                                         .dateTime.hour().minute().second()
-                                            .locale(Locale(identifier: "zh_CN"))
+                                            .locale(Locale(identifier: "en_US"))
                                     ))
                                         .foregroundStyle(.tertiary)
                                     Text(entry.stage.title)

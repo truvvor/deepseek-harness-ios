@@ -6833,7 +6833,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
                 let legacyFallback = session.messages.first(where: {
                     $0.role == .user && !$0.isHiddenContextMessage
                 }).map { String($0.content.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40)) }
-                guard session.title == "New Session" || session.title == "New Session" || session.title == legacyFallback else { return }
+                guard session.title == "New Session" || session.title == "新会话" || session.title == legacyFallback else { return }
             }
             if sessionTitleSettings.automaticMode == .firstPrompt,
                case .provider? = session.titleSource {

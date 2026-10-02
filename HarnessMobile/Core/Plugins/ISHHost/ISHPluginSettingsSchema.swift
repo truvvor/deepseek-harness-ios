@@ -411,7 +411,7 @@ private enum ISHPluginSettingsSchemaParser {
             case let .string(text):
                 return text
             case let .object(messages):
-                for key in ["zh-CN", "zh-Hans", "zh", "", "en"] {
+                for key in ["en", "en-US", "", "zh-CN", "zh-Hans", "zh"] {
                     if let text = messages[key]?.stringValue, !text.isEmpty { return text }
                 }
                 return messages.values.compactMap(\.stringValue).first

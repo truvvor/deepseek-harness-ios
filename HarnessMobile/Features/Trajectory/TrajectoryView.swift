@@ -1467,7 +1467,7 @@ private struct TrajectoryEventInspectorView: View {
                     LabeledContent("Time") {
                         Text(event.trajectoryDate.formatted(
                             .dateTime.year().month().day().hour().minute().second()
-                                .locale(Locale(identifier: "zh_CN"))
+                                .locale(Locale(identifier: "en_US"))
                         ))
                             .monospacedDigit()
                     }
