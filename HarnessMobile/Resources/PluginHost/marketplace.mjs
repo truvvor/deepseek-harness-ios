@@ -430,12 +430,14 @@ function cleanCategoryHeading(raw) {
 
 function catalogCompatibility(category) {
   if (category === '工具与能力' || category === '技能包'
-    || category === '工作流与自动化' || category === '记忆') {
+    || category === '工作流与自动化' || category === '记忆'
+    || category === 'Tools & Capabilities' || category === 'Skill Packs'
+    || category === 'Workflows & Automation' || category === 'Memory') {
     return { compatibility: 'supported' }
   }
   return {
     compatibility: 'review',
-    reason: '不会因分类拒绝安装：将先尝试原生编译，再在手机 iSH 中加载。桌面 Web Client 专属效果若没有手机等价实现，会在安装结果中明确说明。',
+    reason: 'Installation is not refused based on category: native compilation is tried first, then the plugin is loaded in the on-device iSH. Desktop Web Client-only effects without a mobile equivalent are stated explicitly in the install result.',
   }
 }
 
@@ -443,6 +445,7 @@ function catalogNativeInstallStrategy(category) {
   // This is only a catalog hint. prepare-native performs the source-level
   // decision and Swift validation remains authoritative.
   return category === '主题与外观' || category === '桌面与外观'
+    || category === 'Themes & Appearance' || category === 'Desktop & Appearance'
     ? 'ish-required'
     : 'native-first'
 }
@@ -451,11 +454,11 @@ export function parseMarketReadme(markdown) {
   if (typeof markdown !== 'string') fail('invalid-market', 'Market README must be text.')
   const items = []
   const seen = new Set()
-  let category = '其他'
+  let category = 'Other'
   for (const line of markdown.split(/\r?\n/)) {
     const heading = line.match(/^###\s+(.+?)\s*$/)
     if (heading !== null) {
-      category = cleanCategoryHeading(heading[1]) || '其他'
+      category = cleanCategoryHeading(heading[1]) || 'Other'
       continue
     }
     const match = line.match(/^-\s+\[([^\]]+)]\((https:\/\/github\.com\/[^)]+)\)\s+(?:—|-)\s+(.+)$/)

@@ -105,14 +105,14 @@ final class ContactsSearchToolTests: XCTestCase {
 
     func testTypedPermissionDenialPropagates() async {
         let tool = ContactsSearchTool(
-            provider: ContactSearchProviderFake(error: .permissionDenied("联系人"))
+            provider: ContactSearchProviderFake(error: .permissionDenied("Contacts"))
         )
 
         do {
             _ = try await tool.execute(arguments: ["query": .string("Alice")])
             XCTFail("Expected permission denial")
         } catch let error as MobileNativeToolError {
-            XCTAssertEqual(error, .permissionDenied("联系人"))
+            XCTAssertEqual(error, .permissionDenied("Contacts"))
         } catch {
             XCTFail("Unexpected error: \(error)")
         }

@@ -89,16 +89,16 @@ struct SessionModelPickerView: View {
             .environment(\.defaultMinListRowHeight, 44)
             .scrollContentBackground(.hidden)
             .background(HarnessTheme.pageBackground)
-            .navigationTitle("本会话模型")
+            .navigationTitle("Session Model")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $searchText,
                 placement: .navigationBarDrawer(displayMode: .always),
-                prompt: "搜索模型 ID 或名称"
+                prompt: "Search model ID or name"
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") {
+                    Button("Cancel") {
                         dismiss()
                     }
                     .disabled(isSaving)
@@ -111,7 +111,7 @@ struct SessionModelPickerView: View {
                             ProgressView()
                                 .controlSize(.small)
                         } else {
-                            Text("完成")
+                            Text("Done")
                         }
                     }
                     .disabled(saveIsDisabled)
@@ -124,8 +124,8 @@ struct SessionModelPickerView: View {
             .onChange(of: model.providerDirectory) { _, _ in
                 reconcileSelectedProfile()
             }
-            .alert("无法保存本会话模型", isPresented: saveErrorPresented) {
-                Button("好") {
+            .alert("Couldn't Save Session Model", isPresented: saveErrorPresented) {
+                Button("OK") {
                     saveError = nil
                 }
             } message: {
@@ -136,18 +136,18 @@ struct SessionModelPickerView: View {
 
     private var scopeSection: some View {
         Section {
-            Toggle("跟随默认模型设置", isOn: followingGlobalBinding)
+            Toggle("Follow Default Model Settings", isOn: followingGlobalBinding)
                 .accessibilityIdentifier("session-model-follow-global")
 
             if !isFollowingGlobal {
-                Label("该选择只覆盖当前会话，不改变默认服务商配置。", systemImage: "arrow.triangle.2.circlepath")
+                Label("This choice only overrides the current session and doesn't change the default provider configuration.", systemImage: "arrow.triangle.2.circlepath")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         } header: {
-            Text("应用范围")
+            Text("Scope")
         } footer: {
-            Text("切换会在下一次模型请求时生效；正在进行的请求不会中途更换服务商。")
+            Text("Changes take effect on the next model request; in-flight requests won't switch providers midway.")
         }
     }
 
@@ -155,13 +155,13 @@ struct SessionModelPickerView: View {
         Section {
             if model.providerProfiles.isEmpty {
                 ContentUnavailableView(
-                    "没有服务商配置",
+                    "No Provider Profiles",
                     systemImage: "server.rack",
-                    description: Text("请先在模型与服务商中添加连接。")
+                    description: Text("Add a connection in Models & Providers first.")
                 )
                 .listRowBackground(Color.clear)
             } else {
-                Picker("服务商配置", selection: profileSelection) {
+                Picker("Provider Profile", selection: profileSelection) {
                     ForEach(model.providerProfiles) { profile in
                         Text(profile.displayName)
                             .tag(profile.id)
@@ -216,19 +216,19 @@ struct SessionModelPickerView: View {
             NavigationLink {
                 ProviderProfilesView()
             } label: {
-                Label("管理模型与服务商", systemImage: "slider.horizontal.3")
+                Label("Manage Models & Providers", systemImage: "slider.horizontal.3")
             }
         } header: {
-            Text("服务商")
+            Text("Provider")
         } footer: {
-            Text("这里只能选择已保存的服务商配置；API Key 不会显示，也不能在会话页修改。")
+            Text("Only saved provider profiles can be selected here; API keys are never shown and can't be edited from the session page.")
         }
     }
 
     @ViewBuilder
     private var modelSection: some View {
         Section {
-            TextField("手动模型 ID", text: modelIDBinding)
+            TextField("Manual Model ID", text: modelIDBinding)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .disabled(isSaving || model.isRunning || selectedProfile == nil)
@@ -238,7 +238,7 @@ struct SessionModelPickerView: View {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("正在获取模型目录…")
+                    Text("Fetching model catalog…")
                 }
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -246,15 +246,15 @@ struct SessionModelPickerView: View {
                 ContentUnavailableView {
                     Label(
                         searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? "没有可用模型"
-                            : "没有匹配的模型",
+                            ? "No Models Available"
+                            : "No Matching Models",
                         systemImage: "tray"
                     )
                 } description: {
                     Text(
                         searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? "可在上方手动输入模型 ID。"
-                            : "可修改搜索词，或直接输入模型 ID。"
+                            ? "You can enter a model ID manually above."
+                            : "Change your search, or enter a model ID directly."
                     )
                 }
                 .listRowBackground(Color.clear)
@@ -280,7 +280,7 @@ struct SessionModelPickerView: View {
 
             if !draft.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                !selectedModelIsInCatalog {
-                Label("使用手动模型 ID：\(draft.model)", systemImage: "keyboard")
+                Label("Use Manual Model ID: \(draft.model)", systemImage: "keyboard")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -305,7 +305,7 @@ struct SessionModelPickerView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Button("刷新模型目录", systemImage: "arrow.clockwise") {
+            Button("Refresh Model Catalog", systemImage: "arrow.clockwise") {
                 Task {
                     await discoverModels(forceRefresh: true)
                 }
@@ -313,9 +313,9 @@ struct SessionModelPickerView: View {
             .disabled(!canRefreshModels || isSaving || model.isRunning)
             .accessibilityIdentifier("session-model-refresh")
         } header: {
-            Text("模型")
+            Text("Model")
         } footer: {
-            Text("刷新只使用该服务商配置已保存在 Keychain 中的同源 API Key。目录之外的模型可直接填写 ID。")
+            Text("Refreshing only uses the same-origin API key saved in the Keychain for this provider profile. Models outside the catalog can be entered by ID.")
         }
     }
 
@@ -333,16 +333,16 @@ struct SessionModelPickerView: View {
 
     private var inferenceSection: some View {
         Section {
-            Picker("思考模式", selection: $draft.reasoningMode) {
+            Picker("Reasoning Mode", selection: $draft.reasoningMode) {
                 ForEach(draft.supportedReasoningModes
                     ?? ReasoningMode.supportedModes(for: draft.providerID)) { mode in
                     Text(mode.title).tag(mode)
                 }
             }
         } header: {
-            Text("推理")
+            Text("Reasoning")
         } footer: {
-            Text("可选模式会按当前服务商协议过滤；Anthropic 扩展思考暂不用于需要工具续轮的会话。")
+            Text("Available modes are filtered by the current provider protocol; Anthropic extended thinking isn't yet used for sessions that need tool follow-up turns.")
         }
     }
 
@@ -390,11 +390,11 @@ struct SessionModelPickerView: View {
     private var catalogSourceTitle: String {
         switch visibleCatalog.source {
         case .builtIn:
-            return "配置目录 · \(visibleCatalog.models.count) 项"
+            return "Profile Catalog · \(visibleCatalog.models.count)"
         case .remote:
-            return "服务商目录 · \(visibleCatalog.models.count) 项"
+            return "Provider Catalog · \(visibleCatalog.models.count)"
         case .cache:
-            return "本机缓存 · \(visibleCatalog.models.count) 项"
+            return "Local Cache · \(visibleCatalog.models.count)"
         }
     }
 
@@ -516,7 +516,7 @@ struct SessionModelPickerView: View {
     }
 
     private func endpointHost(_ baseURL: String) -> String {
-        URLComponents(string: baseURL)?.host ?? "无效地址"
+        URLComponents(string: baseURL)?.host ?? "Invalid URL"
     }
 }
 
@@ -636,16 +636,16 @@ private struct SessionProviderStatusView: View {
     }
 
     private var title: String {
-        guard supportsInference else { return "当前协议尚未接入原生推理客户端" }
+        guard supportsInference else { return "This protocol doesn't have a native inference client yet" }
         switch credentialStatus {
         case .unknown:
-            return "正在检查 API Key"
+            return "Checking API Key"
         case .configured:
-            return "API Key 已配置"
+            return "API Key configured"
         case .missing:
-            return "缺少 API Key，请先编辑该配置"
+            return "Missing API Key. Edit this profile first"
         case .originMismatch:
-            return "API 地址已变化，需要重新输入 API Key"
+            return "API URL changed. Re-enter the API Key"
         }
     }
 
@@ -719,10 +719,10 @@ private struct SessionModelRow: View {
     private var capacityDescription: String? {
         var parts: [String] = []
         if let contextWindow = model.contextWindow {
-            parts.append("上下文 \(contextWindow.formatted())")
+            parts.append("Context \(contextWindow.formatted())")
         }
         if let maxOutputTokens = model.maxOutputTokens {
-            parts.append("最大输出 \(maxOutputTokens.formatted())")
+            parts.append("Max Output \(maxOutputTokens.formatted())")
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }

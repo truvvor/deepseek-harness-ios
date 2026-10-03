@@ -44,15 +44,15 @@ struct WorkStateView: View {
                             isClearGoalConfirmationPresented = true
                         }
                     )
-                } header: { Label("目标", systemImage: "scope") }
+                } header: { Label("Goal", systemImage: "scope") }
             } else {
                 Section {
                     Button {
                         goalEditor = GoalEditorRequest(mode: .create)
                     } label: {
-                        Label("创建会话目标", systemImage: "scope")
+                        Label("Create Session Goal", systemImage: "scope")
                     }
-                } header: { Label("目标", systemImage: "scope") }
+                } header: { Label("Goal", systemImage: "scope") }
             }
 
             if !model.workState.plan.isEmpty {
@@ -60,7 +60,7 @@ struct WorkStateView: View {
                     ForEach(model.workState.plan) { step in
                         WorkStateItemRow(title: step.title, status: step.status)
                     }
-                } header: { Label("计划", systemImage: "list.bullet.clipboard") }
+                } header: { Label("Plan", systemImage: "list.bullet.clipboard") }
             }
 
             if !model.workState.todos.isEmpty {
@@ -68,44 +68,44 @@ struct WorkStateView: View {
                     ForEach(model.workState.todos) { item in
                         WorkStateItemRow(title: item.title, status: item.status)
                     }
-                } header: { Label("待办", systemImage: "checklist") }
+                } header: { Label("To-Dos", systemImage: "checklist") }
             }
 
             if model.omittedContextMessages > 0 {
                 Section {
                     Label {
                         Text(
-                            "发送模型前已省略 \(model.omittedContextMessages) 条较早消息，并保留本地任务状态摘要。"
+                            "\(model.omittedContextMessages) earlier messages were omitted before sending to the model; a local task-state summary was kept."
                         )
                     } icon: {
                         Image(systemName: "internaldrive")
                     }
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                } header: { Label("上下文治理", systemImage: "internaldrive") }
+                } header: { Label("Context Management", systemImage: "internaldrive") }
             }
         }
         .listStyle(.insetGrouped)
         .environment(\.defaultMinListRowHeight, 44)
         .scrollContentBackground(.hidden)
         .background(HarnessTheme.pageBackground)
-        .navigationTitle("任务状态")
+        .navigationTitle("Task State")
         .sheet(item: $goalEditor) { request in
             GoalEditorSheet(request: request)
         }
         .confirmationDialog(
-            "清空当前目标？",
+            "Clear Current Goal?",
             isPresented: $isClearGoalConfirmationPresented,
             titleVisibility: .visible
         ) {
-            Button("清空目标", role: .destructive) {
+            Button("Clear Goal", role: .destructive) {
                 Task {
                     await model.applyGoalAction(.clear)
                 }
             }
-            Button("取消", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("目标会从当前会话移除，聊天记录、计划和待办不会被删除。")
+            Text("The goal will be removed from the current session. Chat history, plan, and to-dos won't be deleted.")
         }
     }
 
@@ -135,7 +135,7 @@ private struct WorkStateGoalRow: View {
 
             Menu {
                 Button(action: onEdit) {
-                    Label("编辑目标", systemImage: "pencil")
+                    Label("Edit Goal", systemImage: "pencil")
                 }
 
                 ForEach(goal.status.allowedGoalTransitions, id: \.rawValue) { status in
@@ -148,20 +148,20 @@ private struct WorkStateGoalRow: View {
 
                 if goal.status == .completed {
                     Button(action: onCreateReplacement) {
-                        Label("创建新目标", systemImage: "plus")
+                        Label("Create New Goal", systemImage: "plus")
                     }
                 }
 
                 Divider()
 
                 Button(role: .destructive, action: onClear) {
-                    Label("清空目标", systemImage: "trash")
+                    Label("Clear Goal", systemImage: "trash")
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
                     .frame(width: 44, height: 44)
             }
-            .accessibilityLabel("目标操作")
+            .accessibilityLabel("Goal Actions")
             .accessibilityIdentifier("work-state-goal-menu")
         }
         .accessibilityElement(children: .contain)
@@ -202,22 +202,22 @@ private struct GoalEditorSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("希望完成的结果", text: $title, axis: .vertical)
+                    TextField("Desired outcome", text: $title, axis: .vertical)
                         .lineLimit(2...5)
                         .accessibilityIdentifier("goal-editor-field")
                 } header: {
-                    Label("目标", systemImage: "scope")
+                    Label("Goal", systemImage: "scope")
                 }
             }
-            .navigationTitle(request.mode == .create ? "创建目标" : "编辑目标")
+            .navigationTitle(request.mode == .create ? "Create Goal" : "Edit Goal")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button("Cancel") { dismiss() }
                         .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
+                    Button("Save") {
                         save()
                     }
                     .disabled(
@@ -259,14 +259,14 @@ private struct ResumeRunSection: View {
                 model.errorMessage = nil
                 model.resumePendingRun()
             } label: {
-                Label("从本机检查点继续", systemImage: "arrow.clockwise.circle.fill")
+                Label("Continue from Local Checkpoint", systemImage: "arrow.clockwise.circle.fill")
                     .font(.headline)
             }
             .disabled(model.isRunning)
         } header: {
-            Text("可恢复任务")
+            Text("Resumable Task")
         } footer: {
-            Text("继续当前会话最后一个未完成回合。恢复与 Agent Loop 均在手机执行，不会启动服务器任务。")
+            Text("Continues the last unfinished turn of the current session. Recovery and the Agent Loop both run on the phone; no server task is started.")
         }
     }
 }
@@ -280,13 +280,13 @@ private struct CurrentRunSection: View {
             HStack(spacing: 12) {
                 ProgressView()
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Agent 步骤")
-                    Text("第 \(step) 步")
+                    Text("Agent Step")
+                    Text("Step \(step)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 8)
-                HarnessStatusPill(title: "运行中", systemImage: "bolt.fill", tint: .green)
+                HarnessStatusPill(title: "Running", systemImage: "bolt.fill", tint: .green)
             }
 
             if let activeToolStatus {
@@ -295,7 +295,7 @@ private struct CurrentRunSection: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-        } header: { Label("当前执行", systemImage: "arrow.trianglehead.2.clockwise.rotate.90") }
+        } header: { Label("Current Run", systemImage: "arrow.trianglehead.2.clockwise.rotate.90") }
     }
 }
 
@@ -334,11 +334,11 @@ private struct WorkStateErrorSection: View {
                 .foregroundStyle(.red)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Button("关闭") {
+            Button("Close") {
                 model.errorMessage = nil
             }
         } header: {
-            Label("执行失败", systemImage: "exclamationmark.triangle")
+            Label("Run Failed", systemImage: "exclamationmark.triangle")
         }
     }
 }
@@ -347,30 +347,30 @@ extension ConversationItemStatus {
     var title: String {
         switch self {
         case .pending:
-            "待处理"
+            "Pending"
         case .active:
-            "进行中"
+            "In Progress"
         case .paused:
-            "已暂停"
+            "Paused"
         case .completed:
-            "已完成"
+            "Completed"
         case .blocked:
-            "受阻"
+            "Blocked"
         }
     }
 
     var actionTitle: String {
         switch self {
         case .pending:
-            "标记为待处理"
+            "Mark as Pending"
         case .active:
-            "开始或恢复"
+            "Start or Resume"
         case .paused:
-            "暂停目标"
+            "Pause Goal"
         case .completed:
-            "标记为已完成"
+            "Mark as Completed"
         case .blocked:
-            "标记为受阻"
+            "Mark as Blocked"
         }
     }
 

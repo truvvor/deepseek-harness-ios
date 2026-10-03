@@ -594,11 +594,11 @@ enum ConversationRerunError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .messageNotFound:
-            "找不到要重新运行的消息。"
+            "Couldn't find the message to rerun."
         case .notUserMessage:
-            "只能从用户消息重新运行。"
+            "You can only rerun from a user message."
         case .emptyReplacement:
-            "编辑后的消息不能为空。"
+            "The edited message cannot be empty."
         }
     }
 }

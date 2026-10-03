@@ -22,34 +22,34 @@ struct AgentProviderBundlesView: View {
                         }
                         installStatus(for: bundle)
                         installActions(for: bundle)
-                        Text("固定来源：\(bundle.installPayload.packageName)@\(bundle.installPayload.version)")
+                        Text("Pinned source: \(bundle.installPayload.packageName)@\(bundle.installPayload.version)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 4)
                 }
 
-                DisclosureGroup("安装与安全") {
-                    Text("URL、SHA-256、npm 包身份、CLI 名称和命令均来自不可编辑的内置清单。下载会校验后原子替换；失败或取消会保留旧版本。安装器不会读取模型服务 API Key。")
+                DisclosureGroup("Installation & Security") {
+                    Text("The URL, SHA-256, npm package identity, CLI name, and commands all come from a built-in, non-editable manifest. Downloads are verified and then replaced atomically; a failure or cancellation keeps the previous version. The installer never reads model provider API Keys.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             } header: {
-                Text("内置 Agent Bundle")
+                Text("Built-in Agent Bundles")
             } footer: {
-                Text("安装在手机 iSH 内完成，下载校验后原子替换。")
+                Text("Installation runs inside iSH on this phone; downloads are verified and then replaced atomically.")
             }
         }
         .listStyle(.insetGrouped)
         .environment(\.defaultMinListRowHeight, 44)
         .scrollContentBackground(.hidden)
         .background(HarnessTheme.pageBackground)
-        .navigationTitle("Agent 编排")
-        .alert("Bundle 设置失败", isPresented: Binding(
+        .navigationTitle("Agent Orchestration")
+        .alert("Bundle Setup Failed", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
-            Button("好") { errorMessage = nil }
+            Button("OK") { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
         }
@@ -76,7 +76,7 @@ struct AgentProviderBundlesView: View {
                 Text(status.message)
                     .font(.caption)
                 if let version = status.installedVersion {
-                    Text("已验证版本 \(version)")
+                    Text("Verified version \(version)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -89,12 +89,12 @@ struct AgentProviderBundlesView: View {
         let status = model.providerBundleInstallStatus(bundle.id)
         HStack(spacing: 12) {
             if status.phase.isActive {
-                Button("取消") {
+                Button("Cancel") {
                     model.cancelProviderBundleInstall(bundle.id)
                 }
                 .buttonStyle(.bordered)
             } else {
-                Button(status.phase == .installed ? "重新安装" : "安装到手机") {
+                Button(status.phase == .installed ? "Reinstall" : "Install on Phone") {
                     model.startProviderBundleInstall(
                         bundle.id,
                         reinstall: status.phase == .installed

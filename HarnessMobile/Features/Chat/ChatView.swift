@@ -75,7 +75,7 @@ struct ChatView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(model.isRunning)
-                .accessibilityLabel("选择模型，当前 \(model.effectiveConfiguration.model)")
+                .accessibilityLabel("Choose model, current: \(model.effectiveConfiguration.model)")
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -132,7 +132,7 @@ struct ChatView: View {
                             domain: "HarnessMobile",
                             code: 400,
                             userInfo: [
-                                NSLocalizedDescriptionKey: "没有可导入的文件。"
+                                NSLocalizedDescriptionKey: "There are no files to import."
                             ]
                         )
                     )
@@ -218,15 +218,15 @@ struct ChatView: View {
             )
         }
         .confirmationDialog(
-            "脱敏导出对话",
+            "Export Redacted Conversation",
             isPresented: $isExportFormatPresented,
             titleVisibility: .visible
         ) {
             Button("JSON") { prepareExport(.json) }
             Button("Markdown") { prepareExport(.markdown) }
-            Button("取消", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("导出会移除工具原始参数并遮盖常见 API Token；文件只在你选择的位置生成。")
+            Text("Export removes raw tool arguments and masks common API tokens. The file is created only in the location you choose.")
         }
         .fileExporter(
             isPresented: $isFileExporterPresented,
@@ -240,22 +240,22 @@ struct ChatView: View {
             }
         }
         .confirmationDialog(
-            "允许本地工具？",
+            "Allow Local Tool?",
             isPresented: approvalPresented,
             titleVisibility: .visible
         ) {
-            Button("拒绝", role: .cancel) {
+            Button("Deny", role: .cancel) {
                 model.resolveApproval(.deny)
             }
             if model.pendingApproval != nil {
-                Button("仅允许这一次") {
+                Button("Allow Once") {
                     model.resolveApproval(.allowOnce)
                 }
-                Button("始终允许此范围") {
+                Button("Always Allow This Scope") {
                     model.resolveApproval(.trustScope)
                 }
                 if model.pendingApproval?.risk != .destructive {
-                    Button("始终允许本机工具") {
+                    Button("Always Allow On-Device Tools") {
                         model.resolveApproval(.trustDevice)
                     }
                 }
@@ -263,7 +263,7 @@ struct ChatView: View {
         } message: {
             if let approval = model.pendingApproval {
                 Text(
-                    "\(approval.summary)\n\n当前范围：\(approval.scope.chatResourceSummary)\n\n工具只在本机执行；产生的文字结果将发送给 \(approval.modelHost) 继续推理。\(approval.risk == .destructive ? "危险操作只能永久允许当前精确范围，不能使用整机通配授权。" : "可永久允许当前范围或本机常规工具。")长期 Harness 授权可在设置中撤销，不会跳过 iOS 的照片、联系人、位置等系统权限。"
+                    "\(approval.summary)\n\nCurrent scope: \(approval.scope.chatResourceSummary)\n\nThe tool runs only on this device; its text output will be sent to \(approval.modelHost) for further reasoning. \(approval.risk == .destructive ? "Destructive operations can only be permanently allowed for this exact scope, not with a device-wide grant." : "You can permanently allow this scope or routine on-device tools.") Persistent Harness grants can be revoked in Settings and never bypass iOS system permissions such as Photos, Contacts, or Location."
                 )
             }
         }
@@ -277,17 +277,17 @@ struct ChatView: View {
                     conversationMode = .chat
                     isSessionOptionsPresented = false
                 } label: {
-                    optionLabel("对话", systemImage: "bubble.left.and.bubble.right", selected: conversationMode == .chat)
+                    optionLabel("Chat", systemImage: "bubble.left.and.bubble.right", selected: conversationMode == .chat)
                 }
-                .accessibilityIdentifier("对话")
+                .accessibilityIdentifier("Chat")
 
                 Button {
                     conversationMode = .trajectory
                     isSessionOptionsPresented = false
                 } label: {
-                    optionLabel("轨迹", systemImage: "point.3.connected.trianglepath.dotted", selected: conversationMode == .trajectory)
+                    optionLabel("Trajectory", systemImage: "point.3.connected.trianglepath.dotted", selected: conversationMode == .trajectory)
                 }
-                .accessibilityIdentifier("轨迹")
+                .accessibilityIdentifier("Trajectory")
 
                 Divider()
 
@@ -296,7 +296,7 @@ struct ChatView: View {
                     isSessionOptionsPresented = false
                 } label: {
                     Label(
-                        "Agent 预设：\(model.activeAgentPreset?.displayName ?? model.controlState.agentPresetID)",
+                        "Agent Preset: \(model.activeAgentPreset?.displayName ?? model.controlState.agentPresetID)",
                         systemImage: "switch.2"
                     )
                 }
@@ -304,7 +304,7 @@ struct ChatView: View {
 
                 Divider()
 
-                Picker("运行模式", selection: modeBinding) {
+                Picker("Run Mode", selection: modeBinding) {
                     ForEach(ConversationInteractionMode.allCases) { mode in
                         Label(mode.title, systemImage: mode == .agent ? "sparkles" : "list.bullet.clipboard")
                             .tag(mode)
@@ -312,7 +312,7 @@ struct ChatView: View {
                 }
                 .disabled(model.isRunning)
 
-                Picker("工具权限", selection: permissionModeBinding) {
+                Picker("Tool Permissions", selection: permissionModeBinding) {
                     ForEach(ToolPermissionMode.allCases) { permission in
                         Label(permission.title, systemImage: permission.systemImage)
                             .tag(permission)
@@ -326,7 +326,7 @@ struct ChatView: View {
                     model.isSessionModelPickerRequested = true
                     isSessionOptionsPresented = false
                 } label: {
-                    Label("切换模型", systemImage: "cpu")
+                    Label("Switch Model", systemImage: "cpu")
                 }
                 .disabled(model.isRunning)
 
@@ -334,29 +334,29 @@ struct ChatView: View {
                     isSettingsPresented = true
                     isSessionOptionsPresented = false
                 } label: {
-                    Label("设置", systemImage: "gearshape")
+                    Label("Settings", systemImage: "gearshape")
                 }
 
                 Button {
                     isJobsPresented = true
                     isSessionOptionsPresented = false
                 } label: {
-                    Label("后台任务", systemImage: "list.bullet.rectangle")
+                    Label("Background Jobs", systemImage: "list.bullet.rectangle")
                 }
 
                 Button {
                     isSessionOptionsPresented = false
                     isSchedulePanelPresented = true
                 } label: {
-                    Label("定时提醒", systemImage: "clock.badge.checkmark")
+                    Label("Scheduled Reminders", systemImage: "clock.badge.checkmark")
                 }
-                .accessibilityIdentifier("定时提醒")
+                .accessibilityIdentifier("Scheduled Reminders")
 
                 Button {
                     isExportFormatPresented = true
                     isSessionOptionsPresented = false
                 } label: {
-                    Label("导出对话", systemImage: "square.and.arrow.up")
+                    Label("Export Conversation", systemImage: "square.and.arrow.up")
                 }
                 .disabled(model.messages.isEmpty)
             }
@@ -373,9 +373,9 @@ struct ChatView: View {
                 .imageScale(.large)
                 .frame(width: 44, height: 44)
         }
-        .accessibilityLabel("会话选项")
-        .accessibilityHint("打开对话、轨迹、模型和工具权限选项")
-        .accessibilityIdentifier("会话选项")
+        .accessibilityLabel("Session Options")
+        .accessibilityHint("Opens chat, trajectory, model, and tool permission options")
+        .accessibilityIdentifier("Session Options")
     }
 
     private func optionLabel(_ title: String, systemImage: String, selected: Bool) -> some View {
@@ -403,7 +403,7 @@ struct ChatView: View {
                 ChatInputBar(
                     draft: $draft,
                     selectedPhoto: $selectedPhoto,
-                    isRunning: model.isRunning,
+                    isRunning: model.isChatBusy,
                     isSubmitting: model.isSubmitting,
                     submissionStatus: model.submissionStatus,
                     hasStagedImage: model.hasStagedImage,
@@ -419,7 +419,7 @@ struct ChatView: View {
                     onShowCommands: showCommands,
                     onSelectSuggestion: selectSuggestion,
                     onSend: send,
-                    onCancel: model.cancelRun,
+                    onCancel: model.cancelActiveTurn,
                     onEditQueuedInput: beginEditingQueuedInput,
                     onRemoveQueuedInput: model.removeQueuedInput,
                     onSteerQueuedInput: model.steerQueuedInput,
@@ -572,7 +572,7 @@ struct ChatView: View {
 
     private func prepareExport(_ format: ConversationExportFormat) {
         guard let sessionID = model.activeSessionID else {
-            model.errorMessage = "当前没有可导出的会话。"
+            model.errorMessage = "There is no session to export."
             return
         }
         do {
@@ -625,7 +625,7 @@ private struct ChatErrorBanner: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: HarnessTheme.Spacing.xSmall) {
-                Text("任务未完成")
+                Text("Task Incomplete")
                     .font(.subheadline.weight(.semibold))
                 Text(message)
                     .font(.caption)
@@ -641,7 +641,7 @@ private struct ChatErrorBanner: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
-            .accessibilityLabel("关闭错误提示")
+            .accessibilityLabel("Dismiss error")
         }
         .padding(.leading, HarnessTheme.Spacing.large)
         .padding(.trailing, HarnessTheme.Spacing.small)
@@ -691,8 +691,8 @@ private struct SessionBreadcrumbBar: View {
                     .disabled(node.isCurrent)
                     .accessibilityLabel(
                         node.isCurrent
-                            ? "当前子 Agent，\(node.label)，地址深度 \(node.depth)"
-                            : "返回 \(node.label)，地址深度 \(node.depth)"
+                            ? "Current subagent, \(node.label), depth \(node.depth)"
+                            : "Back to \(node.label), depth \(node.depth)"
                     )
                 }
             }
@@ -723,16 +723,16 @@ private extension ToolApprovalScope {
         resources.map { resource in
             switch resource {
             case "tool":
-                "整个 \(toolName) 工具"
+                "Entire \(toolName) tool"
             case "workspace:root":
-                "App 工作区"
+                "App workspace"
             case "ish-sandbox:/workspace":
-                "iSH /workspace 沙箱"
+                "iSH /workspace sandbox"
             default:
-                resource.replacingOccurrences(of: "workspace:file:", with: "工作区文件：")
+                resource.replacingOccurrences(of: "workspace:file:", with: "Workspace file: ")
             }
         }
-        .joined(separator: "，")
+        .joined(separator: ", ")
     }
 }
 
@@ -766,6 +766,16 @@ private struct ConversationBottomPreferenceKey: PreferenceKey {
     }
 }
 
+/// `minY` of the conversation's first row in the scroll coordinate space:
+/// 0 when the top is at the viewport top, negative while scrolled down.
+private struct ConversationTopPreferenceKey: PreferenceKey {
+    static let defaultValue: CGFloat = -.greatestFiniteMagnitude
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 private struct ConversationScroller: View {
     let model: AppModel
     let onStartInput: () -> Void
@@ -778,31 +788,38 @@ private struct ConversationScroller: View {
     @State private var followsConversationTail = true
     @State private var automaticScrollTask: Task<Void, Never>?
     @State private var scrollViewportHeight: CGFloat = 0
+    @State private var isLoadingEarlier = false
+    @State private var lastTopSample: (y: CGFloat, at: TimeInterval)?
+    @State private var scrollVelocity: CGFloat = 0
 
     private let bottomID = "conversation-bottom"
+    /// Rows added per load, from the in-memory window first, then from the
+    /// mirror's transcript store.
+    private let earlierPageSize = 80
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 ConversationTimeline(
                     hasResumableRun: model.hasResumableRun,
-                    isRunning: model.isRunning,
+                    isRunning: model.isChatBusy,
                     omittedContextMessages: model.omittedContextMessages,
                     messages: renderedMessages,
-                    hiddenMessageCount: hiddenMessageCount,
+                    hiddenMessageCount: hiddenMessageCount
+                        + (model.activeDesktopMirrorHasOlderMessages ? model.desktopMirrorLoadedStart : 0),
                     contextInjections: model.activeContextInjections,
                     activeRunID: model.activeRunID,
                     streamingReasoning: model.streamingReasoning,
                     streamingText: model.streamingText,
                     activeToolStatus: model.activeToolStatus,
                     activeToolEvents: model.activeToolEvents,
-                    runStartedAt: model.runStartedAt,
+                    runStartedAt: model.chatRunStartedAt,
                     pendingQuestionCount: model.pendingUserQuestion?.request.questions.count ?? 0,
                     pendingQuestionTitle: model.pendingUserQuestion?.request.questions.first?.question,
                     metrics: model.trajectoryMetrics,
                     bottomID: bottomID,
                     onResume: model.resumePendingRun,
-                    onLoadEarlierMessages: loadEarlierMessages,
+                    onLoadEarlierMessages: { loadEarlierMessages(proxy) },
                     onStartInput: onStartInput,
                     onRetryUserMessage: model.retryFromUserMessage,
                     onEditUserMessage: onEditUserMessage,
@@ -833,6 +850,9 @@ private struct ConversationScroller: View {
             .onPreferenceChange(ConversationViewportHeightPreferenceKey.self) {
                 scrollViewportHeight = $0
             }
+            .onPreferenceChange(ConversationTopPreferenceKey.self) { top in
+                handleTopOffset(top, proxy: proxy)
+            }
             .onPreferenceChange(ConversationBottomPreferenceKey.self) { bottom in
                 guard !followsConversationTail,
                       scrollViewportHeight > 0,
@@ -861,9 +881,59 @@ private struct ConversationScroller: View {
         }
     }
 
-    private func loadEarlierMessages() {
-        renderedMessageLimit = min(availableMessageCount, renderedMessageLimit + 80)
-        refreshRenderedMessages()
+    /// Prefetches earlier rows while the user scrolls back. The trigger
+    /// distance grows with the upward scroll velocity, so a fast flick has
+    /// the next page in place before the top of the loaded rows is reached.
+    private func handleTopOffset(_ top: CGFloat, proxy: ScrollViewProxy) {
+        let now = ProcessInfo.processInfo.systemUptime
+        if let sample = lastTopSample, now > sample.at {
+            // Positive while the content moves down, i.e. scrolling toward
+            // older rows.
+            let instantaneous = (top - sample.y) / CGFloat(now - sample.at)
+            scrollVelocity = scrollVelocity * 0.5 + instantaneous * 0.5
+        }
+        lastTopSample = (top, now)
+        guard !followsConversationTail, !isLoadingEarlier, scrollViewportHeight > 0 else { return }
+        let hasEarlier = hiddenMessageCount > 0 || model.activeDesktopMirrorHasOlderMessages
+        guard hasEarlier else { return }
+        let lead = 1 + min(3, max(0, scrollVelocity) / 1_000)
+        let threshold = max(scrollViewportHeight, 400) * lead
+        guard top > -threshold else { return }
+        loadEarlierMessages(proxy)
+    }
+
+    private func loadEarlierMessages(_ proxy: ScrollViewProxy) {
+        guard !isLoadingEarlier else { return }
+        isLoadingEarlier = true
+        followsConversationTail = false
+        let anchorID = renderedMessages.first.map { ConversationPresentationItem.message($0).id }
+        Task { @MainActor in
+            defer {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(150))
+                    isLoadingEarlier = false
+                }
+            }
+            if hiddenMessageCount > 0 {
+                renderedMessageLimit = min(availableMessageCount, renderedMessageLimit + earlierPageSize)
+            } else if model.activeDesktopMirrorHasOlderMessages {
+                let added = await model.loadOlderDesktopMirrorMessages(limit: earlierPageSize)
+                guard added > 0 else { return }
+                renderedMessageLimit += added
+            } else {
+                return
+            }
+            refreshRenderedMessages()
+            // Keep the previously first row where it was so the prepended rows
+            // appear above it instead of shifting the viewport.
+            if let anchorID {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    proxy.scrollTo(anchorID, anchor: .top)
+                }
+            }
+        }
     }
 
     private func refreshRenderedMessages() {
@@ -925,10 +995,21 @@ private struct ConversationTimeline: View {
 
     var body: some View {
         LazyVStack(spacing: 14) {
+            Color.clear
+                .frame(height: 1)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear.preference(
+                            key: ConversationTopPreferenceKey.self,
+                            value: proxy.frame(in: .named("conversation-scroll")).minY
+                        )
+                    }
+                }
+
             if hiddenMessageCount > 0 {
                 Button(action: onLoadEarlierMessages) {
                     Label(
-                        "显示更早的 \(min(hiddenMessageCount, 80)) 条消息",
+                        "Show \(min(hiddenMessageCount, 80)) earlier messages",
                         systemImage: "clock.arrow.circlepath"
                     )
                     .font(.footnote)
@@ -937,12 +1018,12 @@ private struct ConversationTimeline: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("load-earlier-messages")
-                .accessibilityValue("尚有 \(hiddenMessageCount) 条较早消息")
+                .accessibilityValue("\(hiddenMessageCount) earlier messages remaining")
             }
 
             if hasResumableRun, !isRunning {
                 Button(action: onResume) {
-                    Label("继续上次未完成的任务", systemImage: "arrow.clockwise.circle")
+                    Label("Resume Unfinished Task", systemImage: "arrow.clockwise.circle")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.borderedProminent)
@@ -951,7 +1032,7 @@ private struct ConversationTimeline: View {
 
             if omittedContextMessages > 0 {
                 Label(
-                    "已在本机压缩较早上下文（省略 \(omittedContextMessages) 条）",
+                    "Earlier context compacted on device (\(omittedContextMessages) omitted)",
                     systemImage: "archivebox"
                 )
                 .font(.caption)
@@ -963,7 +1044,7 @@ private struct ConversationTimeline: View {
                 Button(action: onStartInput) {
                     VStack(spacing: 12) {
                         HarnessIconTile(systemImage: "sparkles", tint: .secondary, size: 40)
-                        Text("有什么要处理？")
+                        Text("What can I help with?")
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(.primary)
                     }
@@ -1072,7 +1153,7 @@ private struct ContextInjectionList: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("已注入上下文")
+        .accessibilityLabel("Injected context")
     }
 }
 
@@ -1110,8 +1191,8 @@ private struct ContextInjectionRow: View {
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("\(injection.sourceLabel) 上下文")
-            .accessibilityHint(isExpanded ? "折叠注入内容" : "展开注入内容")
+            .accessibilityLabel("\(injection.sourceLabel) context")
+            .accessibilityHint(isExpanded ? "Collapse injected content" : "Expand injected content")
 
             if isExpanded {
                 ScrollView {
@@ -1146,7 +1227,7 @@ private struct PendingQuestionStatus: View {
         HStack(spacing: 9) {
             HarnessIconTile(systemImage: "questionmark.bubble.fill", tint: .orange, size: 28)
             VStack(alignment: .leading, spacing: 1) {
-                Text("等待你的回答")
+                Text("Waiting for Your Answer")
                     .font(.caption.weight(.semibold))
                 if let title, !title.isEmpty {
                     Text(title)
@@ -1156,14 +1237,14 @@ private struct PendingQuestionStatus: View {
                 }
             }
             Spacer(minLength: 8)
-            Text("\(count) 题")
+            Text("\(count) questions")
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 4)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("等待你的回答，共 \(count) 个问题")
+        .accessibilityLabel("Waiting for your answer, \(count) questions")
     }
 }
 
@@ -1178,7 +1259,7 @@ private struct HarnessRunStatus: View {
             HStack(spacing: 8) {
                 ProgressView()
                     .controlSize(.small)
-                Text("正在深入处理…")
+                Text("Working deeply…")
                     .font(.caption.weight(.medium))
                 if elapsed >= 15 {
                     Text(Self.duration(elapsed))
@@ -1191,7 +1272,7 @@ private struct HarnessRunStatus: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 4)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("正在深入处理，已运行 \(Self.duration(elapsed))")
+            .accessibilityLabel("Working deeply, running for \(Self.duration(elapsed))")
         }
     }
 
@@ -1228,7 +1309,7 @@ private struct ConversationMetricsStrip: View {
         .frame(height: 38)
         .background(HarnessTheme.surface)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("对话运行统计")
+        .accessibilityLabel("Conversation run statistics")
     }
 
     private func metric(_ title: String, _ value: String) -> some View {
@@ -1288,7 +1369,7 @@ private struct AgentPresetPickerView: View {
                                         .font(.body.weight(.semibold))
                                         .foregroundStyle(.primary)
                                     if preset.trust == .user {
-                                        Text("用户")
+                                        Text("User")
                                             .font(.caption2)
                                             .foregroundStyle(.secondary)
                                     }
@@ -1319,14 +1400,14 @@ private struct AgentPresetPickerView: View {
                     .buttonStyle(.plain)
                     .disabled(!preset.isMountable || model.isRunning)
                     .accessibilityLabel(preset.displayName)
-                    .accessibilityValue(preset.broken ?? (selectedPresetID == preset.id ? "已选择" : "可选择"))
+                    .accessibilityValue(preset.broken ?? (selectedPresetID == preset.id ? "Selected" : "Available"))
                 }
             }
-            .navigationTitle("Agent 预设")
+            .navigationTitle("Agent Presets")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
         }
@@ -1362,9 +1443,9 @@ private struct JobsPanelView: View {
             Group {
                 if model.visibleJobs.isEmpty {
                     ContentUnavailableView(
-                        "暂无后台任务",
+                        "No Background Jobs",
                         systemImage: "checkmark.circle",
-                        description: Text("后台工具和子 Agent 完成后会保留在这里。")
+                        description: Text("Background tools and subagents stay here after they finish.")
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(HarnessTheme.pageBackground)
@@ -1420,11 +1501,11 @@ private struct JobsPanelView: View {
                     .background(.bar)
                 }
             }
-            .navigationTitle("后台任务")
+            .navigationTitle("Background Jobs")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("完成") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -1433,7 +1514,7 @@ private struct JobsPanelView: View {
                         Image(systemName: isRefreshing ? "progress.indicator" : "arrow.clockwise")
                     }
                     .disabled(isRefreshing)
-                    .accessibilityLabel("刷新后台任务")
+                    .accessibilityLabel("Refresh background jobs")
                 }
             }
         }
@@ -1460,7 +1541,7 @@ private struct SubagentTreeSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("子 Agent", systemImage: "point.3.connected.trianglepath.dotted")
+            Label("Subagent", systemImage: "point.3.connected.trianglepath.dotted")
                 .font(.subheadline.weight(.semibold))
             ForEach(subagents, id: \.id) { subagent in
                 SubagentTreeRow(
@@ -1485,7 +1566,7 @@ private struct SubagentTreeRow: View {
                 Text(subagent.label)
                     .font(.footnote.weight(.semibold))
                     .lineLimit(1)
-                Text("深度 \(subagent.delegationDepth) · \(statusTitle)")
+                Text("Depth \(subagent.delegationDepth) · \(statusTitle)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -1495,14 +1576,14 @@ private struct SubagentTreeRow: View {
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel("打开子 Agent")
+            .accessibilityLabel("Open subagent")
             if !subagent.status.isTerminal {
                 Button(role: .destructive, action: onStop) {
                     Image(systemName: "stop.circle")
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.borderless)
-                .accessibilityLabel("停止子 Agent")
+                .accessibilityLabel("Stop subagent")
             }
         }
         .padding(.leading, CGFloat(max(0, subagent.delegationDepth - 1)) * 16)
@@ -1510,11 +1591,11 @@ private struct SubagentTreeRow: View {
 
     private var statusTitle: String {
         switch subagent.status {
-        case .running: "运行中"
-        case .stopping: "停止中"
-        case .completed: "已完成"
-        case .killed: "已停止"
-        case .failed: "失败"
+        case .running: "Running"
+        case .stopping: "Stopping"
+        case .completed: "Completed"
+        case .killed: "Stopped"
+        case .failed: "Failed"
         }
     }
 
@@ -1571,12 +1652,12 @@ private struct JobPanelRow: View {
 
             HStack(spacing: 12) {
                 Button(action: onOutput) {
-                    Label("查看输出", systemImage: "doc.text.magnifyingglass")
+                    Label("View Output", systemImage: "doc.text.magnifyingglass")
                 }
                 .buttonStyle(.borderless)
                 if !job.status.isTerminal {
                     Button(role: .destructive, action: onStop) {
-                        Label("停止", systemImage: "stop.circle")
+                        Label("Stop", systemImage: "stop.circle")
                     }
                     .buttonStyle(.borderless)
                 }
@@ -1588,11 +1669,11 @@ private struct JobPanelRow: View {
 
     private var statusTitle: String {
         switch job.status {
-        case .running: "运行中"
-        case .stopping: "停止中"
-        case .completed: "已完成"
-        case .killed: "已停止"
-        case .failed: "失败"
+        case .running: "Running"
+        case .stopping: "Stopping"
+        case .completed: "Completed"
+        case .killed: "Stopped"
+        case .failed: "Failed"
         }
     }
 
@@ -1636,16 +1717,16 @@ private struct JobOutputPanelView: View {
                             .padding(16)
                     }
                 } else if let errorMessage {
-                    ContentUnavailableView("无法读取输出", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
+                    ContentUnavailableView("Unable to Read Output", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
                 } else {
-                    ProgressView("正在读取")
+                    ProgressView("Reading")
                 }
             }
-            .navigationTitle("任务输出")
+            .navigationTitle("Job Output")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
         }

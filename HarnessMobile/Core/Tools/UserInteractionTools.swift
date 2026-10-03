@@ -169,23 +169,23 @@ enum UserQuestionError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .duplicateProvider:
-            return "本机会话已经注册了一个用户问题界面。"
+            return "This local session already has a user question interface registered."
         case .noProvider:
-            return "没有可用的本机用户问题界面。"
+            return "No local user question interface is available."
         case .emptyQuestions:
-            return "ask_user_question 至少需要一个问题。"
+            return "ask_user_question requires at least one question."
         case let .badIntent(message):
-            return "用户问题意图无效：" + message
+            return "Invalid user question intent: " + message
         case let .invalidRequest(message):
-            return "用户问题参数无效：" + message
+            return "Invalid user question arguments: " + message
         case let .invalidAnswer(message):
-            return "用户问题答案无效：" + message
+            return "Invalid user question answer: " + message
         case .busy:
-            return "当前已有一个用户问题等待回答。"
+            return "A user question is already awaiting an answer."
         case .requestNotFound:
-            return "用户问题已经结束或不存在。"
+            return "The user question has ended or does not exist."
         case .cancelled:
-            return "用户取消了这次问题。"
+            return "The user cancelled this question."
         }
     }
 }
@@ -236,63 +236,63 @@ actor UserQuestionService {
             throw UserQuestionError.emptyQuestions
         }
         guard request.questions.count <= Limits.maximumQuestions else {
-            throw UserQuestionError.invalidRequest("问题数量超过 \(Limits.maximumQuestions) 项上限")
+            throw UserQuestionError.invalidRequest("Number of questions exceeds the limit of \(Limits.maximumQuestions)")
         }
 
         var ids = Set<String>()
         for question in request.questions {
             guard Limits.valid(question.id, maximumBytes: Limits.questionIDBytes),
                   !question.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                throw UserQuestionError.invalidRequest("问题 id 无效")
+                throw UserQuestionError.invalidRequest("Invalid question id")
             }
             guard ids.insert(question.id).inserted else {
-                throw UserQuestionError.invalidRequest("问题 id 必须唯一：\(question.id)")
+                throw UserQuestionError.invalidRequest("Question id must be unique: \(question.id)")
             }
             guard Limits.valid(question.question, maximumBytes: Limits.questionTextBytes),
                   !question.question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                throw UserQuestionError.invalidRequest("问题文本无效：\(question.id)")
+                throw UserQuestionError.invalidRequest("Invalid question text: \(question.id)")
             }
             if let header = question.header {
                 guard Limits.valid(header, maximumBytes: Limits.headerBytes),
                       !header.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                    throw UserQuestionError.invalidRequest("问题标题无效：\(question.id)")
+                    throw UserQuestionError.invalidRequest("Invalid question header: \(question.id)")
                 }
             }
             if let detail = question.detail,
                !Limits.valid(detail, maximumBytes: Limits.detailBytes) {
-                throw UserQuestionError.invalidRequest("问题详情过长：\(question.id)")
+                throw UserQuestionError.invalidRequest("Question detail too long: \(question.id)")
             }
             if let options = question.options {
                 guard options.count <= Limits.maximumOptions else {
-                    throw UserQuestionError.invalidRequest("选项数量超过 \(Limits.maximumOptions) 项上限")
+                    throw UserQuestionError.invalidRequest("Number of options exceeds the limit of \(Limits.maximumOptions)")
                 }
                 var labels = Set<String>()
                 for option in options {
                     guard Limits.valid(option.label, maximumBytes: Limits.optionLabelBytes),
                           !option.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                        throw UserQuestionError.invalidRequest("选项标签无效：\(question.id)")
+                        throw UserQuestionError.invalidRequest("Invalid option label: \(question.id)")
                     }
                     guard labels.insert(option.label).inserted else {
-                        throw UserQuestionError.invalidRequest("选项标签必须唯一：\(option.label)")
+                        throw UserQuestionError.invalidRequest("Option labels must be unique: \(option.label)")
                     }
                     if let description = option.description,
                        !Limits.valid(description, maximumBytes: Limits.optionDescriptionBytes) {
-                        throw UserQuestionError.invalidRequest("选项说明过长：\(option.label)")
+                        throw UserQuestionError.invalidRequest("Option description too long: \(option.label)")
                     }
                 }
             }
             if let intent = question.intent {
                 guard intent.kind == .planReview else {
-                    throw UserQuestionError.badIntent("未知意图")
+                    throw UserQuestionError.badIntent("Unknown intent")
                 }
                 guard question.detail != nil else {
-                    throw UserQuestionError.badIntent("plan-review 缺少 detail")
+                    throw UserQuestionError.badIntent("plan-review is missing detail")
                 }
                 guard question.options?.contains(where: { $0.label == intent.approve }) == true else {
-                    throw UserQuestionError.badIntent("approve 未命中该问题的选项")
+                    throw UserQuestionError.badIntent("approve does not match any option of this question")
                 }
                 guard Limits.valid(intent.approve, maximumBytes: Limits.optionLabelBytes) else {
-                    throw UserQuestionError.badIntent("approve 标签过长")
+                    throw UserQuestionError.badIntent("approve label too long")
                 }
             }
         }
@@ -303,29 +303,29 @@ actor UserQuestionService {
         for request: AskUserQuestionRequest
     ) throws {
         guard answer.answers.count == request.questions.count else {
-            throw UserQuestionError.invalidAnswer("必须回答全部 \(request.questions.count) 个问题")
+            throw UserQuestionError.invalidAnswer("All \(request.questions.count) questions must be answered")
         }
         var seen = Set<String>()
         let byID = Dictionary(uniqueKeysWithValues: request.questions.map { ($0.id, $0) })
         for item in answer.answers {
             guard seen.insert(item.id).inserted,
                   let question = byID[item.id] else {
-                throw UserQuestionError.invalidAnswer("答案 id 不匹配：\(item.id)")
+                throw UserQuestionError.invalidAnswer("Answer id mismatch: \(item.id)")
             }
             guard item.selected.count <= Limits.maximumOptions else {
-                throw UserQuestionError.invalidAnswer("选择数量超过上限：\(item.id)")
+                throw UserQuestionError.invalidAnswer("Too many selections: \(item.id)")
             }
             let allowed = Set(question.options?.map(\.label) ?? [])
             guard item.selected.allSatisfy({ allowed.contains($0) }),
                   Set(item.selected).count == item.selected.count else {
-                throw UserQuestionError.invalidAnswer("答案包含未提供的选项：\(item.id)")
+                throw UserQuestionError.invalidAnswer("Answer contains an option that was not offered: \(item.id)")
             }
             if !question.multiSelect, item.selected.count > 1 {
-                throw UserQuestionError.invalidAnswer("单选问题不能选择多个选项：\(item.id)")
+                throw UserQuestionError.invalidAnswer("A single-choice question cannot have multiple selections: \(item.id)")
             }
             if let custom = item.custom {
                 guard Limits.valid(custom, maximumBytes: Limits.customAnswerBytes) else {
-                    throw UserQuestionError.invalidAnswer("自定义答案过长：\(item.id)")
+                    throw UserQuestionError.invalidAnswer("Custom answer too long: \(item.id)")
                 }
             }
             if item.isSkipped {
@@ -335,7 +335,7 @@ actor UserQuestionService {
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .isEmpty ?? true
             guard !item.selected.isEmpty || !customIsEmpty else {
-                throw UserQuestionError.invalidAnswer("答案不能为空：\(item.id)")
+                throw UserQuestionError.invalidAnswer("Answer cannot be empty: \(item.id)")
             }
         }
     }
@@ -429,7 +429,7 @@ private extension Dictionary where Key == String, Value == JSONValue {
     func optionalString(_ key: String, maximumBytes: Int) throws -> String? {
         guard let value = self[key] else { return nil }
         guard let string = value.stringValue, Limits.valid(string, maximumBytes: maximumBytes) else {
-            throw UserQuestionError.invalidRequest("参数 \(key) 必须是长度受限的字符串")
+            throw UserQuestionError.invalidRequest("Argument \(key) must be a length-limited string")
         }
         return string
     }
@@ -437,7 +437,7 @@ private extension Dictionary where Key == String, Value == JSONValue {
     func optionalBool(_ key: String) throws -> Bool? {
         guard let value = self[key] else { return nil }
         guard case let .bool(bool) = value else {
-            throw UserQuestionError.invalidRequest("参数 \(key) 必须是布尔值")
+            throw UserQuestionError.invalidRequest("Argument \(key) must be a boolean")
         }
         return bool
     }
@@ -447,20 +447,20 @@ private extension AskUserQuestionTool {
     static func parseRequest(arguments: [String: JSONValue]) throws -> [AskUserQuestionItem] {
         try arguments.requireOnlyKeys(["questions"])
         guard case let .array(rawQuestions) = arguments["questions"] else {
-            throw UserQuestionError.invalidRequest("questions 必须是数组")
+            throw UserQuestionError.invalidRequest("questions must be an array")
         }
         guard !rawQuestions.isEmpty else { throw UserQuestionError.emptyQuestions }
         guard rawQuestions.count <= Limits.maximumQuestions else {
-            throw UserQuestionError.invalidRequest("问题数量超过 \(Limits.maximumQuestions) 项上限")
+            throw UserQuestionError.invalidRequest("Number of questions exceeds the limit of \(Limits.maximumQuestions)")
         }
 
         return try rawQuestions.map { rawQuestion in
             guard case let .object(question) = rawQuestion else {
-                throw UserQuestionError.invalidRequest("每个问题必须是对象")
+                throw UserQuestionError.invalidRequest("Each question must be an object")
             }
             guard let id = question["id"]?.stringValue,
                   let text = question["question"]?.stringValue else {
-                throw UserQuestionError.invalidRequest("每个问题都需要 id 和 question")
+                throw UserQuestionError.invalidRequest("Each question requires id and question")
             }
             let header = try question.optionalString("header", maximumBytes: Limits.headerBytes)
             let detail = try question.optionalString("detail", maximumBytes: Limits.detailBytes)
@@ -469,15 +469,15 @@ private extension AskUserQuestionTool {
             var options: [AskUserQuestionOption]?
             if let rawOptions = question["options"] {
                 guard case let .array(values) = rawOptions else {
-                    throw UserQuestionError.invalidRequest("options 必须是数组")
+                    throw UserQuestionError.invalidRequest("options must be an array")
                 }
                 guard values.count <= Limits.maximumOptions else {
-                    throw UserQuestionError.invalidRequest("选项数量超过 \(Limits.maximumOptions) 项上限")
+                    throw UserQuestionError.invalidRequest("Number of options exceeds the limit of \(Limits.maximumOptions)")
                 }
                 options = try values.map { rawOption in
                     guard case let .object(option) = rawOption,
                           let label = option["label"]?.stringValue else {
-                        throw UserQuestionError.invalidRequest("每个选项都需要 label")
+                        throw UserQuestionError.invalidRequest("Each option requires a label")
                     }
                     let description = try option.optionalString(
                         "description",
@@ -493,7 +493,7 @@ private extension AskUserQuestionTool {
                       let rawKind = value["kind"]?.stringValue,
                       let kind = AskUserQuestionIntent.Kind(rawValue: rawKind),
                       let approve = value["approve"]?.stringValue else {
-                    throw UserQuestionError.badIntent("intent 必须包含 kind 和 approve")
+                    throw UserQuestionError.badIntent("intent must include kind and approve")
                 }
                 intent = AskUserQuestionIntent(kind: kind, approve: approve)
             }
@@ -582,7 +582,7 @@ struct AskUserQuestionTool: LocalAgentTool {
         } else {
             count = 0
         }
-        return "等待用户回答（" + String(count) + " 个问题）"
+        return "Waiting for user answer (" + String(count) + " questions)"
     }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -645,18 +645,18 @@ enum PlanReviewError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .inactive:
-            return "exit_plan_mode 只能在 Plan 模式中使用。"
+            return "exit_plan_mode can only be used in Plan mode."
         case .invalidPlan:
-            return "exit_plan_mode 需要以一级 Markdown 标题开头的非空计划。"
+            return "exit_plan_mode requires a non-empty plan that starts with a level-1 Markdown heading."
         case .unavailable:
-            return "当前没有可用的本机计划审核界面。"
+            return "No local plan review interface is currently available."
         case .dismissed:
-            return "用户关闭了计划审核以直接输入消息；请保持 Plan 模式并等待用户消息。"
+            return "The user closed the plan review to type a message directly. Stay in Plan mode and wait for the user's message."
         case let .rejected(feedback):
             if let feedback, !feedback.isEmpty {
-                return "用户选择继续规划；反馈：" + feedback
+                return "The user chose to keep planning. Feedback: " + feedback
             }
-            return "用户选择继续规划；请修改计划并再次提交审核。"
+            return "The user chose to keep planning. Revise the plan and submit it for review again."
         }
     }
 }
@@ -701,7 +701,7 @@ struct ExitPlanModeTool: LocalAgentTool {
     func summary(arguments: [String: JSONValue]) -> String {
         let plan = arguments["plan"]?.stringValue ?? "Plan"
         let title = Self.firstHeading(in: plan) ?? "Plan"
-        return "提交计划审核：" + String(title.prefix(128))
+        return "Submit plan for review: " + String(title.prefix(128))
     }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {

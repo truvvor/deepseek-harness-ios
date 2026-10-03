@@ -21,7 +21,7 @@ struct TrajectoryView: View {
     @State private var state: TrajectoryViewState
 
     init(
-        navigationTitle: String = "轨迹",
+        navigationTitle: String = "Trajectory",
         state: TrajectoryViewState? = nil
     ) {
         self.navigationTitle = navigationTitle
@@ -50,7 +50,7 @@ struct TrajectoryView: View {
                 )
             }
 
-            Picker("轨迹视图", selection: $state.mode) {
+            Picker("Trajectory View", selection: $state.mode) {
                 ForEach(TrajectoryLedgerMode.allCases) { candidate in
                     Label(candidate.title, systemImage: candidate.systemImage)
                         .tag(candidate)
@@ -77,7 +77,7 @@ struct TrajectoryView: View {
         .searchable(
             text: $state.query,
             placement: .navigationBarDrawer(displayMode: .always),
-            prompt: "搜索类型、内容、工具或 Call ID"
+            prompt: "Search type, content, tool, or Call ID"
         )
         .searchPresentationToolbarBehavior(.avoidHidingContent)
         .toolbar {
@@ -96,8 +96,8 @@ struct TrajectoryView: View {
                     .frame(width: 24, height: 24)
                 }
                 .disabled(state.isRefreshing)
-                .accessibilityLabel("刷新轨迹")
-                .help("刷新轨迹")
+                .accessibilityLabel("Refresh Trajectory")
+                .help("Refresh Trajectory")
             }
         }
         .sheet(item: $state.selectedEvent) { event in
@@ -119,15 +119,15 @@ struct TrajectoryView: View {
         if projection.isEmpty(for: state.mode) {
             ContentUnavailableView(
                 state.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    ? "暂无轨迹"
-                    : "没有匹配的轨迹",
+                    ? "No Trajectory Yet"
+                    : "No Matching Trajectory",
                 systemImage: state.query.isEmpty
                     ? "point.3.connected.trianglepath.dotted"
                     : "magnifyingglass",
                 description: Text(
                     state.query.isEmpty
-                        ? "会话运行后，请求、消息和本机工具事件会显示在这里。"
-                        : "尝试搜索事件类型、模型、工具名或 Call ID。"
+                        ? "Requests, messages, and on-device tool events appear here once the session runs."
+                        : "Try searching for an event type, model, tool name, or Call ID."
                 )
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -146,7 +146,7 @@ struct TrajectoryView: View {
                                 } else {
                                     Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
                                 }
-                                Text(model.isLoadingOlderTrajectory ? "正在加载" : "加载更早轨迹")
+                                Text(model.isLoadingOlderTrajectory ? "Loading" : "Load Earlier Trajectory")
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
@@ -230,7 +230,7 @@ struct TrajectoryView: View {
                 .refreshable {
                     await refreshNow()
                 }
-                .accessibilityLabel("轨迹时间线")
+                .accessibilityLabel("Trajectory Timeline")
                 .onChange(of: state.pendingTurnSequence) { _, sequence in
                     guard let sequence else { return }
                     withAnimation {
@@ -263,30 +263,30 @@ struct TrajectoryView: View {
                     Button {
                         state.collapsedTurnIDs.formUnion(projection.turns.map(\.id))
                     } label: {
-                        Label("折叠所有回合", systemImage: "rectangle.compress.vertical")
+                        Label("Collapse All Turns", systemImage: "rectangle.compress.vertical")
                     }
                     Button {
                         state.collapsedTurnIDs.subtract(projection.turns.map(\.id))
                     } label: {
-                        Label("展开所有回合", systemImage: "rectangle.expand.vertical")
+                        Label("Expand All Turns", systemImage: "rectangle.expand.vertical")
                     }
                 case .calls:
                     Button {
                         state.collapsedCallIDs.formUnion(projection.calls.map(\.id))
                     } label: {
-                        Label("折叠所有调用", systemImage: "rectangle.compress.vertical")
+                        Label("Collapse All Calls", systemImage: "rectangle.compress.vertical")
                     }
                     Button {
                         state.collapsedCallIDs.subtract(projection.calls.map(\.id))
                     } label: {
-                        Label("展开所有调用", systemImage: "rectangle.expand.vertical")
+                        Label("Expand All Calls", systemImage: "rectangle.expand.vertical")
                     }
                 }
             } label: {
                 Image(systemName: "rectangle.compress.vertical")
             }
-            .accessibilityLabel("折叠选项")
-            .help("折叠选项")
+            .accessibilityLabel("Collapse Options")
+            .help("Collapse Options")
         }
     }
 
@@ -334,9 +334,9 @@ enum TrajectoryLedgerMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .duration: "耗时"
-        case .turns: "回合"
-        case .calls: "调用"
+        case .duration: "Duration"
+        case .turns: "Turns"
+        case .calls: "Calls"
         }
     }
 
@@ -450,7 +450,7 @@ private struct HarnessTraceStrip: View {
                 )
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Harness 运行时")
+                    Text("Harness Runtime")
                         .font(.subheadline.weight(.semibold))
                     Text(detail)
                         .font(.caption2.monospaced())
@@ -469,14 +469,14 @@ private struct HarnessTraceStrip: View {
         .buttonStyle(.plain)
         .background(HarnessTheme.secondarySurface)
         .accessibilityIdentifier("harness-trace-strip")
-        .accessibilityLabel("Harness 运行时轨迹")
+        .accessibilityLabel("Harness Runtime Trajectory")
         .accessibilityValue(detail)
     }
 
     private var detail: String {
-        let base = "\(checkpointCount) 个检查点 · \(pluginCount) 个插件"
+        let base = "\(checkpointCount) checkpoints · \(pluginCount) plugins"
         if failureCount > 0 {
-            return base + " · \(failureCount) 个错误"
+            return base + " · \(failureCount) errors"
         }
         if let summary {
             return base + " · " + TrajectoryFormat.duration(summary.durationMilliseconds)
@@ -499,10 +499,10 @@ private struct TrajectoryMetricsHeader: View {
                     HStack(spacing: 0) {
                         durationMetric
                         Divider().frame(height: 36)
-                        TrajectoryPrimaryMetric(title: "回合", value: String(summary.turns))
+                        TrajectoryPrimaryMetric(title: "Turns", value: String(summary.turns))
                     }
                     HStack(spacing: 0) {
-                        TrajectoryPrimaryMetric(title: "调用", value: String(summary.calls))
+                        TrajectoryPrimaryMetric(title: "Calls", value: String(summary.calls))
                     }
                 }
             }
@@ -514,34 +514,34 @@ private struct TrajectoryMetricsHeader: View {
                 VStack(spacing: 6) {
                     HStack(spacing: 14) {
                         TrajectorySecondaryMetric(
-                            title: "模型",
+                            title: "Model",
                             value: TrajectoryFormat.duration(summary.modelMilliseconds)
                         )
                         TrajectorySecondaryMetric(
-                            title: "工具",
+                            title: "Tools",
                             value: TrajectoryFormat.duration(summary.toolMilliseconds)
                         )
                         TrajectorySecondaryMetric(
-                            title: "首字延迟",
+                            title: "TTFT",
                             value: summary.averageTTFTMilliseconds.map(TrajectoryFormat.duration) ?? "—"
                         )
                         TrajectorySecondaryMetric(
-                            title: "解码",
+                            title: "Decode",
                             value: TrajectoryFormat.duration(summary.decodeMilliseconds)
                                 + " · " + TrajectoryFormat.count(summary.decodeTokens) + " tok"
                         )
                     }
                     HStack(spacing: 14) {
                         TrajectorySecondaryMetric(
-                            title: "吞吐",
+                            title: "Throughput",
                             value: summary.tokensPerSecond.map { String(format: "%.1f tok/s", $0) } ?? "—"
                         )
                         TrajectorySecondaryMetric(
-                            title: "输出",
+                            title: "Output",
                             value: TrajectoryFormat.count(summary.outputTokens) + " tok"
                         )
                         TrajectorySecondaryMetric(
-                            title: "缓存",
+                            title: "Cache",
                             value: summary.cacheHitRate.map(TrajectoryFormat.percent) ?? "—"
                         )
                     }
@@ -552,39 +552,39 @@ private struct TrajectoryMetricsHeader: View {
         .padding(.vertical, 10)
         .background(HarnessTheme.surface)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("轨迹统计")
+        .accessibilityLabel("Trajectory Statistics")
     }
 
     @ViewBuilder private var secondaryMetrics: some View {
         TrajectorySecondaryMetric(
-            title: "模型",
+            title: "Model",
             value: TrajectoryFormat.duration(summary.modelMilliseconds)
         )
         TrajectorySecondaryMetric(
-            title: "工具",
+            title: "Tools",
             value: TrajectoryFormat.duration(summary.toolMilliseconds)
         )
         TrajectorySecondaryMetric(
-            title: "首字延迟",
+            title: "TTFT",
             value: summary.averageTTFTMilliseconds.map(TrajectoryFormat.duration) ?? "—"
         )
         // Upstream session-stats also folds decode wall time and the tokens
         // that arrived during it, which is what makes throughput derivable.
         TrajectorySecondaryMetric(
-            title: "解码",
+            title: "Decode",
             value: TrajectoryFormat.duration(summary.decodeMilliseconds)
                 + " · " + TrajectoryFormat.count(summary.decodeTokens) + " tok"
         )
         TrajectorySecondaryMetric(
-            title: "吞吐",
+            title: "Throughput",
             value: summary.tokensPerSecond.map { String(format: "%.1f tok/s", $0) } ?? "—"
         )
         TrajectorySecondaryMetric(
-            title: "输出",
+            title: "Output",
             value: TrajectoryFormat.count(summary.outputTokens) + " tok"
         )
         TrajectorySecondaryMetric(
-            title: "缓存",
+            title: "Cache",
             value: summary.cacheHitRate.map(TrajectoryFormat.percent) ?? "—"
         )
     }
@@ -593,15 +593,15 @@ private struct TrajectoryMetricsHeader: View {
         HStack(spacing: 0) {
             durationMetric
             Divider().frame(height: 36)
-            TrajectoryPrimaryMetric(title: "回合", value: String(summary.turns))
+            TrajectoryPrimaryMetric(title: "Turns", value: String(summary.turns))
             Divider().frame(height: 36)
-            TrajectoryPrimaryMetric(title: "调用", value: String(summary.calls))
+            TrajectoryPrimaryMetric(title: "Calls", value: String(summary.calls))
         }
     }
 
     private var durationMetric: some View {
         TrajectoryPrimaryMetric(
-            title: "耗时",
+            title: "Duration",
             value: TrajectoryFormat.duration(summary.durationMilliseconds)
         )
     }
@@ -623,7 +623,7 @@ private struct SessionTurnOutlineRail: View {
                     Button { action(entry) } label: {
                         VStack(alignment: .leading, spacing: 3) {
                             HStack(spacing: 4) {
-                                Text("回合 \(entry.turn)")
+                                Text("Turn \(entry.turn)")
                                     .font(.caption.weight(.semibold))
                                 Text("#\(entry.seq)")
                                     .font(.caption2.monospaced())
@@ -639,7 +639,7 @@ private struct SessionTurnOutlineRail: View {
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
                             } else {
-                                Text("尚无摘要")
+                                Text("No summary yet")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
@@ -656,18 +656,18 @@ private struct SessionTurnOutlineRail: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("回合 \(entry.turn)")
+                    .accessibilityLabel("Turn \(entry.turn)")
                     .accessibilityValue(
-                        [entry.prompt, entry.response].first(where: { !$0.isEmpty }) ?? "尚无摘要"
+                        [entry.prompt, entry.response].first(where: { !$0.isEmpty }) ?? "No summary yet"
                     )
-                    .accessibilityHint("定位到此回合")
+                    .accessibilityHint("Jumps to this turn")
                 }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
         }
         .background(HarnessTheme.secondarySurface)
-        .accessibilityLabel("回合大纲")
+        .accessibilityLabel("Turn Outline")
     }
 }
 
@@ -828,11 +828,11 @@ private struct TrajectoryTurnSection: Identifiable {
     let events: [SessionEvent]
 
     var title: String {
-        turn.map { "回合 " + String($0) } ?? "回合之间"
+        turn.map { "Turn " + String($0) } ?? "Between Turns"
     }
 
     var detail: String {
-        String(events.count) + " 个事件 · " + TrajectoryFormat.duration(durationMilliseconds)
+        String(events.count) + " events · " + TrajectoryFormat.duration(durationMilliseconds)
     }
 
     private var durationMilliseconds: Double {
@@ -852,11 +852,11 @@ private struct TrajectoryCallSection: Identifiable {
     var id: String { callID }
 
     var title: String {
-        events.compactMap(\.toolCallData).first?.name ?? "工具调用"
+        events.compactMap(\.toolCallData).first?.name ?? "Tool Call"
     }
 
     var detail: String {
-        let status = isError ? "错误" : events.contains { $0.toolResultData != nil } ? "已完成" : "运行中"
+        let status = isError ? "Error" : events.contains { $0.toolResultData != nil } ? "Completed" : "Running"
         return status + " · " + TrajectoryFormat.duration(durationMilliseconds) + " · " + callID
     }
 
@@ -913,8 +913,8 @@ private struct TrajectorySectionHeader: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
-        .accessibilityValue(isCollapsed ? "已折叠" : "已展开")
-        .accessibilityHint(isCollapsed ? "展开事件" : "折叠事件")
+        .accessibilityValue(isCollapsed ? "Collapsed" : "Expanded")
+        .accessibilityHint(isCollapsed ? "Expands events" : "Collapses events")
     }
 }
 
@@ -974,8 +974,8 @@ private struct TrajectoryEventRow: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(presentation.kind + "，" + presentation.title)
-        .accessibilityValue("事件 " + String(event.seq))
-        .accessibilityHint("查看事件详情")
+        .accessibilityValue("Event " + String(event.seq))
+        .accessibilityHint("Shows event details")
     }
 }
 
@@ -989,77 +989,77 @@ private struct TrajectoryEventPresentation {
     init(event: SessionEvent) {
         switch event.type {
         case SessionEventVocabulary.requestHeader:
-            kind = "系统"
-            title = "请求头"
-            subtitle = event.requestHeaderData.map { "原因: " + $0.reason.rawValue }
+            kind = "System"
+            title = "Request Header"
+            subtitle = event.requestHeaderData.map { "Reason: " + $0.reason.rawValue }
             systemImage = "slider.horizontal.3"
             tint = .indigo
 
         case SessionEventVocabulary.requestContext:
-            kind = "上下文"
+            kind = "Context"
             if let context = event.requestContextData {
                 title = context.provider + " / " + context.model
-                subtitle = context.contextWindow.map { "上下文: " + TrajectoryFormat.count($0) }
+                subtitle = context.contextWindow.map { "Context: " + TrajectoryFormat.count($0) }
             } else {
-                title = "请求上下文"
+                title = "Request Context"
                 subtitle = nil
             }
             systemImage = "brain.head.profile"
             tint = .teal
 
         case SessionEventVocabulary.questionRequested:
-            kind = "提问"
+            kind = "Question"
             if let request = event.questionRequestedData {
-                title = request.questions.first?.question ?? "Agent 请求用户输入"
-                subtitle = String(request.questionCount) + " 个问题 · 等待回答"
+                title = request.questions.first?.question ?? "Agent requested user input"
+                subtitle = String(request.questionCount) + " questions · Awaiting answer"
             } else {
-                title = "Agent 请求用户输入"
+                title = "Agent requested user input"
                 subtitle = nil
             }
             systemImage = "questionmark.bubble.fill"
             tint = .orange
 
         case SessionEventVocabulary.questionResolved:
-            kind = "提问"
+            kind = "Question"
             if let resolved = event.questionResolvedData {
-                title = resolved.outcome == "answered" ? "用户已回答" : "问题已取消"
+                title = resolved.outcome == "answered" ? "User answered" : "Question cancelled"
                 let skipped = resolved.skippedIDs.isEmpty
                     ? nil
-                    : "已跳过: " + resolved.skippedIDs.joined(separator: ", ")
+                    : "Skipped: " + resolved.skippedIDs.joined(separator: ", ")
                 subtitle = [resolved.requestID, skipped].compactMap { $0 }.joined(separator: " · ")
             } else {
-                title = "问题已处理"
+                title = "Question resolved"
                 subtitle = nil
             }
             systemImage = "checkmark.bubble.fill"
             tint = .green
 
         case SessionEventVocabulary.userMessage:
-            kind = "用户"
-            title = event.data.trajectoryPreview(fallback: "用户消息")
+            kind = "User"
+            title = event.data.trajectoryPreview(fallback: "User message")
             subtitle = event.surfaceOp?.trajectoryDescription
             systemImage = "person.fill"
             tint = .blue
 
         case SessionEventVocabulary.assistantMessage:
-            kind = "助手"
+            kind = "Assistant"
             if let assistant = event.assistantMessageData {
-                title = assistant.message.trajectoryPreview(fallback: "助手消息")
-                subtitle = "回合 " + String(assistant.turn) + " · 步骤 " + String(assistant.step)
+                title = assistant.message.trajectoryPreview(fallback: "Assistant message")
+                subtitle = "Turn " + String(assistant.turn) + " · Step " + String(assistant.step)
             } else {
-                title = "助手消息"
+                title = "Assistant message"
                 subtitle = nil
             }
             systemImage = "sparkles"
             tint = .purple
 
         case SessionEventVocabulary.toolCall:
-            kind = "工具调用"
+            kind = "Tool Call"
             if let call = event.toolCallData {
                 title = call.name
                 subtitle = call.callID + " · " + call.arguments.trajectorySingleLine(limit: 160)
             } else {
-                title = "工具调用"
+                title = "Tool Call"
                 subtitle = nil
             }
             systemImage = "wrench.and.screwdriver.fill"
@@ -1067,22 +1067,22 @@ private struct TrajectoryEventPresentation {
 
         case SessionEventVocabulary.toolResult:
             let result = event.toolResultData
-            kind = result?.trajectoryIsError == true ? "工具错误" : "工具结果"
-            title = result?.message.trajectoryPreview(fallback: "工具结果") ?? "工具结果"
+            kind = result?.trajectoryIsError == true ? "Tool Error" : "Tool Result"
+            title = result?.message.trajectoryPreview(fallback: "Tool Result") ?? "Tool Result"
             subtitle = result?.callID
             systemImage = result?.trajectoryIsError == true ? "xmark.circle.fill" : "checkmark.circle.fill"
             tint = result?.trajectoryIsError == true ? .red : .green
 
         case SessionEventVocabulary.turnStart:
-            kind = "回合"
-            title = "回合 " + String(event.turnStartData?.turn ?? 0) + " 开始"
+            kind = "Turn"
+            title = "Turn " + String(event.turnStartData?.turn ?? 0) + " started"
             subtitle = nil
             systemImage = "play.circle"
             tint = .secondary
 
         case SessionEventVocabulary.turnEnd:
-            kind = "回合"
-            title = "回合 " + String(event.turnEndData?.turn ?? 0) + " 结束"
+            kind = "Turn"
+            title = "Turn " + String(event.turnEndData?.turn ?? 0) + " ended"
             subtitle = event.turnEndData?.reason.trajectoryPreview(fallback: nil)
             systemImage = "stop.circle"
             tint = .secondary
@@ -1091,26 +1091,26 @@ private struct TrajectoryEventPresentation {
             let route = event.data.objectValue
             let provider = route?["provider"]?.stringValue
             let model = route?["model"]?.stringValue
-            kind = "模型"
+            kind = "Model"
             let joinedRoute = [provider, model].compactMap { $0 }.joined(separator: " / ")
-            title = joinedRoute.isEmpty ? "模型选择" : joinedRoute.trajectorySingleLine(limit: 240)
-            subtitle = route?["reasoningEffort"]?.stringValue.map { "推理强度 \($0)" }
+            title = joinedRoute.isEmpty ? "Model Selection" : joinedRoute.trajectorySingleLine(limit: 240)
+            subtitle = route?["reasoningEffort"]?.stringValue.map { "Reasoning effort \($0)" }
             systemImage = "cpu"
             tint = .purple
 
         case SessionEventVocabulary.stepStart, SessionEventVocabulary.stepEnd:
-            kind = "步骤"
+            kind = "Step"
             if let step = event.stepData {
-                title = "回合 " + String(step.turn) + " · 步骤 " + String(step.step)
+                title = "Turn " + String(step.turn) + " · Step " + String(step.step)
             } else {
                 title = event.type
             }
-            subtitle = event.type == SessionEventVocabulary.stepStart ? "开始" : "结束"
+            subtitle = event.type == SessionEventVocabulary.stepStart ? "Start" : "End"
             systemImage = event.type == SessionEventVocabulary.stepStart ? "arrow.right.circle" : "checkmark.circle"
             tint = .secondary
 
         default:
-            kind = "事件"
+            kind = "Event"
             title = event.type
             subtitle = event.data.trajectoryPreview(fallback: nil)
             systemImage = "point.3.connected.trianglepath.dotted"
@@ -1132,19 +1132,19 @@ private struct HarnessTraceInspectorView: View {
             List {
                 if let summary {
                     Section {
-                        LabeledContent("耗时", value: TrajectoryFormat.duration(summary.durationMilliseconds))
-                        LabeledContent("回合", value: String(summary.turns))
-                        LabeledContent("调用", value: String(summary.calls))
+                        LabeledContent("Duration", value: TrajectoryFormat.duration(summary.durationMilliseconds))
+                        LabeledContent("Turns", value: String(summary.turns))
+                        LabeledContent("Calls", value: String(summary.calls))
                         LabeledContent(
-                            "首字延迟",
+                            "TTFT",
                             value: summary.averageFirstTokenMilliseconds.map(TrajectoryFormat.duration) ?? "—"
                         )
                         LabeledContent(
-                            "缓存",
+                            "Cache",
                             value: summary.cacheHitRate.map(TrajectoryFormat.percent) ?? "—"
                         )
                     } header: {
-                        Label("运行", systemImage: "chart.bar.xaxis")
+                        Label("Run", systemImage: "chart.bar.xaxis")
                     }
                 }
 
@@ -1162,15 +1162,15 @@ private struct HarnessTraceInspectorView: View {
                         }
                     }
                 } header: {
-                    Label("Harness 事件", systemImage: "point.3.connected.trianglepath.dotted")
+                    Label("Harness Events", systemImage: "point.3.connected.trianglepath.dotted")
                 }
             }
             .navigationTitle("Harness F12")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $query, prompt: "搜索 checkpoint、插件或 handler")
+            .searchable(text: $query, prompt: "Search checkpoints, plugins, or handlers")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
             .sheet(item: $selectedEvent) { event in
@@ -1246,72 +1246,72 @@ private struct HarnessTracePresentation {
         let handlers = event.harnessHandlerDescriptions
         switch event.kind {
         case .checkpointStarted:
-            kind = "检查点"
-            subtitle = handlers.isEmpty ? "默认 Handler" : handlers.joined(separator: " → ")
+            kind = "Checkpoint"
+            subtitle = handlers.isEmpty ? "Default Handler" : handlers.joined(separator: " → ")
             systemImage = "arrow.right.circle"
             tint = .teal
         case .checkpointFinished:
-            kind = "检查点"
-            subtitle = handlers.isEmpty ? "已完成" : handlers.joined(separator: " → ")
+            kind = "Checkpoint"
+            subtitle = handlers.isEmpty ? "Completed" : handlers.joined(separator: " → ")
             systemImage = "checkmark.circle.fill"
             tint = .green
         case .checkpointFailed:
-            kind = "检查点错误"
+            kind = "Checkpoint Error"
             subtitle = event.error ?? handlers.joined(separator: " → ")
             systemImage = "xmark.circle.fill"
             tint = .red
         case .pluginStateChanged:
-            kind = "插件"
+            kind = "Plugin"
             subtitle = [event.pluginID, event.attributes["previousState"]?.stringValue]
                 .compactMap { $0 }
                 .joined(separator: " · ")
             systemImage = "shippingbox.fill"
             tint = .indigo
         case .pluginCleanupFailed:
-            kind = "插件错误"
+            kind = "Plugin Error"
             subtitle = event.error ?? event.pluginID
             systemImage = "exclamationmark.triangle.fill"
             tint = .red
         case .settingsRead:
-            kind = "设置"
-            subtitle = event.error ?? event.attributes["namespace"]?.stringValue ?? "配置已加载"
+            kind = "Settings"
+            subtitle = event.error ?? event.attributes["namespace"]?.stringValue ?? "Configuration loaded"
             systemImage = "slider.horizontal.3"
             tint = event.error == nil ? .blue : .red
         case .settingsWrite:
-            kind = "设置"
+            kind = "Settings"
             subtitle = event.error
                 ?? event.attributes["namespace"]?.stringValue
                 ?? event.attributes["status"]?.stringValue
-                ?? "配置已更新"
+                ?? "Configuration updated"
             systemImage = "slider.horizontal.3"
             tint = event.error == nil ? .blue : .red
         case .settingsConflict:
-            kind = "设置冲突"
+            kind = "Settings Conflict"
             subtitle = event.error ?? event.attributes["namespace"]?.stringValue
             systemImage = "arrow.trianglehead.2.clockwise.rotate.90"
             tint = .orange
         case .modelRequest, .modelFirstToken, .modelCompleted:
-            kind = "模型"
+            kind = "Model"
             subtitle = event.modelStepDescription
             systemImage = "brain.head.profile"
             tint = .purple
         case .toolStarted, .toolFinished:
-            kind = "工具"
+            kind = "Tool"
             subtitle = event.callID
             systemImage = "wrench.and.screwdriver.fill"
             tint = .orange
         case .runStarted, .runFinished, .turnStarted, .turnFinished, .stepStarted, .stepFinished:
-            kind = "运行时"
+            kind = "Runtime"
             subtitle = event.modelStepDescription
             systemImage = "point.3.connected.trianglepath.dotted"
             tint = .secondary
         case .backgroundTask:
-            kind = "后台"
+            kind = "Background"
             subtitle = event.name ?? event.modelStepDescription
             systemImage = "clock.arrow.trianglehead.counterclockwise.rotate.90"
             tint = .teal
         case .error:
-            kind = "错误"
+            kind = "Error"
             subtitle = event.error
             systemImage = "exclamationmark.triangle.fill"
             tint = .red
@@ -1330,29 +1330,29 @@ private struct HarnessTraceEventInspectorView: View {
         NavigationStack {
             List {
                 Section {
-                    LabeledContent("序号", value: String(event.sequence))
-                    LabeledContent("类型", value: event.kind.rawValue)
-                    LabeledContent("名称", value: event.name ?? "—")
-                    LabeledContent("时间") {
+                    LabeledContent("Sequence", value: String(event.sequence))
+                    LabeledContent("Type", value: event.kind.rawValue)
+                    LabeledContent("Name", value: event.name ?? "—")
+                    LabeledContent("Time") {
                         Text(event.timestamp, format: .dateTime.year().month().day().hour().minute().second())
                             .monospacedDigit()
                     }
                     if let duration = event.durationMilliseconds {
-                        LabeledContent("耗时", value: TrajectoryFormat.duration(duration))
+                        LabeledContent("Duration", value: TrajectoryFormat.duration(duration))
                     }
                     if let turn = event.turn {
-                        LabeledContent("回合", value: String(turn))
+                        LabeledContent("Turn", value: String(turn))
                     }
                     if let step = event.step {
-                        LabeledContent("步骤", value: String(step))
+                        LabeledContent("Step", value: String(step))
                     }
                     if let pluginID = event.pluginID {
-                        LabeledContent("插件") {
+                        LabeledContent("Plugin") {
                             Text(pluginID).font(.footnote.monospaced()).textSelection(.enabled)
                         }
                     }
                 } header: {
-                    Label("事件", systemImage: presentation.systemImage)
+                    Label("Event", systemImage: presentation.systemImage)
                 }
 
                 if !event.harnessHandlerDescriptions.isEmpty {
@@ -1368,7 +1368,7 @@ private struct HarnessTraceEventInspectorView: View {
                             }
                         }
                     } header: {
-                        Label("Handler 链", systemImage: "link")
+                        Label("Handler Chain", systemImage: "link")
                     }
                 }
 
@@ -1381,7 +1381,7 @@ private struct HarnessTraceEventInspectorView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     } header: {
-                        Label("输入", systemImage: "arrow.down.doc")
+                        Label("Input", systemImage: "arrow.down.doc")
                     }
                 }
 
@@ -1394,7 +1394,7 @@ private struct HarnessTraceEventInspectorView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     } header: {
-                        Label("输出", systemImage: "arrow.up.doc")
+                        Label("Output", systemImage: "arrow.up.doc")
                     }
                 }
 
@@ -1405,7 +1405,7 @@ private struct HarnessTraceEventInspectorView: View {
                             .foregroundStyle(.red)
                             .textSelection(.enabled)
                     } header: {
-                        Label("错误", systemImage: "exclamationmark.triangle")
+                        Label("Error", systemImage: "exclamationmark.triangle")
                     }
                 }
 
@@ -1421,14 +1421,14 @@ private struct HarnessTraceEventInspectorView: View {
                         ProgressView().controlSize(.small)
                     }
                 } header: {
-                    Label("原始 JSON", systemImage: "curlybraces.square")
+                    Label("Raw JSON", systemImage: "curlybraces.square")
                 }
             }
             .navigationTitle(presentation.kind)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
         }
@@ -1438,7 +1438,7 @@ private struct HarnessTraceEventInspectorView: View {
             formattedEvent = await Task.detached(priority: .userInitiated) {
                 let encoder = JSONEncoder()
                 encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-                guard let data = try? encoder.encode(event) else { return "无法编码事件。" }
+                guard let data = try? encoder.encode(event) else { return "Unable to encode event." }
                 return String(decoding: data, as: UTF8.self)
             }.value
         }
@@ -1462,27 +1462,27 @@ private struct TrajectoryEventInspectorView: View {
         NavigationStack {
             List {
                 Section {
-                    LabeledContent("序号", value: String(event.seq))
-                    LabeledContent("类型", value: event.type)
-                    LabeledContent("时间") {
+                    LabeledContent("Sequence", value: String(event.seq))
+                    LabeledContent("Type", value: event.type)
+                    LabeledContent("Time") {
                         Text(event.trajectoryDate.formatted(
                             .dateTime.year().month().day().hour().minute().second()
-                                .locale(Locale(identifier: "zh_CN"))
+                                .locale(Locale(identifier: "en_US"))
                         ))
                             .monospacedDigit()
                     }
                     if event.isIgnorable {
-                        LabeledContent("策略", value: "Ignorable")
+                        LabeledContent("Policy", value: "Ignorable")
                     }
                     if let sourceEventSeqs = event.sourceEventSeqs, !sourceEventSeqs.isEmpty {
-                        LabeledContent("来源序号") {
+                        LabeledContent("Source Sequence") {
                             Text(sourceEventSeqs.map(String.init).joined(separator: ", "))
                                 .font(.footnote.monospaced())
                                 .textSelection(.enabled)
                         }
                     }
                 } header: {
-                    Label("事件", systemImage: presentation.systemImage)
+                    Label("Event", systemImage: presentation.systemImage)
                 }
 
                 typedDetailSections
@@ -1498,19 +1498,19 @@ private struct TrajectoryEventInspectorView: View {
                     } else {
                         HStack(spacing: 10) {
                             ProgressView().controlSize(.small)
-                            Text("正在格式化…")
+                            Text("Formatting…")
                                 .foregroundStyle(.secondary)
                         }
                     }
                 } header: {
-                    Label("原始 JSON", systemImage: "curlybraces.square")
+                    Label("Raw JSON", systemImage: "curlybraces.square")
                 }
             }
             .navigationTitle(presentation.kind)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
         }
@@ -1524,12 +1524,12 @@ private struct TrajectoryEventInspectorView: View {
     private var typedDetailSections: some View {
         if let header = event.requestHeaderData {
             Section {
-                LabeledContent("原因", value: header.reason.rawValue)
+                LabeledContent("Reason", value: header.reason.rawValue)
                 if let formattedRequestHeader {
                     inspectorPayload(formattedRequestHeader)
                 }
             } header: {
-                Label("请求头", systemImage: "arrow.up.doc")
+                Label("Request Header", systemImage: "arrow.up.doc")
             }
         }
 
@@ -1538,26 +1538,26 @@ private struct TrajectoryEventInspectorView: View {
             Section {
                 inspectorPayload(formattedUserMessage)
             } header: {
-                Label("用户", systemImage: "person")
+                Label("User", systemImage: "person")
             }
         }
 
         if let context = event.requestContextData {
             Section {
-                LabeledContent("服务商", value: context.provider)
-                LabeledContent("模型", value: context.model)
+                LabeledContent("Provider", value: context.provider)
+                LabeledContent("Model", value: context.model)
                 if let contextWindow = context.contextWindow {
-                    LabeledContent("上下文窗口", value: TrajectoryFormat.count(contextWindow))
+                    LabeledContent("Context Window", value: TrajectoryFormat.count(contextWindow))
                 }
             } header: {
-                Label("请求上下文", systemImage: "contextualmenu.and.cursorarrow")
+                Label("Request Context", systemImage: "contextualmenu.and.cursorarrow")
             }
         }
 
         if let assistant = event.assistantMessageData {
             Section {
-                LabeledContent("回合", value: String(assistant.turn))
-                LabeledContent("步骤", value: String(assistant.step))
+                LabeledContent("Turn", value: String(assistant.turn))
+                LabeledContent("Step", value: String(assistant.step))
                 if let usage = assistant.usage {
                     usageDetails(usage)
                 }
@@ -1565,7 +1565,7 @@ private struct TrajectoryEventInspectorView: View {
                     inspectorPayload(formattedAssistantMessage)
                 }
             } header: {
-                Label("助手", systemImage: "sparkles")
+                Label("Assistant", systemImage: "sparkles")
             }
         }
 
@@ -1573,13 +1573,13 @@ private struct TrajectoryEventInspectorView: View {
             Section {
                 usageDetails(usage)
             } header: {
-                Label("用量", systemImage: "chart.bar")
+                Label("Usage", systemImage: "chart.bar")
             }
         }
 
         if let call = event.toolCallData {
             Section {
-                LabeledContent("名称", value: call.name)
+                LabeledContent("Name", value: call.name)
                 LabeledContent("Call ID") {
                     Text(call.callID)
                         .font(.footnote.monospaced())
@@ -1594,12 +1594,12 @@ private struct TrajectoryEventInspectorView: View {
                     }
                 }
             } header: {
-                Label("工具调用", systemImage: "wrench.and.screwdriver")
+                Label("Tool Call", systemImage: "wrench.and.screwdriver")
             }
         }
 
         if let result = event.toolResultData {
-            Section(result.trajectoryIsError ? "工具错误" : "工具结果") {
+            Section(result.trajectoryIsError ? "Tool Error" : "Tool Result") {
                 if let callID = result.callID {
                     LabeledContent("Call ID") {
                         Text(callID)
@@ -1608,7 +1608,7 @@ private struct TrajectoryEventInspectorView: View {
                     }
                 }
                 if result.trajectoryIsError {
-                    Label("工具返回错误", systemImage: "exclamationmark.triangle.fill")
+                    Label("Tool returned an error", systemImage: "exclamationmark.triangle.fill")
                         .foregroundStyle(.red)
                 }
                 if let formattedToolResult {
@@ -1620,17 +1620,17 @@ private struct TrajectoryEventInspectorView: View {
 
     @ViewBuilder
     private func usageDetails(_ usage: SessionTokenUsage) -> some View {
-        LabeledContent("未缓存输入", value: TrajectoryFormat.count(usage.inputTokens))
-        LabeledContent("输出", value: TrajectoryFormat.count(usage.outputTokens))
+        LabeledContent("Uncached Input", value: TrajectoryFormat.count(usage.inputTokens))
+        LabeledContent("Output", value: TrajectoryFormat.count(usage.outputTokens))
         if let cacheRead = usage.cacheReadTokens {
-            LabeledContent("缓存读取", value: TrajectoryFormat.count(cacheRead))
+            LabeledContent("Cache Read", value: TrajectoryFormat.count(cacheRead))
         }
         if let cacheWrite = usage.cacheWriteTokens {
-            LabeledContent("缓存写入", value: TrajectoryFormat.count(cacheWrite))
+            LabeledContent("Cache Write", value: TrajectoryFormat.count(cacheWrite))
         }
-        LabeledContent("缓存命中", value: TrajectoryFormat.cachePercent(usage) ?? "—")
+        LabeledContent("Cache Hit", value: TrajectoryFormat.cachePercent(usage) ?? "—")
         if let reasoning = usage.reasoningTokens {
-            LabeledContent("思考", value: TrajectoryFormat.count(reasoning))
+            LabeledContent("Reasoning", value: TrajectoryFormat.count(reasoning))
         }
     }
 
@@ -1673,7 +1673,7 @@ private enum TrajectoryJSONFormatter {
     static func event(_ event: SessionEvent) -> String {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        guard let data = try? encoder.encode(event) else { return "无法编码事件。" }
+        guard let data = try? encoder.encode(event) else { return "Unable to encode event." }
         return String(decoding: data, as: UTF8.self)
     }
 

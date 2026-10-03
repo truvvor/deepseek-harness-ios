@@ -14,7 +14,7 @@ struct MemoryManagementView: View {
 
             Section {
                 if model.memoryRecords.isEmpty {
-                    Label("没有已保存的记忆", systemImage: "brain")
+                    Label("No Saved Memories", systemImage: "brain")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(model.memoryRecords) { record in
@@ -23,34 +23,34 @@ struct MemoryManagementView: View {
                         }
                     }
                 }
-                DisclosureGroup("存储与发送范围") {
-                    Text("记忆只会在本机保存。模型通过 memory_write 显式保存的内容才会写入；不会自动复制整段对话。读取或注入的内容可能会发送给你配置的模型服务商。")
+                DisclosureGroup("Storage and Sharing Scope") {
+                    Text("Memories are stored only on this device. Only content the model explicitly saves via memory_write is written; whole conversations are never copied automatically. Content that is read or injected may be sent to your configured model provider.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, HarnessTheme.Spacing.xSmall)
                 }
             } header: {
-                Label("已保存的记忆", systemImage: "brain.head.profile")
+                Label("Saved Memories", systemImage: "brain.head.profile")
             }
 
             Section {
                 Button {
                     prepareExport()
                 } label: {
-                    Label(isPreparingExport ? "正在准备导出" : "导出 JSON", systemImage: "square.and.arrow.up")
+                    Label(isPreparingExport ? "Preparing Export" : "Export JSON", systemImage: "square.and.arrow.up")
                 }
                 .disabled(isPreparingExport)
                 .accessibilityIdentifier("memory-export-json")
             } header: {
-                Label("导出", systemImage: "square.and.arrow.up")
+                Label("Export", systemImage: "square.and.arrow.up")
             }
         }
         .listStyle(.insetGrouped)
         .environment(\.defaultMinListRowHeight, 44)
         .scrollContentBackground(.hidden)
         .background(HarnessTheme.pageBackground)
-        .navigationTitle("记忆")
+        .navigationTitle("Memory")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: model.activeSessionID) {
             await model.refreshMemory()
@@ -59,7 +59,7 @@ struct MemoryManagementView: View {
             await model.refreshMemory()
         }
         .confirmationDialog(
-            "删除这条记忆？",
+            "Delete This Memory?",
             isPresented: Binding(
                 get: { recordPendingDeletion != nil },
                 set: { if !$0 { recordPendingDeletion = nil } }
@@ -67,12 +67,12 @@ struct MemoryManagementView: View {
             titleVisibility: .visible,
             presenting: recordPendingDeletion
         ) { record in
-            Button("删除", role: .destructive) {
+            Button("Delete", role: .destructive) {
                 Task { await model.deleteMemory(id: record.id) }
             }
-            Button("取消", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: { record in
-            Text("这会永久删除此\(scopeLabel(for: record))记忆，无法撤销。")
+            Text("This permanently deletes this \(scopeLabel(for: record)) memory. This cannot be undone.")
         }
         .fileExporter(
             isPresented: $isFileExporterPresented,
@@ -103,10 +103,10 @@ struct MemoryManagementView: View {
 
     private var sessionSection: some View {
         Section {
-            Toggle("允许使用已保存的记忆", isOn: memoryEnabledBinding)
+            Toggle("Allow Saved Memories", isOn: memoryEnabledBinding)
                 .disabled(!hasActiveSession)
-                .accessibilityHint("关闭后，本会话不会注入或读取已保存的记忆。")
-            DisclosureGroup("会话记忆说明") {
+                .accessibilityHint("When off, this session won't inject or read saved memories.")
+            DisclosureGroup("About Session Memory") {
                 Text(sessionExplanation)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -114,7 +114,7 @@ struct MemoryManagementView: View {
                     .padding(.top, HarnessTheme.Spacing.xSmall)
             }
         } header: {
-            Label("当前会话", systemImage: "bubble.left.and.bubble.right")
+            Label("Current Session", systemImage: "bubble.left.and.bubble.right")
         }
     }
 
@@ -124,8 +124,8 @@ struct MemoryManagementView: View {
 
     private var sessionExplanation: String {
         hasActiveSession
-            ? "关闭后，本会话不会注入或读取已保存的记忆。重新开启不会删除任何记录。"
-            : "当前没有可用会话，因此不能更改此开关。"
+            ? "When off, this session won't inject or read saved memories. Turning it back on doesn't delete any records."
+            : "No session is available, so this setting can't be changed."
     }
 
     private var memoryEnabledBinding: Binding<Bool> {
@@ -140,9 +140,9 @@ struct MemoryManagementView: View {
     private func scopeLabel(for record: MemoryRecord) -> String {
         switch record.scope {
         case .global:
-            "全局"
+            "global"
         case .session:
-            "会话范围"
+            "session-scoped"
         }
     }
 }
@@ -180,8 +180,8 @@ private struct MemoryRecordRow: View {
                 Image(systemName: "trash")
                     .frame(width: 44, height: 44)
             }
-            .accessibilityLabel("删除记忆")
-            .accessibilityHint("删除这条已保存的记忆。")
+            .accessibilityLabel("Delete Memory")
+            .accessibilityHint("Deletes this saved memory.")
         }
         .padding(.vertical, HarnessTheme.Spacing.xSmall)
         .accessibilityElement(children: .contain)
@@ -190,9 +190,9 @@ private struct MemoryRecordRow: View {
     private var scopeLabel: String {
         switch record.scope {
         case .global:
-            "全局"
+            "Global"
         case .session:
-            "会话范围"
+            "Session"
         }
     }
 
@@ -205,7 +205,7 @@ private struct MemoryRecordRow: View {
     }
 
     private var metadataText: some View {
-        Text("\(record.provenance == .explicitModelWrite ? "模型显式保存" : "用户管理") · \(record.createdAt, format: .dateTime.year().month().day().hour().minute())")
+        Text("\(record.provenance == .explicitModelWrite ? "Saved by model" : "User managed") · \(record.createdAt, format: .dateTime.year().month().day().hour().minute())")
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)

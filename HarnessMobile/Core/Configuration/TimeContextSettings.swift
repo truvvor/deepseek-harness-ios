@@ -39,9 +39,9 @@ enum TimeContextSettingsError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidRefreshInterval:
-            return "时间上下文刷新间隔必须在 0 到 24 小时之间。"
+            return "The time context refresh interval must be between 0 and 24 hours."
         case let .invalidTimeZone(identifier):
-            return "无法识别时区“\(identifier)”。"
+            return "Unrecognized time zone '\(identifier)'."
         }
     }
 }

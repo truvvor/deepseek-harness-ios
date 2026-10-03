@@ -411,7 +411,7 @@ final class FileSystemToolsTests: XCTestCase {
             "offset": .number(0)
         ])) { error in
             XCTAssertTrue(error.localizedDescription.contains("offset"))
-            XCTAssertFalse(error.localizedDescription.contains("JSON 对象"))
+            XCTAssertFalse(error.localizedDescription.contains("JSON object"))
         }
         XCTAssertThrowsError(try tool("edit", in: registry).validate(arguments: [
             "file_path": .string("file.txt"),

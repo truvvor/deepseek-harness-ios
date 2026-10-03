@@ -671,13 +671,13 @@ private struct ISHTerminalOpenTool: LocalAgentTool {
     let ownerSession: String
     let definition = ModelToolDefinition(
         name: "terminal_open",
-        description: "在手机本机 iSH 中打开一个持久终端会话。会话只属于当前 Agent，会在 App 重启后明确标记为 interrupted。",
+        description: "Open a persistent terminal session in the phone's local iSH. The session belongs only to the current Agent and is explicitly marked interrupted after the app restarts.",
         parameters: .object([
             "type": .string("object"),
             "properties": .object([
-                "type": .object(["type": .string("string"), "description": .string("后端类型，当前使用 ish-shell。")]),
+                "type": .object(["type": .string("string"), "description": .string("Backend type; currently ish-shell.")]),
                 "name": .object(["type": .string("string")]),
-                "cwd": .object(["type": .string("string"), "description": .string("/workspace 下的工作目录。")])
+                "cwd": .object(["type": .string("string"), "description": .string("Working directory under /workspace.")])
             ]),
             "required": .array([.string("type")]),
             "additionalProperties": .bool(false)
@@ -689,7 +689,7 @@ private struct ISHTerminalOpenTool: LocalAgentTool {
         let type = try arguments.requiredString("type", maximumUTF8Bytes: 128)
         guard type == "ish-shell" else { throw LocalToolError.invalidArguments }
     }
-    func summary(arguments: [String: JSONValue]) -> String { "打开手机持久终端" }
+    func summary(arguments: [String: JSONValue]) -> String { "Open persistent phone terminal" }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> { ["ish-terminal:\(ownerSession)"] }
     func execute(arguments: [String: JSONValue]) async throws -> String {
         try validate(arguments: arguments)
@@ -713,7 +713,7 @@ private struct ISHTerminalReadTool: LocalAgentTool {
     let ownerSession: String
     let definition = ModelToolDefinition(
         name: "terminal_read",
-        description: "读取手机持久终端的有界输出，按行分页。",
+        description: "Read bounded output from a persistent phone terminal, paginated by line.",
         parameters: .object([
             "type": .string("object"),
             "properties": .object([
@@ -731,7 +731,7 @@ private struct ISHTerminalReadTool: LocalAgentTool {
         try validateInteger(arguments["offset"], defaultValue: 0, range: 0...1_000_000)
         try validateInteger(arguments["count"], defaultValue: 200, range: 1...2_000)
     }
-    func summary(arguments: [String: JSONValue]) -> String { "读取持久终端输出" }
+    func summary(arguments: [String: JSONValue]) -> String { "Read persistent terminal output" }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> { ["ish-terminal:\(ownerSession)"] }
     func execute(arguments: [String: JSONValue]) async throws -> String {
         try validate(arguments: arguments)
@@ -754,7 +754,7 @@ private struct ISHTerminalSendTool: LocalAgentTool {
     let ownerSession: String
     let definition = ModelToolDefinition(
         name: "terminal_send",
-        description: "向手机持久终端写入文本；submit=true 时追加回车。",
+        description: "Write text to a persistent phone terminal; appends Enter when submit=true.",
         parameters: .object([
             "type": .string("object"), "properties": .object([
                 "session_id": .object(["type": .string("string")]),
@@ -770,7 +770,7 @@ private struct ISHTerminalSendTool: LocalAgentTool {
         _ = try arguments.requiredString("text", maximumUTF8Bytes: 64 * 1_024)
         if let submit = arguments["submit"], terminalBool(submit) == nil { throw LocalToolError.invalidArguments }
     }
-    func summary(arguments: [String: JSONValue]) -> String { "写入持久终端" }
+    func summary(arguments: [String: JSONValue]) -> String { "Write to persistent terminal" }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> { ["ish-terminal:\(ownerSession)"] }
     func execute(arguments: [String: JSONValue]) async throws -> String {
         try validate(arguments: arguments)
@@ -791,7 +791,7 @@ private struct ISHTerminalSignalTool: LocalAgentTool {
     let provider: any ISHTerminalProviding
     let ownerSession: String
     let definition = ModelToolDefinition(
-        name: "terminal_signal", description: "向手机持久终端发送 SIGINT、SIGTERM、SIGKILL、SIGTSTP 或 SIGHUP。",
+        name: "terminal_signal", description: "Send SIGINT, SIGTERM, SIGKILL, SIGTSTP, or SIGHUP to a persistent phone terminal.",
         parameters: .object([
             "type": .string("object"), "properties": .object([
                 "session_id": .object(["type": .string("string")]),
@@ -805,7 +805,7 @@ private struct ISHTerminalSignalTool: LocalAgentTool {
         _ = try arguments.requiredString("session_id", maximumUTF8Bytes: 128)
         guard let raw = arguments["signal"]?.stringValue, ISHTerminalSignal(rawValue: raw) != nil else { throw LocalToolError.invalidArguments }
     }
-    func summary(arguments: [String: JSONValue]) -> String { "控制持久终端进程" }
+    func summary(arguments: [String: JSONValue]) -> String { "Signal persistent terminal process" }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> { ["ish-terminal:\(ownerSession)"] }
     func execute(arguments: [String: JSONValue]) async throws -> String {
         try validate(arguments: arguments)
@@ -821,10 +821,10 @@ private struct ISHTerminalSignalTool: LocalAgentTool {
 private struct ISHTerminalListTool: LocalAgentTool {
     let provider: any ISHTerminalProviding
     let ownerSession: String
-    let definition = ModelToolDefinition(name: "terminal_list", description: "列出当前 Agent 拥有的手机持久终端会话。", parameters: .object(["type": .string("object"), "properties": .object([:]), "additionalProperties": .bool(false)]))
+    let definition = ModelToolDefinition(name: "terminal_list", description: "List persistent phone terminal sessions owned by the current Agent.", parameters: .object(["type": .string("object"), "properties": .object([:]), "additionalProperties": .bool(false)]))
     let risk: ToolRisk = .localState
     func validate(arguments: [String: JSONValue]) throws { try arguments.requireOnlyKeys([]) }
-    func summary(arguments: [String: JSONValue]) -> String { "列出持久终端" }
+    func summary(arguments: [String: JSONValue]) -> String { "List persistent terminals" }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> { ["ish-terminal:\(ownerSession)"] }
     func execute(arguments: [String: JSONValue]) async throws -> String {
         let sessions = await provider.list(ownerSession: ownerSession)
@@ -836,13 +836,13 @@ private struct ISHTerminalListTool: LocalAgentTool {
 private struct ISHTerminalCloseTool: LocalAgentTool {
     let provider: any ISHTerminalProviding
     let ownerSession: String
-    let definition = ModelToolDefinition(name: "terminal_close", description: "关闭当前 Agent 拥有的手机持久终端会话。", parameters: .object([
+    let definition = ModelToolDefinition(name: "terminal_close", description: "Close a persistent phone terminal session owned by the current Agent.", parameters: .object([
         "type": .string("object"), "properties": .object(["session_id": .object(["type": .string("string")])]),
         "required": .array([.string("session_id")]), "additionalProperties": .bool(false)
     ]))
     let risk: ToolRisk = .destructive
     func validate(arguments: [String: JSONValue]) throws { try arguments.requireOnlyKeys(["session_id"]); _ = try arguments.requiredString("session_id", maximumUTF8Bytes: 128) }
-    func summary(arguments: [String: JSONValue]) -> String { "关闭持久终端" }
+    func summary(arguments: [String: JSONValue]) -> String { "Close persistent terminal" }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> { ["ish-terminal:\(ownerSession)"] }
     func execute(arguments: [String: JSONValue]) async throws -> String {
         try validate(arguments: arguments)

@@ -84,7 +84,7 @@ final class SessionEventTrajectoryTests: XCTestCase {
             request: request, requestHeader: header, events: [headerEvent]
         )) { error in
             let description = (error as? LocalizedError)?.errorDescription ?? ""
-            XCTAssertTrue(description.contains("未记录"))
+            XCTAssertTrue(description.contains("unrecorded"))
             XCTAssertFalse(description.contains("secret prompt"))
         }
     }

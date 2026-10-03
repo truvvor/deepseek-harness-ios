@@ -52,7 +52,7 @@ struct MessageBubble: View, Equatable {
                                 )
                             } label: {
                                 Label(
-                                    "显示前面的 \(min(hiddenToolCallCount, Self.toolCallPageSize)) 个工具调用",
+                                    "Show \(min(hiddenToolCallCount, Self.toolCallPageSize)) earlier tool calls",
                                     systemImage: "arrow.up.circle"
                                 )
                             }
@@ -60,7 +60,7 @@ struct MessageBubble: View, Equatable {
                             .buttonStyle(.plain)
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier("load-earlier-tool-calls")
-                            .accessibilityValue("尚有 \(hiddenToolCallCount) 个较早工具调用")
+                            .accessibilityValue("\(hiddenToolCallCount) earlier tool calls remaining")
                         }
 
                         ForEach(visibleToolCalls) { call in
@@ -135,7 +135,7 @@ struct MessageBubble: View, Equatable {
         .contextMenu {
             if message.role != .tool, !message.content.isEmpty {
                 Button(action: copyMessage) {
-                    Label("复制", systemImage: "doc.on.doc")
+                    Label("Copy", systemImage: "doc.on.doc")
                 }
             }
 
@@ -144,7 +144,7 @@ struct MessageBubble: View, Equatable {
                     onRetryUserMessage(retryUserMessageID)
                 } label: {
                     Label(
-                        message.role == .assistant ? "重新生成回答" : "重试此消息",
+                        message.role == .assistant ? "Regenerate Response" : "Retry This Message",
                         systemImage: "arrow.clockwise"
                     )
                 }
@@ -155,7 +155,7 @@ struct MessageBubble: View, Equatable {
                 Button {
                     onEditUserMessage(message)
                 } label: {
-                    Label("编辑并重新运行", systemImage: "pencil")
+                    Label("Edit and Rerun", systemImage: "pencil")
                 }
                 .disabled(!canRerunUserMessage)
             }
@@ -178,7 +178,7 @@ struct MessageBubble: View, Equatable {
         HStack(spacing: 2) {
             actionButton(
                 systemImage: copied ? "checkmark" : "doc.on.doc",
-                label: copied ? "已复制" : "复制",
+                label: copied ? "Copied" : "Copy",
                 disabled: message.content.isEmpty,
                 action: copyMessage
             )
@@ -186,7 +186,7 @@ struct MessageBubble: View, Equatable {
             if let retryUserMessageID {
                 actionButton(
                     systemImage: "arrow.clockwise",
-                    label: message.role == .assistant ? "重新生成回答" : "重试此消息",
+                    label: message.role == .assistant ? "Regenerate Response" : "Retry This Message",
                     disabled: !canRerunUserMessage
                 ) {
                     onRetryUserMessage(retryUserMessageID)
@@ -196,7 +196,7 @@ struct MessageBubble: View, Equatable {
             if message.role == .user {
                 actionButton(
                     systemImage: "pencil",
-                    label: "编辑并重新运行",
+                    label: "Edit and Rerun",
                     disabled: !canRerunUserMessage
                 ) {
                     onEditUserMessage(message)
@@ -207,12 +207,12 @@ struct MessageBubble: View, Equatable {
                 feedbackButton(
                     rating: .positive,
                     systemImage: "hand.thumbsup",
-                    label: "有帮助"
+                    label: "Helpful"
                 )
                 feedbackButton(
                     rating: .negative,
                     systemImage: "hand.thumbsdown",
-                    label: "需要改进"
+                    label: "Needs Improvement"
                 )
             }
 
@@ -225,8 +225,8 @@ struct MessageBubble: View, Equatable {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
-                .accessibilityLabel(feedback.note == nil ? "添加反馈备注" : "编辑反馈备注")
-                .help(feedback.note == nil ? "添加反馈备注" : "编辑反馈备注")
+                .accessibilityLabel(feedback.note == nil ? "Add feedback note" : "Edit feedback note")
+                .help(feedback.note == nil ? "Add feedback note" : "Edit feedback note")
             }
         }
         .font(.caption.weight(.medium))
@@ -249,7 +249,7 @@ struct MessageBubble: View, Equatable {
                 .frame(width: 44, height: 44)
         }
         .buttonStyle(.plain)
-        .foregroundStyle(copied && label == "已复制" ? Color.accentColor : Color.secondary)
+        .foregroundStyle(copied && label == "Copied" ? Color.accentColor : Color.secondary)
         .disabled(disabled)
         .accessibilityLabel(label)
         .help(label)
@@ -357,14 +357,14 @@ struct EditUserMessageView: View {
         NavigationStack {
             TextEditor(text: $text)
                 .padding(.horizontal, 12)
-                .navigationTitle("编辑消息")
+                .navigationTitle("Edit Message")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("取消") { dismiss() }
+                        Button("Cancel") { dismiss() }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("重新运行") {
+                        Button("Rerun") {
                             onRerun()
                             dismiss()
                         }
@@ -400,7 +400,7 @@ private struct MessageFeedbackNoteSheet: View {
                 Section {
                     TextEditor(text: $note)
                         .frame(minHeight: 120)
-                        .accessibilityLabel("反馈备注")
+                        .accessibilityLabel("Feedback Note")
 
                     Text("\(note.utf8.count) / \(MessageFeedback.maximumNoteUTF8Bytes) bytes")
                         .font(.caption.monospacedDigit())
@@ -410,17 +410,17 @@ private struct MessageFeedbackNoteSheet: View {
                                 : Color.secondary
                         )
                 } header: {
-                    Label("备注", systemImage: "note.text")
+                    Label("Note", systemImage: "note.text")
                 }
             }
-            .navigationTitle("反馈备注")
+            .navigationTitle("Feedback Note")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
+                    Button("Save") {
                         onSave(note)
                         dismiss()
                     }
@@ -481,7 +481,7 @@ private struct ReasoningDisclosure: View {
                 HStack(spacing: 7) {
                     Image(systemName: "brain.head.profile")
                         .foregroundStyle(.secondary)
-                    Text("思考")
+                    Text("Thinking")
                         .fontWeight(.semibold)
                     Text(summary)
                         .foregroundStyle(.secondary)
@@ -501,9 +501,9 @@ private struct ReasoningDisclosure: View {
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(isStreaming ? "正在思考" : "思考过程")
+            .accessibilityLabel(isStreaming ? "Thinking" : "Reasoning")
             .accessibilityValue(summary)
-            .accessibilityHint(isExpanded ? "折叠完整思考过程" : "展开完整思考过程")
+            .accessibilityHint(isExpanded ? "Collapse full reasoning" : "Expand full reasoning")
 
             if isExpanded {
                 if isStreaming {
@@ -545,10 +545,10 @@ private struct ReasoningDisclosure: View {
             .split(whereSeparator: \Character.isNewline)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-        guard !lines.isEmpty else { return isStreaming ? "正在推理" : "已完成" }
+        guard !lines.isEmpty else { return isStreaming ? "Reasoning" : "Completed" }
         let value: String
         if isStreaming {
-            value = lines.last ?? "正在推理"
+            value = lines.last ?? "Reasoning"
         } else {
             value = lines.first(where: { !$0.hasPrefix("[") }) ?? lines[0]
         }

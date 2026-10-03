@@ -475,11 +475,11 @@ struct ModelVisibleEventAuditFailure: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch kind {
         case .missingMessageSource:
-            return "模型请求包含未记录的会话消息，已停止发送。"
+            return "The model request contains unrecorded session messages; sending stopped."
         case .missingToolResultSource:
-            return "模型请求包含未记录的工具响应，已停止发送。"
+            return "The model request contains unrecorded tool responses; sending stopped."
         case .missingRequestHeader:
-            return "模型请求的系统提示或工具定义未记录，已停止发送。"
+            return "The model request's system prompt or tool definitions were not recorded; sending stopped."
         }
     }
 }
@@ -1582,14 +1582,20 @@ actor SessionEventJSONLStore {
     private var isLoaded = false
     private var isClosed = false
     private var recoveredTornTail = false
+    /// Local logs close an interrupted turn on cold open. A desktop mirror must
+    /// not: its log is an exact copy of another host's sequence numbers, and a
+    /// synthetic closer would occupy the slot of the desktop's next event.
+    private let repairsInterruptedTurns: Bool
 
     init(
         fileURL: URL,
         streamID: String? = nil,
         knownEventTypes: Set<String> = SessionEventVocabulary.upstreamKnown,
         durability: SessionEventDurability = .buffered,
-        maximumRetainedEvents: Int = 4_096
+        maximumRetainedEvents: Int = 4_096,
+        repairsInterruptedTurns: Bool = true
     ) {
+        self.repairsInterruptedTurns = repairsInterruptedTurns
         self.fileURL = fileURL
         self.streamID = streamID ?? fileURL.deletingPathExtension().lastPathComponent
         self.knownEventTypes = knownEventTypes
@@ -1735,6 +1741,9 @@ actor SessionEventJSONLStore {
             }
             try fileHandle.synchronize()
             pendingBatches.removeAll(keepingCapacity: true)
+            if !repairsInterruptedTurns {
+                try writeHead()
+            }
         } catch {
             // A write or synchronize failure leaves the barrier uncommitted.
             // Roll back the complete barrier so retrying the same pending
@@ -1795,6 +1804,21 @@ actor SessionEventJSONLStore {
         }
 
         let handle = try FileHandle(forUpdating: fileURL)
+        // An append-only mirror log is never repaired, so its head can be
+        // trusted from the sidecar written at the last flush: no need to decode
+        // tens of MB to learn the next sequence number.
+        if !repairsInterruptedTurns,
+           let head = Self.readHead(for: fileURL),
+           let size = try? handle.seekToEnd(),
+           head.fileSize == size {
+            nextSequence = head.nextSequence
+            durableNextSequence = head.nextSequence
+            events = []
+            metrics = SessionTrajectoryAccumulator()
+            fileHandle = handle
+            isLoaded = true
+            return
+        }
         do {
             let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
             let recovery = try decodeLog(data)
@@ -1821,10 +1845,15 @@ actor SessionEventJSONLStore {
             // repair is append-only and therefore idempotent: once the
             // synthetic closers are present, a subsequent open sees a closed
             // turn and produces no additional events.
-            let closers = try SessionEventRecovery.interruptedTurnClosers(recovery.events)
+            let closers = repairsInterruptedTurns
+                ? try SessionEventRecovery.interruptedTurnClosers(recovery.events)
+                : []
             if !closers.isEmpty {
                 _ = try appendAssigned(closers)
                 try flush()
+            }
+            if !repairsInterruptedTurns {
+                try writeHead()
             }
         } catch {
             try? handle.close()
@@ -1896,6 +1925,29 @@ actor SessionEventJSONLStore {
             truncateTo: UInt64(lineStart),
             needsTrailingNewline: false
         )
+    }
+
+    // MARK: - Mirror head sidecar
+
+    private struct Head: Codable {
+        let nextSequence: UInt64
+        let fileSize: UInt64
+    }
+
+    static func headURL(for fileURL: URL) -> URL {
+        fileURL.appendingPathExtension("head")
+    }
+
+    private static func readHead(for fileURL: URL) -> Head? {
+        guard let data = try? Data(contentsOf: headURL(for: fileURL)) else { return nil }
+        return try? JSONDecoder().decode(Head.self, from: data)
+    }
+
+    private func writeHead() throws {
+        guard let fileHandle else { return }
+        let size = try fileHandle.offset()
+        let head = Head(nextSequence: durableNextSequence, fileSize: size)
+        try JSONEncoder().encode(head).write(to: Self.headURL(for: fileURL), options: .atomic)
     }
 
     private func assertSupported(_ event: SessionEvent) throws {

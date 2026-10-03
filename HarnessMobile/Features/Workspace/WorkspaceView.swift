@@ -26,18 +26,18 @@ struct WorkspaceView: View {
                 if model.workspaceFiles.isEmpty {
                     VStack(spacing: HarnessTheme.Spacing.medium) {
                         ContentUnavailableView(
-                            "还没有文件",
+                            "No Files Yet",
                             systemImage: "folder.badge.plus",
-                            description: Text("导入一个文件，或挂载外部文件夹开始使用工作区。")
+                            description: Text("Import a file or mount an external folder to start using the workspace.")
                         )
 
                         HStack(spacing: HarnessTheme.Spacing.small) {
-                            Button("导入文件", systemImage: "doc.badge.plus") {
+                            Button("Import File", systemImage: "doc.badge.plus") {
                                 isFileImporterPresented = true
                             }
                             .buttonStyle(.bordered)
 
-                            Button("挂载文件夹", systemImage: "externaldrive.badge.plus") {
+                            Button("Mount Folder", systemImage: "externaldrive.badge.plus") {
                                 reauthorizingMountID = nil
                                 isFolderImporterPresented = true
                             }
@@ -54,28 +54,28 @@ struct WorkspaceView: View {
                         )
                     }
                 }
-            } header: { Label("文件", systemImage: "doc.text") }
+            } header: { Label("Files", systemImage: "doc.text") }
         }
         .listStyle(.insetGrouped)
         .environment(\.defaultMinListRowHeight, 44)
         .scrollContentBackground(.hidden)
         .background(HarnessTheme.pageBackground)
-        .navigationTitle("工作区")
+        .navigationTitle("Workspace")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button("导入文件", systemImage: "doc.badge.plus") {
+                    Button("Import File", systemImage: "doc.badge.plus") {
                         isFileImporterPresented = true
                     }
-                    Button("挂载文件夹", systemImage: "externaldrive.badge.plus") {
+                    Button("Mount Folder", systemImage: "externaldrive.badge.plus") {
                         reauthorizingMountID = nil
                         isFolderImporterPresented = true
                     }
                 } label: {
                     Image(systemName: "plus")
                 }
-                .accessibilityLabel("添加到工作区")
+                .accessibilityLabel("Add to Workspace")
             }
         }
         .refreshable {
@@ -132,22 +132,22 @@ struct WorkspaceView: View {
             }
         }
         .confirmationDialog(
-            "卸载这个文件夹？",
+            "Unmount This Folder?",
             isPresented: $isRemovalConfirmationPresented,
             titleVisibility: .visible,
             presenting: mountPendingRemoval
         ) { mount in
-            Button("卸载 \(mount.name)", role: .destructive) {
+            Button("Unmount \(mount.name)", role: .destructive) {
                 mountPendingRemoval = nil
                 Task {
                     await model.removeWorkspaceMount(id: mount.id)
                 }
             }
-            Button("取消", role: .cancel) {
+            Button("Cancel", role: .cancel) {
                 mountPendingRemoval = nil
             }
         } message: { mount in
-            Text("源文件夹不会被删除，只会从 /workspace/mounts/\(mount.name) 移除。")
+            Text("The source folder won't be deleted; it will only be removed from /workspace/mounts/\(mount.name).")
         }
     }
 
@@ -194,7 +194,7 @@ private struct WorkspaceMountsSection: View {
     var body: some View {
         Section {
             if mounts.isEmpty {
-                Label("未挂载外部文件夹", systemImage: "externaldrive")
+                Label("No External Folders Mounted", systemImage: "externaldrive")
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(mounts) { mount in
@@ -206,7 +206,7 @@ private struct WorkspaceMountsSection: View {
                     )
                 }
             }
-        } header: { Label("挂载目录", systemImage: "externaldrive") }
+        } header: { Label("Mounted Folders", systemImage: "externaldrive") }
     }
 }
 
@@ -246,25 +246,25 @@ private struct WorkspaceMountRow: View {
 
             Menu {
                 Button(
-                    mount.access.allowsWriting ? "切换为只读" : "允许写入",
+                    mount.access.allowsWriting ? "Make Read-Only" : "Allow Writing",
                     systemImage: mount.access.allowsWriting ? "lock" : "lock.open"
                 ) {
                     onToggleWritable()
                 }
                 .disabled(!mount.sourceWritable && !mount.access.allowsWriting)
 
-                Button("重新授权", systemImage: "arrow.clockwise") {
+                Button("Reauthorize", systemImage: "arrow.clockwise") {
                     onReauthorize()
                 }
 
-                Button("卸载", systemImage: "eject", role: .destructive) {
+                Button("Unmount", systemImage: "eject", role: .destructive) {
                     onRemove()
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
                     .frame(width: 44, height: 44)
             }
-            .accessibilityLabel("管理挂载 \(mount.name)")
+            .accessibilityLabel("Manage Mount \(mount.name)")
         }
     }
 
@@ -294,17 +294,17 @@ private struct WorkspaceMountRow: View {
         case .active:
             mount.sourceDisplayName
         case .staleBookmark:
-            mount.failureMessage ?? "授权已过期"
+            mount.failureMessage ?? "Authorization expired"
         case .permissionDenied:
-            mount.failureMessage ?? "需要重新授权"
+            mount.failureMessage ?? "Reauthorization required"
         case .unavailable:
-            mount.failureMessage ?? "文件夹当前不可用"
+            mount.failureMessage ?? "Folder currently unavailable"
         }
     }
 
     private var accessPill: some View {
         HarnessStatusPill(
-            title: mount.effectiveWritable ? "读写" : "只读",
+            title: mount.effectiveWritable ? "Read-Write" : "Read-Only",
             systemImage: mount.effectiveWritable ? "lock.open" : "lock",
             tint: mount.effectiveWritable ? .green : .secondary
         )
@@ -335,12 +335,12 @@ private struct WorkspaceFileRow: View {
             }
             Spacer(minLength: 8)
             Menu {
-                Button("导出文件", systemImage: "square.and.arrow.up", action: onExport)
+                Button("Export File", systemImage: "square.and.arrow.up", action: onExport)
             } label: {
                 Image(systemName: "ellipsis.circle")
                     .frame(width: 44, height: 44)
             }
-            .accessibilityLabel("导出 \(file.path)")
+            .accessibilityLabel("Export \(file.path)")
         }
     }
 }

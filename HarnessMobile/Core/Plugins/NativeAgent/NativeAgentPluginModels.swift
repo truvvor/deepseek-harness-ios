@@ -410,7 +410,7 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
               !promptSections.isEmpty || !promptContexts.isEmpty || !tools.isEmpty
                 || !toolGuards.isEmpty,
               compatibilityNotes.count <= 16 else {
-            throw NativeAgentPluginError.invalidCompiledPlugin("插件元数据不合法。")
+            throw NativeAgentPluginError.invalidCompiledPlugin("Plugin metadata is invalid.")
         }
         if let description {
             try Self.validateCredentialSafety(.string(description), field: "description")
@@ -419,7 +419,7 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
         var totalTextBytes = 0
         guard promptSections.count(where: { $0.complete == true }) <= 1 else {
             throw NativeAgentPluginError.invalidCompiledPlugin(
-                "prompt_sections 最多只能有一个 complete=true；请把其余段设为 complete=false，或合并到同一个完整段。"
+                "prompt_sections can have at most one complete=true; set the other sections to complete=false or merge them into a single complete section."
             )
         }
         for (index, section) in promptSections.enumerated() {
@@ -427,7 +427,7 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
                   !section.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   section.text.utf8.count <= 24 * 1_024 else {
                 throw NativeAgentPluginError.invalidCompiledPlugin(
-                    "prompt_sections[\(index)] 不合法：order 必须在 -10000..10000，text 必须非空且不超过 24576 UTF-8 字节。"
+                    "prompt_sections[\(index)] is invalid: order must be within -10000..10000, and text must be non-empty and no more than 24576 UTF-8 bytes."
                 )
             }
             try Self.validateCredentialSafety(
@@ -441,7 +441,7 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
         for (index, context) in promptContexts.enumerated() {
             guard contextNames.insert(context.name).inserted else {
                 throw NativeAgentPluginError.invalidCompiledPlugin(
-                    "prompt_contexts[\(index)].name 与前面的上下文重复。"
+                    "prompt_contexts[\(index)].name duplicates an earlier context."
                 )
             }
             guard Self.isContributionName(context.name),
@@ -450,7 +450,7 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
                   context.prefix.utf8.count <= 8 * 1_024,
                   context.suffix.utf8.count <= 8 * 1_024 else {
                 throw NativeAgentPluginError.invalidCompiledPlugin(
-                    "prompt_contexts[\(index)] 不合法：name/order/maximum_characters 或 prefix/suffix 长度不符合约束。"
+                    "prompt_contexts[\(index)] is invalid: name/order/maximum_characters or prefix/suffix length violates constraints."
                 )
             }
             switch context.source {
@@ -462,7 +462,7 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
             case .conversation, .settings:
                 guard context.path == nil else {
                     throw NativeAgentPluginError.invalidCompiledPlugin(
-                        "非文件上下文不能声明 path。"
+                        "Non-file contexts cannot declare path."
                     )
                 }
             }
@@ -486,7 +486,7 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
                   try JSONEncoder().encode(settings.defaults).count <= 32 * 1_024,
                   try JSONEncoder().encode(settings.values).count <= 32 * 1_024 else {
                 throw NativeAgentPluginError.invalidCompiledPlugin(
-                    "settings 不合法：schema/defaults/values 必须是 object，且每项编码后不超过 32768 字节。"
+                    "settings is invalid: schema/defaults/values must be objects, and each must encode to no more than 32768 bytes."
                 )
             }
             try NativeAgentJSONSchemaValidator.validate(
@@ -505,35 +505,35 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
         for (index, tool) in tools.enumerated() {
             guard names.insert(tool.name).inserted else {
                 throw NativeAgentPluginError.invalidCompiledPlugin(
-                    "tools[\(index)].name 与前面的工具重复。"
+                    "tools[\(index)].name duplicates an earlier tool."
                 )
             }
             guard Self.isToolName(tool.name) else {
                 throw NativeAgentPluginError.invalidCompiledPlugin(
-                    "tools[\(index)].name 不合法：必须以小写字母开头，只能包含小写字母、数字、连字符或下划线，最多 64 字节。"
+                    "tools[\(index)].name is invalid: it must start with a lowercase letter, contain only lowercase letters, digits, hyphens, or underscores, and be at most 64 bytes."
                 )
             }
             guard !allowedBaseTools.contains(tool.name) else {
                 throw NativeAgentPluginError.invalidCompiledPlugin(
-                    "tools[\(index)].name 不能覆盖内置原生工具；请改用插件专属的小写名称。"
+                    "tools[\(index)].name cannot override a built-in native tool; use a plugin-specific lowercase name instead."
                 )
             }
             guard !tool.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   tool.description.utf8.count <= 1_024 else {
                 throw NativeAgentPluginError.invalidCompiledPlugin(
-                    "tools[\(index)].description 必须非空且不超过 1024 UTF-8 字节。"
+                    "tools[\(index)].description must be non-empty and no more than 1024 UTF-8 bytes."
                 )
             }
             guard tool.instructions.utf8.count <= 24 * 1_024,
                   !tool.instructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw NativeAgentPluginError.invalidCompiledPlugin(
-                    "tools[\(index)].instructions 必须非空且不超过 24576 UTF-8 字节。"
+                    "tools[\(index)].instructions must be non-empty and no more than 24576 UTF-8 bytes."
                 )
             }
             guard Set(tool.allowedTools).count == tool.allowedTools.count,
                   tool.allowedTools.count <= 24 else {
                 throw NativeAgentPluginError.invalidCompiledPlugin(
-                    "tools[\(index)].allowed_tools 不能重复，且最多 24 项。"
+                    "tools[\(index)].allowed_tools must not contain duplicates and may have at most 24 entries."
                 )
             }
             let unsupportedAllowedTools = tool.allowedTools.filter {
@@ -544,21 +544,21 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
                     .filter(Self.isToolName)
                     .prefix(8)
                     .joined(separator: ", ")
-                let suffix = safeNames.isEmpty ? "" : "（例如：\(safeNames)）"
+                let suffix = safeNames.isEmpty ? "" : " (for example: \(safeNames))"
                 throw NativeAgentPluginError.invalidCompiledPlugin(
-                    "tools[\(index)].allowed_tools 含未批准的原生工具\(suffix)；只能使用 install 返回的 allowed_native_tools，删除或替换未批准名称。"
+                    "tools[\(index)].allowed_tools contains unapproved native tools\(suffix); only the allowed_native_tools returned by install may be used. Remove or replace the unapproved names."
                 )
             }
             guard case let .object(schema) = tool.parameters,
                   schema["type"] == .string("object") else {
                 throw NativeAgentPluginError.invalidCompiledPlugin(
-                    "tools[\(index)].parameters 必须是 type=object 的 JSON Schema。"
+                    "tools[\(index)].parameters must be a JSON Schema with type=object."
                 )
             }
             let schemaBytes = try JSONEncoder().encode(tool.parameters).count
             guard schemaBytes <= 32 * 1_024 else {
                 throw NativeAgentPluginError.invalidCompiledPlugin(
-                    "tools[\(index)].parameters schema 编码后超过 32768 字节。"
+                    "tools[\(index)].parameters schema exceeds 32768 bytes when encoded."
                 )
             }
             try Self.validateCredentialSafety(
@@ -576,46 +576,46 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
         var guardLabels = Set<String>()
         for (index, guardRule) in toolGuards.enumerated() {
             guard guardLabels.insert(guardRule.label).inserted else {
-                throw Self.invalidToolGuard(index, "label 与另一条守卫重复：\(guardRule.label)")
+                throw Self.invalidToolGuard(index, "label duplicates another guard: \(guardRule.label)")
             }
             // Labels are human-readable trace text, not contribution identifiers. The
             // public manifest schema deliberately accepts localized labels with spaces.
             guard Self.isToolGuardLabel(guardRule.label) else {
                 throw Self.invalidToolGuard(
                     index,
-                    "label 必须是去除首尾空白后的非空文本（最多 96 UTF-8 字节，且不能含控制字符）"
+                    "label must be non-empty text after trimming whitespace (at most 96 UTF-8 bytes, with no control characters)"
                 )
             }
             guard guardRule.toolNames.count <= 32 else {
-                throw Self.invalidToolGuard(index, "tool_names 最多 32 项")
+                throw Self.invalidToolGuard(index, "tool_names may have at most 32 entries")
             }
             guard Set(guardRule.toolNames).count == guardRule.toolNames.count else {
-                throw Self.invalidToolGuard(index, "tool_names 不能包含重复工具名")
+                throw Self.invalidToolGuard(index, "tool_names must not contain duplicate tool names")
             }
             guard guardRule.risks.count <= 5 else {
-                throw Self.invalidToolGuard(index, "risks 最多 5 项")
+                throw Self.invalidToolGuard(index, "risks may have at most 5 entries")
             }
             guard Set(guardRule.risks).count == guardRule.risks.count else {
-                throw Self.invalidToolGuard(index, "risks 不能包含重复风险级别")
+                throw Self.invalidToolGuard(index, "risks must not contain duplicate risk levels")
             }
             guard !guardRule.toolNames.isEmpty || !guardRule.risks.isEmpty else {
-                throw Self.invalidToolGuard(index, "至少填写 tool_names 或 risks 之一")
+                throw Self.invalidToolGuard(index, "at least one of tool_names or risks is required")
             }
             guard guardRule.toolNames.allSatisfy({ $0 == "*" || Self.isToolName($0) }) else {
                 throw Self.invalidToolGuard(
                     index,
-                    "tool_names 只能是已声明的小写工具名、连字符/下划线，或通配符 *"
+                    "tool_names may only contain declared lowercase tool names, hyphens/underscores, or the wildcard *"
                 )
             }
             guard (guardRule.reason?.utf8.count ?? 0) <= 2_048 else {
-                throw Self.invalidToolGuard(index, "reason 最多 2048 UTF-8 字节")
+                throw Self.invalidToolGuard(index, "reason may be at most 2048 UTF-8 bytes")
             }
             if guardRule.decision == .deny {
                 guard let reason = guardRule.reason?
                     .trimmingCharacters(in: .whitespacesAndNewlines),
                       !reason.isEmpty else {
                     throw NativeAgentPluginError.invalidCompiledPlugin(
-                        "deny 工具策略必须提供原因。"
+                        "deny tool policies must provide a reason."
                     )
                 }
                 try Self.validateCredentialSafety(
@@ -627,7 +627,7 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
         guard totalTextBytes <= 128 * 1_024,
               compatibilityNotes.allSatisfy({ $0.utf8.count <= 1_024 }) else {
             throw NativeAgentPluginError.invalidCompiledPlugin(
-                "原生插件内容过大：prompt/tool 文本总量最多 131072 UTF-8 字节，compatibility_notes 每项最多 1024 字节。"
+                "Native plugin content is too large: prompt/tool text may total at most 131072 UTF-8 bytes, and each compatibility_notes entry at most 1024 bytes."
             )
         }
         for (index, note) in compatibilityNotes.enumerated() {
@@ -647,7 +647,7 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
             try ISHPluginHostCredentialFirewall.validate(value)
         } catch {
             throw NativeAgentPluginError.invalidCompiledPlugin(
-                "\(field) 含疑似凭据或敏感字段；删除真实令牌/密钥，只保留脱敏类别的说明文字。"
+                "\(field) contains a suspected credential or sensitive field; remove real tokens/keys and keep only descriptive text about redacted categories."
             )
         }
     }
@@ -680,7 +680,7 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
               mentionsMembershipGate,
               !explicitlyForbidsGate else { return }
         throw NativeAgentPluginError.invalidCompiledPlugin(
-            "工具 \(tool.name) 把隐藏插件状态的读取门控在文件列表/contains/exists 之后；workspace_list_files 不返回点开头路径。请直接读取 `.harness-mobile/native-agent-plugins/<plugin-id>/<filename>`，把 not-found 当作初始空状态，并从 allowed_tools 移除不需要的 workspace_list_files。"
+            "Tool \(tool.name) gates reading hidden plugin state behind a file listing/contains/exists check; workspace_list_files does not return dot-prefixed paths. Read `.harness-mobile/native-agent-plugins/<plugin-id>/<filename>` directly, treat not-found as the initial empty state, and remove the unneeded workspace_list_files from allowed_tools."
         )
     }
 
@@ -762,7 +762,7 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
         _ index: Int,
         _ reason: String
     ) -> NativeAgentPluginError {
-        .invalidCompiledPlugin("tool_guards[\(index)] 不合法：\(reason)。")
+        .invalidCompiledPlugin("tool_guards[\(index)] is invalid: \(reason).")
     }
 
     private static func invalidPromptContextPath(
@@ -771,7 +771,7 @@ struct NativeAgentCompiledPlugin: Codable, Sendable, Equatable, Identifiable {
     ) -> NativeAgentPluginError {
         let actual = path.map { String(reflecting: $0) } ?? "<missing>"
         return .invalidCompiledPlugin(
-            "prompt_contexts[\(index)].path 无效：\(actual)。source=file 只能使用精确私有路径模板 `<plugin-storage>/<filename>`、`<session-storage>/<filename>` 或 `.harness-mobile/native-agent-plugins/<plugin-id>/<filename>`；源码仓库路径（例如 `skills/memory.md`）不会在运行时挂载。"
+            "prompt_contexts[\(index)].path is invalid: \(actual). source=file may only use the exact private path templates `<plugin-storage>/<filename>`, `<session-storage>/<filename>`, or `.harness-mobile/native-agent-plugins/<plugin-id>/<filename>`; source repository paths (e.g. `skills/memory.md`) are not mounted at runtime."
         )
     }
 
@@ -807,19 +807,19 @@ enum NativeAgentPluginError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidSourceSnapshot:
-            "插件源码快照不完整，无法交给手机 Agent 编译。"
+            "The plugin source snapshot is incomplete and cannot be handed to the phone Agent for compilation."
         case let .sourceNotAdaptable(reason):
-            "手机 Agent 无法把这个插件转换为原生工具：\(reason)"
+            "The phone Agent cannot convert this plugin into native tools: \(reason)"
         case .compilerDidNotReturnManifest:
-            "手机 Agent 没有返回有效的原生插件清单。"
+            "The phone Agent did not return a valid native plugin manifest."
         case let .invalidCompiledPlugin(reason):
-            "手机 Agent 生成的原生插件未通过校验：\(reason)"
+            "The native plugin generated by the phone Agent failed validation: \(reason)"
         case let .alreadyInstalled(id):
-            "原生插件 \(id) 已安装；更新时需要 replace=true。"
+            "Native plugin \(id) is already installed; updating requires replace=true."
         case let .notFound(id):
-            "未找到原生插件 \(id)。"
+            "Native plugin \(id) not found."
         case .noExecutionResult:
-            "原生插件子 Agent 没有返回执行结果。"
+            "The native plugin subagent returned no result."
         }
     }
 }

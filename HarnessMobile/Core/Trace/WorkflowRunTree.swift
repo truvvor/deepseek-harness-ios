@@ -68,7 +68,7 @@ struct WorkflowRunTree: Sendable, Equatable {
                 }
                 runs[runID] = Run(
                     runID: runID,
-                    name: data["name"]?.stringValue ?? "工作流",
+                    name: data["name"]?.stringValue ?? "Workflow",
                     startedAtMilliseconds: event.time
                 )
 
@@ -79,7 +79,7 @@ struct WorkflowRunTree: Sendable, Equatable {
                     Member(
                         sequence: integerValue(data["sequence"]) ?? run.members.count,
                         label: data["label"]?.stringValue
-                            ?? data["childId"]?.stringValue ?? "成员",
+                            ?? data["childId"]?.stringValue ?? "Member",
                         phase: data["phase"]?.stringValue,
                         childID: data["childId"]?.stringValue ?? data["childID"]?.stringValue ?? "",
                         parentID: data["parentId"]?.stringValue ?? data["parentID"]?.stringValue,

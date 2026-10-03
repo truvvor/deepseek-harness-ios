@@ -760,7 +760,7 @@ final class OpenAICompatibleClient: NSObject, LLMStreamingClient, ModelCatalogDi
         let envelope = try? JSONDecoder().decode(ChatAPIErrorEnvelope.self, from: body)
         let message = envelope?.error.message
             ?? String(data: body.prefix(2_048), encoding: .utf8)
-            ?? "请求失败"
+            ?? "Request failed"
         let metadata = Self.providerFailureMetadata(
             response: response,
             code: adapter.httpFailureCode(
@@ -892,11 +892,11 @@ enum ModelClientError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .emptyResponse:
-            return "模型返回了没有文本、思考内容或工具调用的空响应。"
+            return "The model returned an empty response with no text, reasoning, or tool calls."
         case .invalidResponse:
-            return "模型服务返回了无效响应。"
+            return "The model service returned an invalid response."
         case let .httpFailure(metadata, message):
-            var description = "模型服务错误 \(metadata.status)：\(message)"
+            var description = "Model service error \(metadata.status): \(message)"
             if let code = metadata.code, !code.isEmpty {
                 description += " [code=\(code)]"
             }
@@ -908,30 +908,30 @@ enum ModelClientError: LocalizedError, Sendable {
             }
             return description
         case .requestTooLarge:
-            return "模型请求超过 24 MiB 上限，请移除较早图片或开始新会话。"
+            return "The model request exceeds the 24 MiB limit. Remove earlier images or start a new session."
         case .eventTooLarge:
-            return "模型流式事件超过 1 MiB 上限。"
+            return "A model stream event exceeds the 1 MiB limit."
         case .unexpectedContentType:
-            return "模型服务未返回 text/event-stream。"
+            return "The model service didn't return text/event-stream."
         case .unexpectedChoice:
-            return "模型服务返回了未请求的多候选响应。"
+            return "The model service returned an unrequested multi-choice response."
         case .malformedEvent:
-            return "模型服务返回了无法解析的流式事件。"
+            return "The model service returned an unparseable stream event."
         case .invalidUsage:
-            return "模型服务返回了无效的 Token 用量。"
+            return "The model service returned invalid token usage."
         case .incompleteStream:
-            return "模型响应在完成前中断。"
+            return "The model response was interrupted before completion."
         case let .networkPathChanged(reason):
-            return "网络路径已变化，当前模型流已终止：\(reason)"
+            return "The network path changed and the current model stream was terminated: \(reason)"
         case let .streamError(message):
-            return "模型流式响应失败：\(message)"
+            return "Model streaming response failed: \(message)"
         case let .providerStreamFailure(code, message):
             if let code, !code.isEmpty {
-                return "模型流式响应失败：\(message) [code=\(code)]"
+                return "Model streaming response failed: \(message) [code=\(code)]"
             }
-            return "模型流式响应失败：\(message)"
+            return "Model streaming response failed: \(message)"
         case let .invalidToolTranscript(message):
-            return "工具调用历史无效：\(message)"
+            return "Invalid tool call history: \(message)"
         }
     }
 
@@ -964,17 +964,17 @@ enum ModelDiscoveryError: LocalizedError, Sendable, Equatable {
         switch self {
         case let .unsupportedProvider(providerID):
             let provider = ModelProviderCatalog.descriptor(for: providerID)
-            return "当前版本不能从 \(provider.displayName) 远端获取模型列表。"
+            return "This version can't fetch the model list remotely from \(provider.displayName)."
         case .untrustedOrigin:
-            return "模型发现只能访问当前 API 密钥已绑定的 HTTPS origin。"
+            return "Model discovery can only access the HTTPS origin bound to the current API key."
         case .invalidCredential:
-            return "API 密钥包含不能用于 HTTP Authorization 标头的字符。"
+            return "The API key contains characters that can't be used in an HTTP Authorization header."
         case .responseTooLarge:
-            return "模型列表响应超过 4 MiB 上限。"
+            return "The model list response exceeds the 4 MiB limit."
         case .malformedResponse:
-            return "模型服务返回的模型列表缺少有效 data 数组。"
+            return "The model list returned by the service is missing a valid data array."
         case .tooManyModels:
-            return "模型服务返回的模型数量超过 10000 个上限。"
+            return "The model service returned more than the 10000-model limit."
         }
     }
 }

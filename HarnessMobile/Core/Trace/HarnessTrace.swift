@@ -855,7 +855,7 @@ struct AgentDiagnosticsTool: LocalAgentTool {
 
     func summary(arguments: [String: JSONValue]) -> String {
         let scope = arguments["scope"]?.stringValue ?? AgentDiagnosticsScope.summary.rawValue
-        return "读取本机脱敏诊断：\(scope)"
+        return "Read redacted local diagnostics: \(scope)"
     }
 
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool {

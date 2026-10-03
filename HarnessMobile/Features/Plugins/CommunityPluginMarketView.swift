@@ -10,8 +10,8 @@ private enum CommunityPluginMarketMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .catalog: "市场"
-        case .installed: "已安装"
+        case .catalog: "Market"
+        case .installed: "Installed"
         }
     }
 }
@@ -33,7 +33,7 @@ struct CommunityPluginMarketView: View {
     var body: some View {
         List {
             HStack(spacing: 8) {
-                Picker("插件视图", selection: $mode) {
+                Picker("Plugin View", selection: $mode) {
                     ForEach(CommunityPluginMarketMode.allCases) { item in
                         Text(item.title).tag(item)
                     }
@@ -51,7 +51,7 @@ struct CommunityPluginMarketView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("community-plugin-market-actions")
-                .accessibilityLabel("插件操作")
+                .accessibilityLabel("Plugin Actions")
                 .disabled(model.isISHPluginMarketplaceWorking)
             }
             .padding(.vertical, 0)
@@ -72,11 +72,11 @@ struct CommunityPluginMarketView: View {
             }
         }
         .communityPluginListChrome()
-        .navigationTitle("社区插件")
+        .navigationTitle("Community Plugins")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(
             text: $query,
-            prompt: Text("搜索插件、分类或仓库")
+            prompt: Text("Search plugins, categories, or repositories")
         )
         .searchPresentationToolbarBehavior(.avoidHidingContent)
         .toolbar {
@@ -87,30 +87,30 @@ struct CommunityPluginMarketView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .accessibilityIdentifier("community-plugin-market-refresh")
-                .accessibilityLabel("刷新插件目录")
+                .accessibilityLabel("Refresh Plugin Catalog")
                 .disabled(model.isISHPluginMarketplaceWorking)
             }
 
         }
         .confirmationDialog(
-            "插件操作",
+            "Plugin Actions",
             isPresented: $isActionsPresented,
             titleVisibility: .visible
         ) {
-            Button("刷新目录") {
+            Button("Refresh Catalog") {
                 Task { await model.refreshISHPluginMarketplace(forceRefresh: true) }
             }
-            Button("GitHub 仓库") {
+            Button("GitHub Repository") {
                 model.clearISHPluginMarketplaceFailure()
                 presentedSheet = .github
             }
-            Button("导入 ZIP") {
+            Button("Import ZIP") {
                 isFileImporterPresented = true
             }
-            Button("清理下载缓存") {
+            Button("Clear Download Cache") {
                 Task { await model.clearISHPluginMarketplaceCache() }
             }
-            Button("取消", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         }
         .sheet(item: $presentedSheet) { sheet in
             switch sheet {
@@ -159,21 +159,21 @@ struct CommunityPluginMarketView: View {
             if !model.isISHPluginMarketplaceWorking,
                model.ishPluginMarketplaceFailure == nil {
                 CommunityPluginEmptyRow(
-                    title: "尚未载入插件目录",
-                    detail: "可以重新读取社区目录，或从 GitHub 和本地 ZIP 安装。",
+                    title: "Plugin Catalog Not Loaded",
+                    detail: "Reload the community catalog, or install from GitHub or a local ZIP.",
                     systemImage: "shippingbox"
                 ) {
                     Button {
                         Task { await model.refreshISHPluginMarketplace(forceRefresh: true) }
                     } label: {
-                        Label("重新载入", systemImage: "arrow.clockwise")
+                        Label("Reload", systemImage: "arrow.clockwise")
                     }
                 }
             }
         } else if filteredCatalogItems.isEmpty {
             CommunityPluginEmptyRow(
-                title: query.isEmpty ? "目录里没有插件" : "没有匹配的插件",
-                detail: query.isEmpty ? "稍后刷新目录，或使用右上角从 GitHub、ZIP 安装。" : "换一个名称、分类或仓库关键词。",
+                title: query.isEmpty ? "No Plugins in Catalog" : "No Matching Plugins",
+                detail: query.isEmpty ? "Refresh the catalog later, or install from GitHub or ZIP using the top-right menu." : "Try a different name, category, or repository keyword.",
                 systemImage: query.isEmpty ? "shippingbox" : "magnifyingglass"
             )
         } else {
@@ -188,10 +188,10 @@ struct CommunityPluginMarketView: View {
                 }
             } header: {
                 HStack {
-                    Text("社区目录")
+                    Text("Community Catalog")
                     Spacer()
                     if let catalog = model.ishPluginMarketplaceCatalog, catalog.stale {
-                        Label("缓存", systemImage: "clock")
+                        Label("Cached", systemImage: "clock")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     } else {
@@ -208,10 +208,10 @@ struct CommunityPluginMarketView: View {
     private var installedContent: some View {
         if filteredInstalledPlugins.isEmpty {
             CommunityPluginEmptyRow(
-                title: query.isEmpty ? "还没有社区插件" : "没有匹配的插件",
+                title: query.isEmpty ? "No Community Plugins Yet" : "No Matching Plugins",
                 detail: query.isEmpty
-                    ? "从市场、GitHub 或 ZIP 安装后会显示在这里。"
-                    : "换一个插件名称、版本或来源关键词。",
+                    ? "Plugins installed from the market, GitHub, or ZIP will appear here."
+                    : "Try a different plugin name, version, or source keyword.",
                 systemImage: query.isEmpty ? "shippingbox" : "magnifyingglass"
             )
         } else {
@@ -225,7 +225,7 @@ struct CommunityPluginMarketView: View {
                     .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 12))
                 }
             } header: {
-                Label("已安装", systemImage: "shippingbox.fill")
+                Label("Installed", systemImage: "shippingbox.fill")
             }
         }
     }
@@ -287,7 +287,7 @@ private struct CommunityPluginMarketplaceStateSections: View {
                 HStack(alignment: .top, spacing: 11) {
                     HarnessIconTile(systemImage: "exclamationmark.triangle.fill", tint: .orange)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("操作失败")
+                        Text("Operation Failed")
                             .font(.subheadline.weight(.semibold))
                         Text(failure.message)
                             .font(.caption)
@@ -302,7 +302,7 @@ private struct CommunityPluginMarketplaceStateSections: View {
                         Button {
                             Task { await model.retryISHPluginMarketplaceOperation() }
                         } label: {
-                            Label("重试", systemImage: "arrow.clockwise")
+                            Label("Retry", systemImage: "arrow.clockwise")
                         }
                         .accessibilityIdentifier("community-plugin-market-retry")
                         .frame(minHeight: 44)
@@ -310,7 +310,7 @@ private struct CommunityPluginMarketplaceStateSections: View {
                     Button {
                         model.clearISHPluginMarketplaceFailure()
                     } label: {
-                        Label("关闭", systemImage: "xmark")
+                        Label("Close", systemImage: "xmark")
                     }
                     .frame(minHeight: 44)
                 }
@@ -345,7 +345,7 @@ private struct CommunityPluginCompilationTraceSection: View {
                                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                                     Text(entry.timestamp.formatted(
                                         .dateTime.hour().minute().second()
-                                            .locale(Locale(identifier: "zh_CN"))
+                                            .locale(Locale(identifier: "en_US"))
                                     ))
                                         .foregroundStyle(.tertiary)
                                     Text(entry.stage.title)
@@ -362,7 +362,7 @@ private struct CommunityPluginCompilationTraceSection: View {
                         .accessibilityIdentifier("community-plugin-compilation-logs")
                     } label: {
                         HStack {
-                            Text("详细日志")
+                            Text("Detailed Log")
                         }
                         .accessibilityIdentifier("community-plugin-compilation-logs-toggle")
                     }
@@ -373,11 +373,11 @@ private struct CommunityPluginCompilationTraceSection: View {
                 if let diagnostic = trace.diagnostic {
                     VStack(alignment: .leading, spacing: 5) {
                         HarnessStatusPill(
-                            title: diagnostic.retryable ? "可重试" : "需要处理",
+                            title: diagnostic.retryable ? "Retryable" : "Action Needed",
                             systemImage: diagnostic.retryable ? "arrow.triangle.2.circlepath" : "hand.raised.fill",
                             tint: diagnostic.retryable ? .orange : .red
                         )
-                        Text("结构化诊断 · \(diagnostic.code)")
+                        Text("Structured Diagnostic · \(diagnostic.code)")
                             .font(.caption.weight(.semibold))
                         Text(diagnostic.message)
                             .font(.caption2)
@@ -401,7 +401,7 @@ private struct CommunityPluginCompilationTraceSection: View {
                         tint: hasFailure ? .red : trace.isFinished ? .green : .accentColor
                     )
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(trace.isFinished ? "最近一次编译结果" : "手机 Agent 编译中")
+                        Text(trace.isFinished ? "Latest Compilation Result" : "Phone Agent Compiling")
                             .font(.subheadline.weight(.semibold))
                         Text(trace.outcome ?? currentSummary)
                             .font(.caption)
@@ -410,7 +410,7 @@ private struct CommunityPluginCompilationTraceSection: View {
                     }
                     Spacer(minLength: 4)
                     HarnessStatusPill(
-                        title: hasFailure ? "失败" : trace.isFinished ? "已结束" : "进行中",
+                        title: hasFailure ? "Failed" : trace.isFinished ? "Finished" : "In Progress",
                         systemImage: hasFailure ? "xmark" : trace.isFinished ? "checkmark" : "ellipsis",
                         tint: hasFailure ? .red : trace.isFinished ? .green : .accentColor
                     )
@@ -418,7 +418,7 @@ private struct CommunityPluginCompilationTraceSection: View {
                 .accessibilityIdentifier("community-plugin-compilation-summary")
             }
         } header: {
-            Text("Agent 原生编译")
+            Text("Agent Native Compilation")
         } footer: {
             Label {
                 Text(trace.source)
@@ -438,7 +438,7 @@ private struct CommunityPluginCompilationTraceSection: View {
     private var currentSummary: String {
         trace.steps.last(where: { $0.state == .running })?.detail
             ?? trace.steps.last(where: { $0.state == .failed })?.detail
-            ?? "等待开始"
+            ?? "Waiting to Start"
     }
 
     private var hasFailure: Bool {
@@ -500,11 +500,11 @@ private extension NativePluginCompilationStageState {
 
     var title: String {
         switch self {
-        case .pending: "等待"
-        case .running: "进行中"
-        case .succeeded: "完成"
-        case .failed: "失败"
-        case .skipped: "跳过"
+        case .pending: "Waiting"
+        case .running: "In Progress"
+        case .succeeded: "Done"
+        case .failed: "Failed"
+        case .skipped: "Skipped"
         }
     }
 }
@@ -524,9 +524,9 @@ private struct CommunityPluginMarketHeader: View {
                 )
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("原生优先")
+                    Text("Native First")
                         .font(.headline)
-                    Text("目录 \(catalogCount) · 已原生 \(model.nativeInstalledMarketplaceCount) · iSH \(model.ishFallbackMarketplaceCount)")
+                    Text("Catalog \(catalogCount) · Native \(model.nativeInstalledMarketplaceCount) · iSH \(model.ishFallbackMarketplaceCount)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -536,7 +536,7 @@ private struct CommunityPluginMarketHeader: View {
                 hostStatus
             }
         } footer: {
-            Text("安装先尝试原生编译，不兼容时才转入手机内 iSH。")
+            Text("Installs try native compilation first and fall back to on-device iSH only when incompatible.")
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("community-plugin-market-summary")
@@ -618,20 +618,20 @@ private extension ISHPluginMarketplaceOperation {
         switch self {
         case .preparingHost:
             switch hostState {
-            case .installing: "正在安装 iSH 插件 Host"
-            case .starting: "正在启动 iSH 插件 Host"
-            case .running: "正在检查 iSH 插件 Host"
-            case .stopped, .failed: "正在准备 iSH 插件 Host"
+            case .installing: "Installing iSH Plugin Host"
+            case .starting: "Starting iSH Plugin Host"
+            case .running: "Checking iSH Plugin Host"
+            case .stopped, .failed: "Preparing iSH Plugin Host"
             }
-        case .loadingCatalog: "正在读取社区插件目录"
-        case .preparingNativePlugin: "正在下载并分析插件源码"
-        case .installingPlugin: "正在下载并安装插件"
-        case .updatingPlugin: "正在下载并更新插件"
-        case .compilingNativePlugin: "手机 Agent 正在编译原生插件"
-        case .enablingPlugin: "正在启用插件"
-        case .disablingPlugin: "正在停用插件"
-        case .uninstallingPlugin: "正在卸载插件"
-        case .clearingCache: "正在清理插件缓存"
+        case .loadingCatalog: "Loading Community Plugin Catalog"
+        case .preparingNativePlugin: "Downloading and Analyzing Plugin Source"
+        case .installingPlugin: "Downloading and Installing Plugin"
+        case .updatingPlugin: "Downloading and Updating Plugin"
+        case .compilingNativePlugin: "Phone Agent Is Compiling Native Plugin"
+        case .enablingPlugin: "Enabling Plugin"
+        case .disablingPlugin: "Disabling Plugin"
+        case .uninstallingPlugin: "Uninstalling Plugin"
+        case .clearingCache: "Clearing Plugin Cache"
         }
     }
 
@@ -640,28 +640,28 @@ private extension ISHPluginMarketplaceOperation {
         case .preparingHost:
             switch hostState {
             case .installing:
-                "首次安装 Node 和 Cordis 依赖通常需要 40–60 秒，请保持 App 在前台。"
+                "First-time installation of Node and Cordis dependencies usually takes 40–60 seconds. Keep the app in the foreground."
             case .starting:
-                "依赖已经就绪，正在启动手机内的本地 Host。"
+                "Dependencies are ready. Starting the local on-device Host."
             case .running:
-                "正在确认 Host 版本与已安装插件。"
+                "Verifying the Host version and installed plugins."
             case .stopped, .failed:
-                "正在检查手机内的 iSH 环境和 Host 依赖。"
+                "Checking the on-device iSH environment and Host dependencies."
             }
         case .loadingCatalog:
-            "iSH guest 网络默认开启；目录读取仍完全在手机内完成，也可在命令页主动关闭。"
+            "iSH guest networking is on by default. Catalog loading still happens entirely on device, and you can turn networking off on the Commands page."
         case .preparingNativePlugin:
-            "先在手机上准备受限源码快照，优先尝试编译为签名内置引擎可执行的原生工具。"
+            "Preparing a restricted source snapshot on device, first trying to compile native tools that the signed built-in engine can run."
         case .installingPlugin, .updatingPlugin:
-            "原生适配未达标，正在回退 iSH；校验和依赖安装仍全部在手机内完成。"
+            "Native adaptation fell short; falling back to iSH. Verification and dependency installation still happen entirely on device."
         case .compilingNativePlugin:
-            "源码已从隔离环境交给手机 Agent；生成结果会由 Swift 校验并注册，不加载新二进制。"
+            "Source was handed from the isolated environment to the phone Agent. Generated output is verified and registered by Swift; no new binaries are loaded."
         case .enablingPlugin, .disablingPlugin:
-            "正在同步 Host 与原生工具贡献状态。"
+            "Syncing Host and native tool contribution state."
         case .uninstallingPlugin:
-            "正在移除插件、依赖和运行时贡献。"
+            "Removing the plugin, its dependencies, and runtime contributions."
         case .clearingCache:
-            "只清理插件下载缓存，不会删除工作区文件。"
+            "Only clears the plugin download cache; workspace files are not deleted."
         }
     }
 }
@@ -709,7 +709,7 @@ private struct CommunityPluginCatalogRow: View {
             if item.installed {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
-                    .accessibilityLabel("已安装")
+                    .accessibilityLabel("Installed")
             }
         }
         .contentShape(Rectangle())
@@ -741,15 +741,15 @@ private struct CommunityInstalledPluginRow: View {
                         .accessibilityHidden(true)
                     Text(
                         plugin.id.hasPrefix(NativeAgentCompiledPlugin.idPrefix)
-                            ? "原生"
-                            : "iSH 回退"
+                            ? "Native"
+                            : "iSH Fallback"
                     )
                     Text("·")
                         .accessibilityHidden(true)
                     Text("v\(plugin.version)")
                     Text("·")
                         .accessibilityHidden(true)
-                    Text("\(plugin.entryCount) 个入口")
+                    Text("\(plugin.entryCount) entries")
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -774,17 +774,17 @@ private struct CommunityPluginCatalogDetailView: View {
                     CommunityPluginMarketplaceStateSections()
 
                     Section {
-                        LabeledContent("分类", value: item.category)
-                        LabeledContent("兼容性", value: item.compatibility.title)
+                        LabeledContent("Category", value: item.category)
+                        LabeledContent("Compatibility", value: item.compatibility.title)
                         if let installedVersion = item.installedVersion {
-                            LabeledContent("已安装", value: installedVersion)
+                            LabeledContent("Installed", value: installedVersion)
                         }
                         LabeledContent(
-                            "安装路径",
+                            "Install Path",
                             value: (item.nativeInstallStrategy ?? .nativeFirst).title
                         )
                     } header: {
-                        Label("插件", systemImage: "puzzlepiece.extension")
+                        Label("Plugin", systemImage: "puzzlepiece.extension")
                     }
 
                     if !item.description.isEmpty {
@@ -792,7 +792,7 @@ private struct CommunityPluginCatalogDetailView: View {
                             Text(item.description)
                                 .textSelection(.enabled)
                         } header: {
-                            Label("说明", systemImage: "text.alignleft")
+                            Label("Description", systemImage: "text.alignleft")
                         }
                     }
 
@@ -801,7 +801,7 @@ private struct CommunityPluginCatalogDetailView: View {
                             .font(.footnote.monospaced())
                             .textSelection(.enabled)
                     } header: {
-                        Label("来源", systemImage: "link")
+                        Label("Source", systemImage: "link")
                     }
 
                     if let reason = item.unsupportedReason {
@@ -809,7 +809,7 @@ private struct CommunityPluginCatalogDetailView: View {
                             Label(reason, systemImage: "exclamationmark.triangle.fill")
                                 .foregroundStyle(item.compatibility == .unsupported ? .orange : .secondary)
                         } header: {
-                            Label("手机兼容性", systemImage: "iphone.gen3")
+                            Label("Phone Compatibility", systemImage: "iphone.gen3")
                         }
                     }
 
@@ -818,7 +818,7 @@ private struct CommunityPluginCatalogDetailView: View {
                             isConfirmationPresented = true
                         } label: {
                             Label(
-                                item.installed ? "重新安装" : "原生优先安装",
+                                item.installed ? "Reinstall" : "Install (Native First)",
                                 systemImage: "arrow.down.app"
                             )
                         }
@@ -826,16 +826,16 @@ private struct CommunityPluginCatalogDetailView: View {
                             model.isISHPluginMarketplaceWorking
                         )
                     } footer: {
-                        Text("安装会先在手机内分析源码并尝试注册签名原生工具；只有不适配时才在 iSH 中运行。")
+                        Text("Installation first analyzes the source on device and tries to register signed native tools; it runs in iSH only if that isn't compatible.")
                     }
                 }
                 .communityPluginListChrome()
                 .confirmationDialog(
-                    item.installed ? "重新安装插件？" : "安装社区插件？",
+                    item.installed ? "Reinstall Plugin?" : "Install Community Plugin?",
                     isPresented: $isConfirmationPresented,
                     titleVisibility: .visible
                 ) {
-                    Button(item.installed ? "更新并保留启停状态" : "安装") {
+                    Button(item.installed ? "Update and Keep Enabled State" : "Install") {
                         Task {
                             _ = await model.installISHMarketplacePlugin(
                                 source: ISHMarketplacePluginSource(
@@ -850,13 +850,13 @@ private struct CommunityPluginCatalogDetailView: View {
                         }
                     }
                 } message: {
-                    Text("桌面对齐（D-010）：插件默认装载进本地运行时；标记为原生优先的条目走原生工具编译。插件不会获得模型密钥。")
+                    Text("Desktop parity (D-010): plugins load into the local runtime by default; entries marked Native First are compiled as native tools. Plugins never receive model keys.")
                 }
             } else {
-                ContentUnavailableView("插件不可用", systemImage: "shippingbox")
+                ContentUnavailableView("Plugin Unavailable", systemImage: "shippingbox")
             }
         }
-        .navigationTitle(item?.name ?? "插件")
+        .navigationTitle(item?.name ?? "Plugin")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -883,11 +883,11 @@ private struct CommunityInstalledPluginDetailView: View {
                     CommunityPluginMarketplaceStateSections()
 
                     Section {
-                        LabeledContent("状态", value: plugin.state.title)
-                        LabeledContent("版本", value: plugin.version)
-                        LabeledContent("入口数", value: "\(plugin.entryCount)")
+                        LabeledContent("Status", value: plugin.state.title)
+                        LabeledContent("Version", value: plugin.version)
+                        LabeledContent("Entries", value: "\(plugin.entryCount)")
                         Toggle(
-                            "启用插件",
+                            "Enable Plugin",
                             isOn: Binding(
                                 get: { plugin.enabled },
                                 set: { enabled in
@@ -906,7 +906,7 @@ private struct CommunityInstalledPluginDetailView: View {
                         )
                         .disabled(model.isISHPluginMarketplaceWorking)
                     } header: {
-                        Label("运行状态", systemImage: "power")
+                        Label("Runtime Status", systemImage: "power")
                     }
 
                     if let nativeClient {
@@ -916,7 +916,7 @@ private struct CommunityInstalledPluginDetailView: View {
                             } label: {
                                 Label {
                                     VStack(alignment: .leading, spacing: 3) {
-                                        Text("原生客户端")
+                                        Text("Native Client")
                                         Text(
                                             "\(nativeClient.contributions.inspectors.count) inspectors · "
                                                 + "\(nativeClient.contributions.settings.count) settings · "
@@ -931,7 +931,7 @@ private struct CommunityInstalledPluginDetailView: View {
                             }
                             .accessibilityIdentifier("native-client-open-\(pluginID)")
                         } header: {
-                            Label("原生扩展", systemImage: "puzzlepiece.extension")
+                            Label("Native Extensions", systemImage: "puzzlepiece.extension")
                         }
                     }
 
@@ -940,11 +940,11 @@ private struct CommunityInstalledPluginDetailView: View {
                             NavigationLink {
                                 NativeAgentPluginSettingsView(pluginID: pluginID)
                             } label: {
-                                Label("插件设置", systemImage: "slider.horizontal.3")
+                                Label("Plugin Settings", systemImage: "slider.horizontal.3")
                             }
                             .accessibilityIdentifier("native-agent-settings-\(pluginID)")
                         } header: {
-                            Label("原生插件", systemImage: "swift")
+                            Label("Native Plugin", systemImage: "swift")
                         }
                     }
 
@@ -957,7 +957,7 @@ private struct CommunityInstalledPluginDetailView: View {
                                     .textSelection(.enabled)
                             }
                         } header: {
-                            Label("原生扩展加载失败", systemImage: "exclamationmark.triangle")
+                            Label("Native Extension Failed to Load", systemImage: "exclamationmark.triangle")
                         }
                     }
 
@@ -966,7 +966,7 @@ private struct CommunityInstalledPluginDetailView: View {
                             Text(description)
                                 .textSelection(.enabled)
                         } header: {
-                            Label("说明", systemImage: "text.alignleft")
+                            Label("Description", systemImage: "text.alignleft")
                         }
                     }
 
@@ -980,20 +980,20 @@ private struct CommunityInstalledPluginDetailView: View {
                                     .textSelection(.enabled)
                             }
                         } header: {
-                            Label("兼容性说明", systemImage: "info.circle")
+                            Label("Compatibility Notes", systemImage: "info.circle")
                         }
                     }
 
                     Section {
-                        LabeledContent("类型", value: plugin.source.kind.title)
+                        LabeledContent("Type", value: plugin.source.kind.title)
                         Text(plugin.source.location)
                             .font(.footnote.monospaced())
                             .textSelection(.enabled)
                         if let license = plugin.license {
-                            LabeledContent("许可证", value: license)
+                            LabeledContent("License", value: license)
                         }
                     } header: {
-                        Label("来源", systemImage: "link")
+                        Label("Source", systemImage: "link")
                     }
 
                     if let error = plugin.lastError {
@@ -1003,7 +1003,7 @@ private struct CommunityInstalledPluginDetailView: View {
                                 .foregroundStyle(.red)
                                 .textSelection(.enabled)
                         } header: {
-                            Label("加载失败", systemImage: "exclamationmark.triangle")
+                            Label("Failed to Load", systemImage: "exclamationmark.triangle")
                         }
                     }
 
@@ -1012,23 +1012,23 @@ private struct CommunityInstalledPluginDetailView: View {
                             Button {
                                 pendingAction = .reinstall
                             } label: {
-                                Label("重新下载并更新", systemImage: "arrow.triangle.2.circlepath")
+                                Label("Redownload and Update", systemImage: "arrow.triangle.2.circlepath")
                             }
                             .disabled(model.isISHPluginMarketplaceWorking)
                         }
                         Button(role: .destructive) {
                             pendingAction = .uninstall
                         } label: {
-                            Label("卸载插件", systemImage: "trash")
+                            Label("Uninstall Plugin", systemImage: "trash")
                         }
                         .disabled(model.isISHPluginMarketplaceWorking)
                     } header: {
-                        Label("管理", systemImage: "slider.horizontal.3")
+                        Label("Manage", systemImage: "slider.horizontal.3")
                     }
                 }
                 .communityPluginListChrome()
                 .confirmationDialog(
-                    "确认插件操作",
+                    "Confirm Plugin Action",
                     isPresented: Binding(
                         get: { pendingAction != nil },
                         set: { presented in
@@ -1040,7 +1040,7 @@ private struct CommunityInstalledPluginDetailView: View {
                 ) { action in
                     switch action {
                     case .enable:
-                        Button("启用第三方代码") {
+                        Button("Enable Third-Party Code") {
                             Task {
                                 await model.setISHMarketplacePluginEnabled(
                                     id: pluginID,
@@ -1049,7 +1049,7 @@ private struct CommunityInstalledPluginDetailView: View {
                             }
                         }
                     case .reinstall:
-                        Button("更新并保留启停状态") {
+                        Button("Update and Keep Enabled State") {
                             Task {
                                 _ = await model.installISHMarketplacePlugin(
                                     source: ISHMarketplacePluginSource(
@@ -1061,7 +1061,7 @@ private struct CommunityInstalledPluginDetailView: View {
                             }
                         }
                     case .uninstall:
-                        Button("卸载", role: .destructive) {
+                        Button("Uninstall", role: .destructive) {
                             Task { await model.uninstallISHMarketplacePlugin(id: pluginID) }
                         }
                     }
@@ -1070,17 +1070,17 @@ private struct CommunityInstalledPluginDetailView: View {
                     case .enable:
                         Text(
                             nativeAgentPlugin == nil
-                                ? "插件将在本机 iSH Host 内执行，并可以访问 App 私有工作区。"
-                                : "插件将由 App 的签名 Swift 运行时加载，只获得清单中声明并通过校验的手机能力。"
+                                ? "The plugin will run inside the on-device iSH Host and can access the app's private workspace."
+                                : "The plugin will be loaded by the app's signed Swift runtime and only gets the phone capabilities declared in its manifest and verified."
                         )
                     case .reinstall:
-                        Text("新版加载失败时会回滚到当前已安装版本。")
+                        Text("If the new version fails to load, it rolls back to the currently installed version.")
                     case .uninstall:
-                        Text("卸载会删除该插件与它在 iSH 中安装的依赖。")
+                        Text("Uninstalling removes this plugin and the dependencies it installed in iSH.")
                     }
                 }
             } else {
-                ContentUnavailableView("插件已卸载", systemImage: "shippingbox")
+                ContentUnavailableView("Plugin Uninstalled", systemImage: "shippingbox")
             }
         }
         .navigationTitle(plugin?.name ?? pluginID)
@@ -1120,22 +1120,22 @@ private struct CommunityPluginGitHubInstallSheet: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
-                    Toggle("覆盖同名插件", isOn: $replaceExisting)
+                    Toggle("Replace Plugin with Same Name", isOn: $replaceExisting)
                 } header: {
                     Label("GitHub", systemImage: "link")
                 } footer: {
-                    Text("先在手机内分析源码并尝试原生安装；不兼容时才转入 iSH。插件不会获得模型 API Key。")
+                    Text("Source is analyzed on device and installed natively when possible, falling back to iSH only if incompatible. Plugins never receive the model API Key.")
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("安装仓库")
+            .navigationTitle("Install Repository")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("安装") {
+                    Button("Install") {
                         Task {
                             let installed = await model.installISHMarketplacePlugin(
                                 source: ISHMarketplacePluginSource(
@@ -1175,9 +1175,9 @@ private extension View {
 private extension ISHMarketplaceCompatibility {
     var title: String {
         switch self {
-        case .supported: "Host 兼容"
-        case .review: "需安装校验"
-        case .unsupported: "仅桌面 Client"
+        case .supported: "Host Compatible"
+        case .review: "Needs Install Check"
+        case .unsupported: "Desktop Client Only"
         }
     }
 
@@ -1201,9 +1201,9 @@ private extension ISHMarketplaceCompatibility {
 private extension ISHMarketplacePluginState {
     var title: String {
         switch self {
-        case .enabled: "运行中"
-        case .disabled: "已关闭"
-        case .failed: "加载失败"
+        case .enabled: "Running"
+        case .disabled: "Off"
+        case .failed: "Failed to Load"
         }
     }
 
@@ -1227,9 +1227,9 @@ private extension ISHMarketplacePluginState {
 private extension ISHMarketplacePluginSourceKind {
     var title: String {
         switch self {
-        case .market: "社区市场"
+        case .market: "Community Market"
         case .github: "GitHub"
-        case .localZip: "本地 ZIP"
+        case .localZip: "Local ZIP"
         }
     }
 }
@@ -1237,11 +1237,11 @@ private extension ISHMarketplacePluginSourceKind {
 private extension ISHPluginHostRuntimeState {
     var title: String {
         switch self {
-        case .installing: "安装中"
-        case .starting: "启动中"
-        case .running(_, _): "运行中"
-        case .stopped: "未启动"
-        case .failed(_): "异常"
+        case .installing: "Installing"
+        case .starting: "Starting"
+        case .running(_, _): "Running"
+        case .stopped: "Not Started"
+        case .failed(_): "Error"
         }
     }
 

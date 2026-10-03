@@ -103,9 +103,9 @@ enum ConversationCompactionError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .invalidMaximumUTF8Bytes:
-            return "模型上下文字节上限必须大于零。"
+            return "The model context byte limit must be greater than zero."
         case let .recentBoundaryExceedsLimit(requiredBytes, limit):
-            return "最近完整事务需要 \(requiredBytes) 字节，超过 \(limit) 字节上限。"
+            return "The most recent complete transaction needs \(requiredBytes) bytes, exceeding the \(limit)-byte limit."
         }
     }
 }

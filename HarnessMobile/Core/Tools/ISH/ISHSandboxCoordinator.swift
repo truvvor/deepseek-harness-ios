@@ -24,7 +24,7 @@ struct ISHCommandResult: Sendable, Equatable {
         let sections = [stdout, stderr]
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-        return sections.isEmpty ? "(命令执行完成，没有输出)" : sections.joined(separator: "\n")
+        return sections.isEmpty ? "(Command finished with no output)" : sections.joined(separator: "\n")
     }
 }
 
@@ -77,27 +77,27 @@ enum ISHSandboxError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .unavailable:
-            return "当前构建没有包含 iSH 本机沙箱。"
+            return "This build does not include the on-device iSH sandbox."
         case let .bootFailed(code):
-            return "iSH 内核启动失败（\(code)）。"
+            return "iSH kernel failed to start (\(code))."
         case let .workspaceMountFailed(code):
-            return "无法把 App 工作区挂载到 iSH（\(code)）。"
+            return "Could not mount the app workspace into iSH (\(code))."
         case .processCreationFailed:
-            return "iSH 无法创建进程。"
+            return "iSH could not create a process."
         case .execFailed:
-            return "iSH 无法执行 /bin/sh。"
+            return "iSH could not execute /bin/sh."
         case let .timedOut(seconds):
-            return "命令超过 \(Int(seconds)) 秒，已终止整个进程组。"
+            return "Command exceeded \(Int(seconds)) seconds; the entire process group was terminated."
         case .cancelled:
-            return "命令已取消。"
+            return "Command canceled."
         case .sessionBusy:
-            return "这个会话已有命令在运行。"
+            return "A command is already running in this session."
         case .capacityReached:
-            return "iSH 已达到同时执行两条命令的上限。"
+            return "iSH has reached its limit of two concurrent commands."
         case .invalidCommand:
-            return "命令为空或超过 64 KiB。"
+            return "Command is empty or exceeds 64 KiB."
         case let .policyUnavailable(mode):
-            return "iSH 当前无法按 \(mode.rawValue) 文件策略隔离本次调用，已拒绝执行（不会降级为未隔离执行）。"
+            return "iSH cannot currently isolate this call under the \(mode.rawValue) file policy, so execution was refused (it will not fall back to unisolated execution)."
         }
     }
 }

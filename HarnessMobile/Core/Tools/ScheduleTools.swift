@@ -37,7 +37,7 @@ private struct ScheduleCreateTool: LocalAgentTool {
     ]))
     let risk: ToolRisk = .sideEffect
     func validate(arguments: [String: JSONValue]) throws { try arguments.requireOnlyKeys(["label", "prompt", "run_at"]); _ = try arguments.requiredString("prompt", maximumUTF8Bytes: 64 * 1_024); _ = try ScheduleToolSupport.runAt(arguments) }
-    func summary(arguments: [String: JSONValue]) -> String { "创建本机定时 Agent 任务" }
+    func summary(arguments: [String: JSONValue]) -> String { "Create a scheduled local Agent task" }
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> { ["schedules:\(ownerSession)"] }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> { ["schedule:\(ownerSession)"] }
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -54,7 +54,7 @@ private struct ScheduleListTool: LocalAgentTool {
     let definition = ModelToolDefinition(name: "schedule_list", description: "List pending local Agent schedules for this session.", parameters: .object(["type": .string("object"), "properties": .object([:]), "additionalProperties": .bool(false)]))
     let risk: ToolRisk = .localState
     func validate(arguments: [String: JSONValue]) throws { try arguments.requireOnlyKeys([]) }
-    func summary(arguments: [String: JSONValue]) -> String { "查看本机定时任务" }
+    func summary(arguments: [String: JSONValue]) -> String { "List scheduled local tasks" }
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool { true }
     func execute(arguments: [String: JSONValue]) async throws -> String { try validate(arguments: arguments); return try ScheduleToolSupport.json(await store.list(ownerSession: ownerSession)) }
 }
@@ -65,7 +65,7 @@ private struct ScheduleDeleteTool: LocalAgentTool {
     let definition = ModelToolDefinition(name: "schedule_delete", description: "Cancel one pending local Agent schedule by id.", parameters: .object(["type": .string("object"), "properties": .object(["id": .object(["type": .string("string")])]), "required": .array([.string("id")]), "additionalProperties": .bool(false)]))
     let risk: ToolRisk = .sideEffect
     func validate(arguments: [String: JSONValue]) throws { try arguments.requireOnlyKeys(["id"]); _ = try arguments.requiredString("id", maximumUTF8Bytes: 128) }
-    func summary(arguments: [String: JSONValue]) -> String { "取消本机定时任务" }
+    func summary(arguments: [String: JSONValue]) -> String { "Cancel a scheduled local task" }
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> { ["schedules:\(ownerSession)"] }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> { ["schedule:\(ownerSession)"] }
     func execute(arguments: [String: JSONValue]) async throws -> String { try validate(arguments: arguments); return try ScheduleToolSupport.json(await store.delete(id: arguments.requiredString("id", maximumUTF8Bytes: 128), ownerSession: ownerSession)) }

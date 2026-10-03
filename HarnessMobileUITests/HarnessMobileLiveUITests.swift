@@ -24,13 +24,13 @@ final class HarnessMobileOnboardingUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.navigationBars["配置 Harness"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.navigationBars["Set Up Harness"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["provider-picker"].isHittable)
         for _ in 0..<6 {
             app.swipeUp(velocity: .fast)
         }
-        XCTAssertTrue(app.staticTexts["安全边界"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["推理"].exists)
+        XCTAssertTrue(app.staticTexts["Security Boundary"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Inference"].exists)
     }
 
     private func launchResetAndAssertOnboarding(_ app: XCUIApplication) {
@@ -40,14 +40,14 @@ final class HarnessMobileOnboardingUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.navigationBars["配置 Harness"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.navigationBars["Set Up Harness"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.secureTextFields["api-key-field"].exists)
         XCTAssertFalse(app.textFields["provider-display-name-field"].exists)
         XCTAssertFalse(app.keyboards.firstMatch.exists)
         let saveButton = app.buttons["save-configuration"]
         XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
         XCTAssertTrue(saveButton.isHittable)
-        XCTAssertFalse(app.tabBars.buttons["设置"].exists)
+        XCTAssertFalse(app.tabBars.buttons["Settings"].exists)
     }
 }
 
@@ -67,8 +67,8 @@ final class HarnessMobileConversationModeUITests: XCTestCase {
 
         openConversation(in: app)
 
-        app.buttons["会话选项"].tap()
-        let trajectoryMode = app.buttons["轨迹"]
+        app.buttons["Session Options"].tap()
+        let trajectoryMode = app.buttons["Trajectory"]
         XCTAssertTrue(trajectoryMode.waitForExistence(timeout: 5))
         trajectoryMode.tap()
         XCTAssertTrue(
@@ -76,8 +76,8 @@ final class HarnessMobileConversationModeUITests: XCTestCase {
                 .waitForExistence(timeout: 10)
         )
 
-        app.buttons["会话选项"].tap()
-        let chatMode = app.buttons["对话"]
+        app.buttons["Session Options"].tap()
+        let chatMode = app.buttons["Chat"]
         XCTAssertTrue(chatMode.waitForExistence(timeout: 5))
         chatMode.tap()
         XCTAssertTrue(app.descendants(matching: .any)["chat-input"].waitForExistence(timeout: 5))
@@ -98,17 +98,17 @@ final class HarnessMobileSessionModelPickerUITests: XCTestCase {
 
         openConversation(in: app)
         let modelButton = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "选择模型，当前")
+            NSPredicate(format: "label BEGINSWITH %@", "Choose model, current:")
         ).firstMatch
         XCTAssertTrue(modelButton.waitForExistence(timeout: 5))
         modelButton.tap()
 
-        XCTAssertTrue(app.navigationBars["本会话模型"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Session Model"].waitForExistence(timeout: 5))
         let followDefault = app.switches["session-model-follow-global"]
         XCTAssertTrue(followDefault.isHittable)
         XCTAssertTrue(app.buttons["session-model-option-deepseek-v4-flash"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["session-model-option-deepseek-v4-pro"].exists)
-        XCTAssertTrue(app.searchFields["搜索模型 ID 或名称"].exists)
+        XCTAssertTrue(app.searchFields["Search model ID or name"].exists)
         attachScreenshot(named: "model-picker-follow-default")
 
         app.buttons["session-model-option-deepseek-v4-pro"].tap()
@@ -145,18 +145,18 @@ final class HarnessMobilePhonePermissionsUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
-        app.buttons["设置"].tap()
-        XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 10))
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
         let permissions = app.buttons["settings-phone-permissions"]
         scrollUntilHittable(permissions, in: app)
         permissions.tap()
 
-        XCTAssertTrue(app.navigationBars["手机权限"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["隐私访问"].exists)
-        XCTAssertTrue(app.staticTexts["相机"].exists)
-        XCTAssertTrue(app.staticTexts["尚未请求"].firstMatch.exists)
-        XCTAssertTrue(app.buttons["刷新权限状态"].isHittable)
-        let cameraPurpose = app.staticTexts["用于拍照和本机 OCR。"]
+        XCTAssertTrue(app.navigationBars["Phone Permissions"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Privacy Access"].exists)
+        XCTAssertTrue(app.staticTexts["Camera"].exists)
+        XCTAssertTrue(app.staticTexts["Not Requested"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["Refresh Permission Status"].isHittable)
+        let cameraPurpose = app.staticTexts["Used for taking photos and on-device OCR."]
         XCTAssertFalse(cameraPurpose.exists)
         app.buttons["phone-permission-camera"].tap()
         XCTAssertTrue(cameraPurpose.waitForExistence(timeout: 5))
@@ -165,9 +165,9 @@ final class HarnessMobilePhonePermissionsUITests: XCTestCase {
         firstScreen.lifetime = .keepAlways
         add(firstScreen)
 
-        let systemSettings = app.buttons["打开 iOS 设置"]
+        let systemSettings = app.buttons["Open iOS Settings"]
         scrollUntilHittable(systemSettings, in: app)
-        XCTAssertTrue(app.staticTexts["额外能力"].exists)
+        XCTAssertTrue(app.staticTexts["Additional Capabilities"].exists)
         XCTAssertTrue(app.staticTexts["HealthKit"].exists)
         XCTAssertTrue(systemSettings.isHittable)
         let lastScreen = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
@@ -190,23 +190,23 @@ final class HarnessMobileMemoryManagementUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
-        app.buttons["设置"].tap()
-        XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 10))
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
         let memory = app.buttons["settings-memory"]
         scrollUntilHittable(memory, in: app)
         memory.tap()
 
-        XCTAssertTrue(app.navigationBars["记忆"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.switches["允许使用已保存的记忆"].exists)
-        XCTAssertTrue(app.buttons["会话记忆说明"].exists)
-        XCTAssertFalse(app.staticTexts["关闭后，本会话不会注入或读取已保存的记忆。重新开启不会删除任何记录。"].exists)
-        XCTAssertTrue(app.staticTexts["已保存的记忆"].exists)
-        XCTAssertTrue(app.staticTexts["没有已保存的记忆"].exists)
+        XCTAssertTrue(app.navigationBars["Memory"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.switches["Allow Saved Memories"].exists)
+        XCTAssertTrue(app.buttons["About Session Memory"].exists)
+        XCTAssertFalse(app.staticTexts["When off, this session won't inject or read saved memories. Turning it back on doesn't delete any records."].exists)
+        XCTAssertTrue(app.staticTexts["Saved Memories"].exists)
+        XCTAssertTrue(app.staticTexts["No Saved Memories"].exists)
         XCTAssertTrue(app.buttons["memory-export-json"].exists)
-        let privacyDetails = app.buttons["存储与发送范围"]
+        let privacyDetails = app.buttons["Storage and Sharing Scope"]
         XCTAssertTrue(privacyDetails.exists)
         let privacyExplanation = app.staticTexts.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "记忆只会在本机保存")
+            NSPredicate(format: "label BEGINSWITH %@", "Memories are stored only on this device")
         ).firstMatch
         XCTAssertFalse(privacyExplanation.exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
@@ -231,24 +231,24 @@ final class HarnessMobilePluginSettingsUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
-        app.buttons["设置"].tap()
-        XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 10))
-        let plugins = app.buttons["Cordis 插件"]
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
+        let plugins = app.buttons["Cordis Plugins"]
         scrollUntilHittable(plugins, in: app)
         plugins.tap()
 
-        XCTAssertTrue(app.navigationBars["插件"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Plugins"].waitForExistence(timeout: 10))
         let settings = app.buttons["ish-plugin-settings"]
         scrollUntilHittable(settings, in: app)
         settings.tap()
 
-        XCTAssertTrue(app.navigationBars["插件设置"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Plugin Settings"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.descendants(matching: .any)["ish-plugin-settings-list"].exists)
         XCTAssertTrue(app.buttons["ish-plugin-settings-refresh"].exists)
-        XCTAssertTrue(app.staticTexts["正在启动设置 Host"].exists)
+        XCTAssertTrue(app.staticTexts["Starting Settings Host"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["ish-plugin-settings-loading"].exists)
-        XCTAssertFalse(app.buttons["启动 Host"].exists)
-        XCTAssertFalse(app.searchFields["搜索 namespace"].exists)
+        XCTAssertFalse(app.buttons["Start Host"].exists)
+        XCTAssertFalse(app.searchFields["Search namespace"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "plugin-settings-host-state"
         screenshot.lifetime = .keepAlways
@@ -267,19 +267,19 @@ final class HarnessMobilePluginSettingsUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
-        app.buttons["设置"].tap()
-        XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 10))
-        let plugins = app.buttons["Cordis 插件"]
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
+        let plugins = app.buttons["Cordis Plugins"]
         scrollUntilHittable(plugins, in: app)
         plugins.tap()
 
-        XCTAssertTrue(app.navigationBars["插件"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Plugins"].waitForExistence(timeout: 10))
         let settings = app.buttons["ish-plugin-settings"]
         scrollUntilHittable(settings, in: app)
         settings.tap()
 
-        XCTAssertTrue(app.navigationBars["插件设置"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.searchFields["搜索命名空间"].exists)
+        XCTAssertTrue(app.navigationBars["Plugin Settings"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.searchFields["Search Namespaces"].exists)
         let namespace = app.buttons["ish-plugin-settings-namespace-memory-notes"]
         XCTAssertTrue(namespace.waitForExistence(timeout: 5))
         namespace.tap()
@@ -288,8 +288,8 @@ final class HarnessMobilePluginSettingsUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["ish-plugin-settings-editor"].exists)
         XCTAssertFalse(app.staticTexts["Namespace"].exists)
         XCTAssertFalse(app.staticTexts["Revision"].exists)
-        XCTAssertTrue(app.staticTexts["修订版本"].exists)
-        XCTAssertTrue(app.staticTexts["最大记录数"].exists)
+        XCTAssertTrue(app.staticTexts["Revision"].exists)
+        XCTAssertTrue(app.staticTexts["Max Records"].exists)
         XCTAssertTrue(app.buttons["ish-plugin-settings-save"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "plugin-settings-namespace-editor"
@@ -312,21 +312,21 @@ final class HarnessMobileConcurrentRunsUITests: XCTestCase {
         app.launch()
 
         let firstSession = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "新会话")
+            NSPredicate(format: "label CONTAINS %@", "New Session")
         ).firstMatch
         let secondSession = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "并发会话 B")
+            NSPredicate(format: "label CONTAINS %@", "Concurrent Session B")
         ).firstMatch
         XCTAssertTrue(firstSession.waitForExistence(timeout: 15))
         XCTAssertTrue(secondSession.exists)
         XCTAssertEqual(
-            app.staticTexts.matching(NSPredicate(format: "label == %@", "运行中")).count,
+            app.staticTexts.matching(NSPredicate(format: "label == %@", "Running")).count,
             2
         )
 
         secondSession.tap()
         XCTAssertTrue(app.descendants(matching: .any)["chat-input"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["正在深入处理…"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Working deeply…"].waitForExistence(timeout: 5))
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "chat-running-status"
         screenshot.lifetime = .keepAlways
@@ -335,7 +335,7 @@ final class HarnessMobileConcurrentRunsUITests: XCTestCase {
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(firstSession.waitForExistence(timeout: 5))
         XCTAssertEqual(
-            app.staticTexts.matching(NSPredicate(format: "label == %@", "运行中")).count,
+            app.staticTexts.matching(NSPredicate(format: "label == %@", "Running")).count,
             2
         )
     }
@@ -352,25 +352,25 @@ final class HarnessMobileConcurrentRunsUITests: XCTestCase {
         app.launch()
 
         let currentProject = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "新会话", "运行中")
+            NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "New Session", "Running")
         ).firstMatch
         XCTAssertTrue(currentProject.waitForExistence(timeout: 15))
         currentProject.tap()
 
-        XCTAssertTrue(app.staticTexts["排队 1"].waitForExistence(timeout: 5))
-        let actions = app.buttons["排队消息操作"]
+        XCTAssertTrue(app.staticTexts["Queued 1"].waitForExistence(timeout: 5))
+        let actions = app.buttons["Queued Message Actions"]
         XCTAssertTrue(actions.exists)
-        XCTAssertFalse(app.buttons["编辑排队消息"].exists)
-        XCTAssertTrue(app.buttons["停止当前运行"].exists)
+        XCTAssertFalse(app.buttons["Edit Queued Message"].exists)
+        XCTAssertTrue(app.buttons["Stop Current Run"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "chat-queued-input-actions"
         screenshot.lifetime = .keepAlways
         add(screenshot)
 
         actions.tap()
-        XCTAssertTrue(app.buttons["编辑排队消息"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["将排队消息设为 steer"].exists)
-        XCTAssertTrue(app.buttons["移除排队消息"].exists)
+        XCTAssertTrue(app.buttons["Edit Queued Message"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Convert Queued Message to Steer"].exists)
+        XCTAssertTrue(app.buttons["Remove Queued Message"].exists)
     }
 }
 
@@ -386,14 +386,14 @@ final class HarnessMobileWorkspaceHierarchyUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.buttons["工具"].waitForExistence(timeout: 15))
-        app.buttons["工具"].tap()
-        XCTAssertTrue(app.navigationBars["工具"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Tools"].waitForExistence(timeout: 15))
+        app.buttons["Tools"].tap()
+        XCTAssertTrue(app.navigationBars["Tools"].waitForExistence(timeout: 5))
         let open = app.buttons["tool-route-workspace"]
         XCTAssertTrue(open.waitForExistence(timeout: 5))
         XCTAssertTrue(open.isHittable)
         open.tap()
-        XCTAssertTrue(app.navigationBars["工作区"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Workspace"].waitForExistence(timeout: 5))
     }
 }
 
@@ -415,11 +415,11 @@ final class HarnessMobileAccessibilityUITests: XCTestCase {
         addTeardownBlock { app.terminate() }
 
         XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
-        assertSystemToolbarTarget(app.buttons["设置"], named: "首页设置")
-        assertSystemToolbarTarget(app.buttons["筛选与排序"], named: "首页筛选与排序")
-        assertSystemToolbarTarget(app.buttons["工具"], named: "首页工具")
-        let project = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "新会话")).firstMatch
-        assertCriticalTarget(project, named: "首页项目入口")
+        assertSystemToolbarTarget(app.buttons["Settings"], named: "Home settings")
+        assertSystemToolbarTarget(app.buttons["Filter and Sort"], named: "Home filter and sort")
+        assertSystemToolbarTarget(app.buttons["Tools"], named: "Home tools")
+        let project = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "New Session")).firstMatch
+        assertCriticalTarget(project, named: "Home project entry")
         attachAccessibilityEvidence(for: app, surface: "home")
     }
 
@@ -431,14 +431,14 @@ final class HarnessMobileAccessibilityUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["iSH"].waitForExistence(timeout: 15))
 
         let field = app.descendants(matching: .any)["ish-command-field"]
-        assertCriticalTarget(field, named: "终端命令输入")
+        assertCriticalTarget(field, named: "Terminal command input")
         XCTAssertTrue(
             app.descendants(matching: .any)["ish-ready-status"]
                 .waitForExistence(timeout: 120)
         )
         field.tap()
         field.typeText("pwd")
-        assertCriticalTarget(app.buttons["ish-run-command"], named: "终端执行命令")
+        assertCriticalTarget(app.buttons["ish-run-command"], named: "Terminal run command")
         attachAccessibilityEvidence(for: app, surface: "terminal")
     }
 
@@ -447,15 +447,15 @@ final class HarnessMobileAccessibilityUITests: XCTestCase {
         addTeardownBlock { app.terminate() }
 
         openConversation(in: app)
-        assertSystemToolbarTarget(app.buttons["会话选项"], named: "聊天会话选项")
-        assertCriticalTarget(app.buttons["添加内容"], named: "聊天添加内容")
-        assertCriticalTarget(app.buttons["命令"], named: "聊天命令")
+        assertSystemToolbarTarget(app.buttons["Session Options"], named: "Chat session options")
+        assertCriticalTarget(app.buttons["Add Content"], named: "Chat add content")
+        assertCriticalTarget(app.buttons["Commands"], named: "Chat commands")
 
         let field = app.descendants(matching: .any)["chat-input"]
-        assertCriticalTarget(field, named: "聊天输入")
+        assertCriticalTarget(field, named: "Chat input")
         field.tap()
         field.typeText("accessibility audit")
-        assertCriticalTarget(app.buttons["chat-send-button"], named: "聊天发送")
+        assertCriticalTarget(app.buttons["chat-send-button"], named: "Chat send")
         attachAccessibilityEvidence(for: app, surface: "chat")
     }
 
@@ -464,15 +464,15 @@ final class HarnessMobileAccessibilityUITests: XCTestCase {
         addTeardownBlock { app.terminate() }
 
         XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
-        app.buttons["设置"].tap()
-        XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 15))
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 15))
         let modelProviders = app.buttons["settings-model-providers"]
         scrollUntilHittable(modelProviders, in: app)
-        assertCriticalTarget(modelProviders, named: "设置模型与服务商")
+        assertCriticalTarget(modelProviders, named: "Settings models and providers")
 
         let phonePermissions = app.buttons["settings-phone-permissions"]
         scrollUntilHittable(phonePermissions, in: app)
-        assertCriticalTarget(phonePermissions, named: "设置手机权限")
+        assertCriticalTarget(phonePermissions, named: "Settings phone permissions")
         attachAccessibilityEvidence(for: app, surface: "settings")
     }
 
@@ -498,23 +498,23 @@ final class HarnessMobileAccessibilityUITests: XCTestCase {
     ) {
         XCTAssertTrue(
             element.waitForExistence(timeout: 10),
-            "\(name) 不存在",
+            "\(name) does not exist",
             file: file,
             line: line
         )
-        XCTAssertTrue(element.isHittable, "\(name) 不可点击", file: file, line: line)
-        XCTAssertFalse(element.label.isEmpty, "\(name) 没有可访问性名称", file: file, line: line)
+        XCTAssertTrue(element.isHittable, "\(name) is not hittable", file: file, line: line)
+        XCTAssertFalse(element.label.isEmpty, "\(name) has no accessibility label", file: file, line: line)
         XCTAssertGreaterThanOrEqual(
             element.frame.width,
             44,
-            "\(name) 宽度小于 44pt：\(element.frame.width)",
+            "\(name) is narrower than 44pt: \(element.frame.width)",
             file: file,
             line: line
         )
         XCTAssertGreaterThanOrEqual(
             element.frame.height,
             44,
-            "\(name) 高度小于 44pt：\(element.frame.height)",
+            "\(name) is shorter than 44pt: \(element.frame.height)",
             file: file,
             line: line
         )
@@ -528,12 +528,12 @@ final class HarnessMobileAccessibilityUITests: XCTestCase {
     ) {
         XCTAssertTrue(
             element.waitForExistence(timeout: 10),
-            "\(name) 不存在",
+            "\(name) does not exist",
             file: file,
             line: line
         )
-        XCTAssertTrue(element.isHittable, "\(name) 不可点击", file: file, line: line)
-        XCTAssertFalse(element.label.isEmpty, "\(name) 没有可访问性名称", file: file, line: line)
+        XCTAssertTrue(element.isHittable, "\(name) is not hittable", file: file, line: line)
+        XCTAssertFalse(element.label.isEmpty, "\(name) has no accessibility label", file: file, line: line)
     }
 
     private func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication) {
@@ -575,18 +575,18 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
         addTeardownBlock { app.terminate() }
 
         XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["项目"].exists)
-        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "新会话")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["Projects"].exists)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "New Session")).firstMatch.exists)
         XCTAssertFalse(app.buttons["home-continue-task"].exists)
         XCTAssertFalse(app.buttons["home-background-status"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["workspace-hierarchy-root"].exists)
 
-        app.buttons["工具"].tap()
-        XCTAssertTrue(app.navigationBars["工具"].waitForExistence(timeout: 5))
+        app.buttons["Tools"].tap()
+        XCTAssertTrue(app.navigationBars["Tools"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["tool-route-terminal"].exists)
         XCTAssertTrue(app.buttons["tool-route-workspace"].exists)
         XCTAssertTrue(app.buttons["tool-route-settings"].exists)
-        XCTAssertTrue(app.staticTexts["目标、计划、待办与 Harness 调用链"].exists)
+        XCTAssertTrue(app.staticTexts["Goals, plans, todos, and the Harness call chain"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "tools-overview"
         screenshot.lifetime = .keepAlways
@@ -597,8 +597,8 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
         let app = launchConfiguredApp()
         addTeardownBlock { app.terminate() }
 
-        app.buttons["设置"].tap()
-        XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 15))
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["settings-model-providers"].exists)
         XCTAssertTrue(app.buttons["settings-background-tasks"].exists)
         XCTAssertTrue(app.buttons["settings-phone-permissions"].exists)
@@ -612,27 +612,27 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
         scrollToTop(in: app)
         scrollUntilHittable(app.buttons["settings-background-tasks"], in: app)
         app.buttons["settings-background-tasks"].tap()
-        XCTAssertTrue(app.navigationBars["后台任务"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Background Tasks"].waitForExistence(timeout: 10))
         let firstScreen = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         firstScreen.name = "background-settings-first-screen"
         firstScreen.lifetime = .keepAlways
         add(firstScreen)
-        let executionDetails = app.buttons["工作方式与限制"]
+        let executionDetails = app.buttons["How It Works & Limits"]
         XCTAssertTrue(executionDetails.isHittable)
         let executionExplanation = app.staticTexts.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "组合使用 iOS 26")
+            NSPredicate(format: "label BEGINSWITH %@", "Combines iOS 26")
         ).firstMatch
         XCTAssertFalse(executionExplanation.exists)
         executionDetails.tap()
         XCTAssertTrue(executionExplanation.waitForExistence(timeout: 5))
         executionDetails.tap()
-        let projectionHeader = app.staticTexts["当前系统投影"]
+        let projectionHeader = app.staticTexts["Current System Projection"]
         scrollUntilExists(projectionHeader, in: app)
         XCTAssertTrue(projectionHeader.exists)
-        let activeRuns = app.staticTexts["活动任务"]
+        let activeRuns = app.staticTexts["Active Tasks"]
         scrollUntilExists(activeRuns, in: app)
         XCTAssertTrue(activeRuns.exists)
-        let safetyBoundary = app.staticTexts["执行边界"]
+        let safetyBoundary = app.staticTexts["Execution Boundaries"]
         scrollUntilExists(safetyBoundary, in: app)
         XCTAssertTrue(safetyBoundary.exists)
         let lastScreen = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
@@ -645,21 +645,21 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
         let app = launchConfiguredApp()
         addTeardownBlock { app.terminate() }
 
-        app.buttons["设置"].tap()
-        XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 15))
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 15))
         app.buttons["settings-model-providers"].tap()
-        XCTAssertTrue(app.navigationBars["模型与服务商"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Models & Providers"].waitForExistence(timeout: 10))
 
         let behavior = app.buttons["provider-behavior-settings"]
         XCTAssertTrue(behavior.waitForExistence(timeout: 5))
         behavior.tap()
 
-        XCTAssertTrue(app.navigationBars["模型行为"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["上下文压缩"].exists)
-        XCTAssertTrue(app.staticTexts["时间上下文"].exists)
-        XCTAssertTrue(app.staticTexts["会话标题"].exists)
+        XCTAssertTrue(app.navigationBars["Model Behavior"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Context Compaction"].exists)
+        XCTAssertTrue(app.staticTexts["Time Context"].exists)
+        XCTAssertTrue(app.staticTexts["Session Titles"].exists)
         let timeContextToggles = app.switches.matching(
-            NSPredicate(format: "label == %@", "向 Agent 提供当前时间")
+            NSPredicate(format: "label == %@", "Provide Current Time to Agent")
         )
         XCTAssertEqual(timeContextToggles.count, 1)
 
@@ -673,10 +673,10 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
         timeContextToggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
         XCTAssertEqual(timeContextToggle.value as? String, "1")
         let timeZone = app.descendants(matching: .any).matching(
-            NSPredicate(format: "label BEGINSWITH %@", "显示时区")
+            NSPredicate(format: "label BEGINSWITH %@", "Time Zone")
         ).firstMatch
         let refreshInterval = app.descendants(matching: .any).matching(
-            NSPredicate(format: "label BEGINSWITH %@", "刷新间隔")
+            NSPredicate(format: "label BEGINSWITH %@", "Refresh Interval")
         ).firstMatch
         XCTAssertTrue(timeZone.waitForExistence(timeout: 5))
         XCTAssertTrue(refreshInterval.exists)
@@ -691,14 +691,14 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
         addTeardownBlock { app.terminate() }
 
         openConversation(in: app)
-        app.buttons["会话选项"].tap()
-        let jobs = app.buttons["后台任务"]
+        app.buttons["Session Options"].tap()
+        let jobs = app.buttons["Background Jobs"]
         XCTAssertTrue(jobs.waitForExistence(timeout: 5))
         jobs.tap()
 
-        XCTAssertTrue(app.navigationBars["后台任务"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["暂无后台任务"].exists)
-        XCTAssertTrue(app.buttons["刷新后台任务"].exists)
+        XCTAssertTrue(app.navigationBars["Background Jobs"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No Background Jobs"].exists)
+        XCTAssertTrue(app.buttons["Refresh background jobs"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "jobs-panel-empty"
         screenshot.lifetime = .keepAlways
@@ -710,23 +710,23 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
         addTeardownBlock { app.terminate() }
 
         openConversation(in: app)
-        app.buttons["会话选项"].tap()
+        app.buttons["Session Options"].tap()
 
-        XCTAssertTrue(app.buttons["对话"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["轨迹"].exists)
+        XCTAssertTrue(app.buttons["Chat"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Trajectory"].exists)
         XCTAssertTrue(app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Agent 预设：")
+            NSPredicate(format: "label BEGINSWITH %@", "Agent Preset: ")
         ).firstMatch.exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "session-options"
         screenshot.lifetime = .keepAlways
         add(screenshot)
         XCTAssertTrue(app.descendants(matching: .any)["Agent"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["工作区写入"].exists)
-        XCTAssertTrue(app.buttons["切换模型"].exists)
-        XCTAssertTrue(app.buttons["设置"].exists)
-        XCTAssertTrue(app.buttons["后台任务"].exists)
-        XCTAssertTrue(app.buttons["导出对话"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["Workspace Write"].exists)
+        XCTAssertTrue(app.buttons["Switch Model"].exists)
+        XCTAssertTrue(app.buttons["Settings"].exists)
+        XCTAssertTrue(app.buttons["Background Jobs"].exists)
+        XCTAssertTrue(app.buttons["Export Conversation"].exists)
     }
 
     func testAgentPresetPickerShowsAllSystemPresets() {
@@ -734,18 +734,18 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
         addTeardownBlock { app.terminate() }
 
         openConversation(in: app)
-        app.buttons["会话选项"].tap()
+        app.buttons["Session Options"].tap()
         let presetButton = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Agent 预设：")
+            NSPredicate(format: "label BEGINSWITH %@", "Agent Preset: ")
         ).firstMatch
         XCTAssertTrue(presetButton.waitForExistence(timeout: 5))
         presetButton.tap()
 
-        XCTAssertTrue(app.navigationBars["Agent 预设"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.buttons["标准模式"].value as? String, "已选择")
-        XCTAssertTrue(app.buttons["PTC 模式"].exists)
-        XCTAssertTrue(app.buttons["极简模式"].exists)
-        XCTAssertTrue(app.buttons["创造模式"].exists)
+        XCTAssertTrue(app.navigationBars["Agent Presets"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["Standard Mode"].value as? String, "Selected")
+        XCTAssertTrue(app.buttons["PTC Mode"].exists)
+        XCTAssertTrue(app.buttons["Minimal Mode"].exists)
+        XCTAssertTrue(app.buttons["Creative Mode"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "agent-preset-picker"
         screenshot.lifetime = .keepAlways
@@ -757,17 +757,17 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
         addTeardownBlock { app.terminate() }
 
         openConversation(in: app)
-        app.buttons["会话选项"].tap()
-        let export = app.buttons["导出对话"]
+        app.buttons["Session Options"].tap()
+        let export = app.buttons["Export Conversation"]
         XCTAssertTrue(export.waitForExistence(timeout: 5))
         XCTAssertTrue(export.isEnabled)
         export.tap()
 
-        XCTAssertTrue(app.staticTexts["脱敏导出对话"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Export Redacted Conversation"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["JSON"].exists)
         XCTAssertTrue(app.buttons["Markdown"].exists)
         XCTAssertTrue(app.staticTexts.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "导出会移除工具原始参数")
+            NSPredicate(format: "label BEGINSWITH %@", "Export removes raw tool arguments")
         ).firstMatch.exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "conversation-export-confirmation"
@@ -781,20 +781,20 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
 
         XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
         let currentSession = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "新会话", "当前")
+            NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "New Session", "Current")
         ).firstMatch
         XCTAssertTrue(currentSession.waitForExistence(timeout: 5))
         currentSession.swipeLeft()
-        let rename = app.buttons["重命名"]
+        let rename = app.buttons["Rename"]
         XCTAssertTrue(rename.waitForExistence(timeout: 5))
         rename.tap()
 
-        XCTAssertTrue(app.navigationBars["重命名项目"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.textFields["项目名称"].exists)
-        XCTAssertTrue(app.staticTexts["名称保存在本机，最多 80 个字符。"].exists)
+        XCTAssertTrue(app.navigationBars["Rename Project"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["Project Name"].exists)
+        XCTAssertTrue(app.staticTexts["The name is saved on this device, up to 80 characters."].exists)
         XCTAssertTrue(app.staticTexts["3/80"].exists)
-        XCTAssertTrue(app.buttons["取消"].exists)
-        XCTAssertTrue(app.buttons["保存"].exists)
+        XCTAssertTrue(app.buttons["Cancel"].exists)
+        XCTAssertTrue(app.buttons["Save"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "rename-conversation"
         screenshot.lifetime = .keepAlways
@@ -807,18 +807,18 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
 
         XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
         let currentSession = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "新会话", "当前")
+            NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "New Session", "Current")
         ).firstMatch
         XCTAssertTrue(currentSession.waitForExistence(timeout: 5))
         currentSession.swipeLeft()
-        let delete = app.buttons["删除"]
+        let delete = app.buttons["Delete"]
         XCTAssertTrue(delete.waitForExistence(timeout: 5))
         delete.tap()
 
-        XCTAssertTrue(app.staticTexts["删除项目？"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["删除“新会话”"].exists)
+        XCTAssertTrue(app.staticTexts["Delete Project?"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Delete 'New Session'"].exists)
         XCTAssertTrue(app.staticTexts.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "会删除这个项目在本机保存的消息")
+            NSPredicate(format: "label BEGINSWITH %@", "This deletes the project's messages")
         ).firstMatch.exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "delete-project-confirmation"
@@ -831,9 +831,9 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
         addTeardownBlock { app.terminate() }
 
         XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["项目"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["新建项目"].exists)
-        XCTAssertFalse(app.buttons["新建会话"].exists)
+        XCTAssertTrue(app.staticTexts["Projects"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["New Project"].exists)
+        XCTAssertFalse(app.buttons["New Session"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "home-new-project-entry"
         screenshot.lifetime = .keepAlways
@@ -846,28 +846,28 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
 
         XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
         let currentProject = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "新会话", "当前")
+            NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "New Session", "Current")
         ).firstMatch
         XCTAssertTrue(currentProject.waitForExistence(timeout: 5))
         currentProject.swipeRight()
-        let archive = app.buttons["归档"]
+        let archive = app.buttons["Archive"]
         XCTAssertTrue(archive.waitForExistence(timeout: 5))
         archive.tap()
 
-        app.buttons["筛选与排序"].tap()
-        let archivedScope = app.buttons["归档"]
+        app.buttons["Filter and Sort"].tap()
+        let archivedScope = app.buttons["Archive"]
         XCTAssertTrue(archivedScope.waitForExistence(timeout: 5))
         archivedScope.tap()
 
-        XCTAssertTrue(app.staticTexts["已归档"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Archived"].waitForExistence(timeout: 10))
         let archivedProject = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "新会话", "已归档")
+            NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "New Session", "Archived")
         ).firstMatch
         XCTAssertTrue(archivedProject.waitForExistence(timeout: 5))
         archivedProject.press(forDuration: 1)
-        XCTAssertTrue(app.buttons["分叉项目"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["恢复项目"].exists)
-        XCTAssertFalse(app.buttons["恢复会话"].exists)
+        XCTAssertTrue(app.buttons["Fork Project"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Restore Project"].exists)
+        XCTAssertFalse(app.buttons["Restore Session"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "archived-project-actions"
         screenshot.lifetime = .keepAlways
@@ -878,23 +878,23 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
         let app = launchConfiguredApp()
         addTeardownBlock { app.terminate() }
 
-        app.buttons["设置"].tap()
-        XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 15))
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 15))
         let diagnostics = app.descendants(matching: .any)["settings-diagnostics"]
         scrollUntilHittable(diagnostics, in: app)
         diagnostics.tap()
 
-        XCTAssertTrue(app.navigationBars["详细日志"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["当前运行"].exists)
+        XCTAssertTrue(app.navigationBars["Detailed Logs"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Current Run"].exists)
         XCTAssertTrue(app.staticTexts["Cordis Host"].exists)
-        let refresh = app.buttons["刷新日志"]
+        let refresh = app.buttons["Refresh Logs"]
         scrollUntilHittable(refresh, in: app)
         XCTAssertTrue(refresh.isHittable)
-        XCTAssertTrue(app.buttons["导出详细日志"].exists)
-        let exportDetails = app.buttons["导出内容与脱敏"]
+        XCTAssertTrue(app.buttons["Export Detailed Logs"].exists)
+        let exportDetails = app.buttons["Export Contents & Redaction"]
         XCTAssertTrue(exportDetails.exists)
         let exportExplanation = app.staticTexts.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "导出包含设备与运行状态")
+            NSPredicate(format: "label BEGINSWITH %@", "The export includes device and runtime status")
         ).firstMatch
         XCTAssertFalse(exportExplanation.exists)
         exportDetails.tap()
@@ -911,15 +911,15 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
         let app = launchConfiguredApp()
         addTeardownBlock { app.terminate() }
 
-        app.buttons["设置"].tap()
-        XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 15))
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 15))
         let approvals = app.descendants(matching: .any)["settings-tool-approvals"]
         scrollUntilHittable(approvals, in: app)
         approvals.tap()
 
-        XCTAssertTrue(app.navigationBars["工具授权"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["暂无长期工具授权"].exists)
-        XCTAssertFalse(app.staticTexts["已记住的工具授权"].exists)
+        XCTAssertTrue(app.navigationBars["Tool Approvals"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["No Persistent Tool Approvals"].exists)
+        XCTAssertFalse(app.staticTexts["Remembered Tool Approvals"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "tool-approvals"
         screenshot.lifetime = .keepAlways
@@ -930,21 +930,21 @@ final class HarnessMobileProgressiveDisclosureUITests: XCTestCase {
         let app = launchConfiguredApp()
         addTeardownBlock { app.terminate() }
 
-        app.buttons["设置"].tap()
-        XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 15))
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 15))
         let bundles = app.descendants(matching: .any)["settings-agent-bundles"]
         scrollUntilHittable(bundles, in: app)
         bundles.tap()
 
-        XCTAssertTrue(app.navigationBars["Agent 编排"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["内置 Agent Bundle"].exists)
+        XCTAssertTrue(app.navigationBars["Agent Orchestration"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Built-in Agent Bundles"].exists)
         XCTAssertFalse(app.staticTexts["RC.8 Profile Bundles"].exists)
-        XCTAssertFalse(app.staticTexts["未启用"].exists)
-        XCTAssertTrue(app.buttons["安装到手机"].firstMatch.exists)
-        let installationDetails = app.buttons["安装与安全"]
+        XCTAssertFalse(app.staticTexts["Not Enabled"].exists)
+        XCTAssertTrue(app.buttons["Install on Phone"].firstMatch.exists)
+        let installationDetails = app.buttons["Installation & Security"]
         XCTAssertTrue(installationDetails.exists)
         let explanation = app.staticTexts.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "URL、SHA-256")
+            NSPredicate(format: "label BEGINSWITH %@", "The URL, SHA-256")
         ).firstMatch
         XCTAssertFalse(explanation.exists)
         installationDetails.tap()
@@ -993,15 +993,15 @@ final class HarnessMobileLongConversationUITests: XCTestCase {
         XCTAssertTrue(text(containing: "perf-message-999", in: app).waitForExistence(timeout: 10))
         XCTAssertFalse(text(containing: "perf-message-0", in: app).exists)
 
-        let loadEarlierTools = app.buttons["显示前面的 20 个工具调用"]
+        let loadEarlierTools = app.buttons["Show 20 earlier tool calls"]
         XCTAssertTrue(loadEarlierTools.waitForExistence(timeout: 5))
-        XCTAssertEqual(loadEarlierTools.value as? String, "尚有 96 个较早工具调用")
+        XCTAssertEqual(loadEarlierTools.value as? String, "96 earlier tool calls remaining")
         for _ in 0..<3 where !loadEarlierTools.isHittable {
             app.swipeDown(velocity: .fast)
         }
         XCTAssertTrue(loadEarlierTools.isHittable)
         loadEarlierTools.tap()
-        let pagedToolValue = NSPredicate(format: "value == %@", "尚有 76 个较早工具调用")
+        let pagedToolValue = NSPredicate(format: "value == %@", "76 earlier tool calls remaining")
         let pagedToolExpectation = XCTNSPredicateExpectation(
             predicate: pagedToolValue,
             object: loadEarlierTools
@@ -1017,10 +1017,10 @@ final class HarnessMobileLongConversationUITests: XCTestCase {
         }
         XCTAssertTrue(loadEarlier.waitForExistence(timeout: 5))
         XCTAssertTrue(loadEarlier.isHittable)
-        XCTAssertEqual(loadEarlier.value as? String, "尚有 920 条较早消息")
+        XCTAssertEqual(loadEarlier.value as? String, "920 earlier messages remaining")
         loadEarlier.tap()
 
-        let pagedValue = NSPredicate(format: "value == %@", "尚有 840 条较早消息")
+        let pagedValue = NSPredicate(format: "value == %@", "840 earlier messages remaining")
         let pagedExpectation = XCTNSPredicateExpectation(predicate: pagedValue, object: loadEarlier)
         XCTAssertEqual(XCTWaiter.wait(for: [pagedExpectation], timeout: 10), .completed)
     }
@@ -1051,16 +1051,16 @@ final class HarnessMobileTrajectoryUITests: XCTestCase {
         app.launch()
 
         openConversation(in: app)
-        app.buttons["会话选项"].tap()
-        XCTAssertTrue(app.buttons["轨迹"].waitForExistence(timeout: 5))
-        app.buttons["轨迹"].tap()
+        app.buttons["Session Options"].tap()
+        XCTAssertTrue(app.buttons["Trajectory"].waitForExistence(timeout: 5))
+        app.buttons["Trajectory"].tap()
 
-        XCTAssertTrue(app.staticTexts["耗时"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["回合"].exists)
-        XCTAssertTrue(app.staticTexts["调用"].exists)
-        XCTAssertTrue(app.staticTexts["首字延迟"].exists)
-        XCTAssertTrue(app.staticTexts["输出"].exists)
-        XCTAssertTrue(app.staticTexts["缓存"].exists)
+        XCTAssertTrue(app.staticTexts["Duration"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Turns"].exists)
+        XCTAssertTrue(app.staticTexts["Calls"].exists)
+        XCTAssertTrue(app.staticTexts["TTFT"].exists)
+        XCTAssertTrue(app.staticTexts["Output"].exists)
+        XCTAssertTrue(app.staticTexts["Cache"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["harness-trace-strip"].exists)
 
         let initialScreen = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
@@ -1070,45 +1070,45 @@ final class HarnessMobileTrajectoryUITests: XCTestCase {
 
         let ledger = app.segmentedControls.firstMatch
         XCTAssertTrue(ledger.waitForExistence(timeout: 5))
-        ledger.buttons["调用"].tap()
+        ledger.buttons["Calls"].tap()
         let toolEvent = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "工具调用")
+            NSPredicate(format: "label CONTAINS %@", "Tool Call")
         ).firstMatch
         XCTAssertTrue(toolEvent.waitForExistence(timeout: 5))
         toolEvent.tap()
-        XCTAssertTrue(app.staticTexts["工具调用"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Tool Call"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "1970", "年")
+            NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "1970", ":")
         ).firstMatch.exists)
         let toolInspector = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         toolInspector.name = "trajectory-tool-inspector"
         toolInspector.lifetime = .keepAlways
         add(toolInspector)
-        app.navigationBars.buttons["完成"].tap()
+        app.navigationBars.buttons["Done"].tap()
 
         let resultEvent = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "工具结果")
+            NSPredicate(format: "label CONTAINS %@", "Tool Result")
         ).firstMatch
         XCTAssertTrue(resultEvent.waitForExistence(timeout: 5))
         resultEvent.tap()
-        XCTAssertTrue(app.staticTexts["工具结果"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Tool Result"].waitForExistence(timeout: 5))
         let resultInspector = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         resultInspector.name = "trajectory-result-inspector"
         resultInspector.lifetime = .keepAlways
         add(resultInspector)
 
-        app.navigationBars.buttons["完成"].tap()
-        ledger.buttons["回合"].tap()
+        app.navigationBars.buttons["Done"].tap()
+        ledger.buttons["Turns"].tap()
         let turnHeader = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "回合 1")
+            NSPredicate(format: "label CONTAINS %@", "Turn 1")
         ).firstMatch
         XCTAssertTrue(turnHeader.waitForExistence(timeout: 5))
         turnHeader.tap()
-        XCTAssertTrue(app.staticTexts["请求头"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Request Header"].waitForExistence(timeout: 5))
         turnHeader.tap()
-        XCTAssertTrue(app.staticTexts["请求头"].exists)
+        XCTAssertTrue(app.staticTexts["Request Header"].exists)
 
-        let search = app.searchFields["搜索类型、内容、工具或 Call ID"]
+        let search = app.searchFields["Search type, content, tool, or Call ID"]
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
         search.typeText("workspace_read_text")
@@ -1132,12 +1132,12 @@ final class HarnessMobileChatChromeUITests: XCTestCase {
 
         openConversation(in: app)
 
-        XCTAssertTrue(app.buttons["有什么要处理？"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["What can I help with?"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.descendants(matching: .any)["chat-input"].exists)
-        XCTAssertTrue(app.buttons["添加内容"].exists)
+        XCTAssertTrue(app.buttons["Add Content"].exists)
         // The slash command entry is a persistent composer affordance now;
         // the command palette test taps it in this same empty state.
-        XCTAssertTrue(app.buttons["命令"].isHittable)
+        XCTAssertTrue(app.buttons["Commands"].isHittable)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "chat-empty-state"
         screenshot.lifetime = .keepAlways
@@ -1155,11 +1155,11 @@ final class HarnessMobileChatChromeUITests: XCTestCase {
         app.launch()
 
         openConversation(in: app)
-        app.buttons["添加内容"].tap()
-        XCTAssertTrue(app.buttons["选择图片"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["拍照"].exists)
-        XCTAssertTrue(app.buttons["选择 PDF、音频或视频"].exists)
-        XCTAssertTrue(app.buttons["命令"].exists)
+        app.buttons["Add Content"].tap()
+        XCTAssertTrue(app.buttons["Choose Photo"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Take Photo"].exists)
+        XCTAssertTrue(app.buttons["Choose PDF, Audio, or Video"].exists)
+        XCTAssertTrue(app.buttons["Commands"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "chat-add-content-menu"
         screenshot.lifetime = .keepAlways
@@ -1177,11 +1177,14 @@ final class HarnessMobileChatChromeUITests: XCTestCase {
         app.launch()
 
         openConversation(in: app)
-        app.buttons["命令"].tap()
+        app.buttons["Commands"].tap()
         let input = app.descendants(matching: .any)["chat-input"]
         XCTAssertTrue(input.waitForExistence(timeout: 5))
         XCTAssertEqual(input.value as? String, "/")
-        XCTAssertTrue(app.staticTexts["命令"].waitForExistence(timeout: 5))
+        // The palette group header renders with .textCase(.uppercase).
+        XCTAssertTrue(app.staticTexts.matching(
+            NSPredicate(format: "label ==[c] %@", "Command")
+        ).firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons.matching(
             NSPredicate(format: "label BEGINSWITH %@", "/")
         ).firstMatch.exists)
@@ -1210,7 +1213,7 @@ final class HarnessMobileChatChromeUITests: XCTestCase {
         XCTAssertTrue(banner.waitForExistence(timeout: 10))
         XCTAssertEqual(app.alerts.count, 0)
 
-        let dismiss = app.buttons["关闭错误提示"]
+        let dismiss = app.buttons["Dismiss error"]
         XCTAssertTrue(dismiss.isHittable)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "chat-inline-error"
@@ -1232,11 +1235,11 @@ final class HarnessMobileChatChromeUITests: XCTestCase {
         app.launch()
 
         openConversation(in: app)
-        let reasoning = app.buttons["思考过程"]
+        let reasoning = app.buttons["Reasoning"]
         XCTAssertTrue(reasoning.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["思考"].exists)
+        XCTAssertTrue(app.staticTexts["Thinking"].exists)
         reasoning.tap()
-        XCTAssertTrue(app.staticTexts["先核对入口，再检查状态与可见操作。"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Verify the entry point first, then check state and visible actions."].waitForExistence(timeout: 5))
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "chat-reasoning-disclosure"
         screenshot.lifetime = .keepAlways
@@ -1268,12 +1271,12 @@ final class HarnessMobileMarkdownUITests: XCTestCase {
 
         openConversation(in: app)
 
-        let table = app.scrollViews["表格，3 行，5 列"]
+        let table = app.scrollViews["Table, 3 rows, 5 columns"]
         XCTAssertTrue(table.waitForExistence(timeout: 10))
-        XCTAssertEqual(table.label, "表格，3 行，5 列")
-        XCTAssertTrue(app.staticTexts["工具能力对照"].exists)
+        XCTAssertEqual(table.label, "Table, 3 rows, 5 columns")
+        XCTAssertTrue(app.staticTexts["Tool Capability Comparison"].exists)
         table.swipeLeft(velocity: .slow)
-        XCTAssertTrue(app.staticTexts["解释"].exists)
+        XCTAssertTrue(app.staticTexts["Notes"].exists)
     }
 
     func testOneMillionCharacterMarkdownRendersFirstSegmentAndCopiesCompleteSource() {
@@ -1298,9 +1301,9 @@ final class HarnessMobileMarkdownUITests: XCTestCase {
         XCTAssertTrue(app.links["OpenAI"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["quoted line one"].exists)
         XCTAssertTrue(app.staticTexts["let localOnly = true"].exists)
-        XCTAssertTrue(app.scrollViews["表格，2 行，2 列"].exists)
+        XCTAssertTrue(app.scrollViews["Table, 2 rows, 2 columns"].exists)
 
-        let copy = app.buttons["复制回答"]
+        let copy = app.buttons["Copy"]
         XCTAssertTrue(copy.waitForExistence(timeout: 5))
         XCTAssertTrue(copy.isHittable)
         copy.tap()
@@ -1330,7 +1333,7 @@ final class HarnessMobilePlanReviewUITests: XCTestCase {
         XCTAssertTrue(app.buttons["plan-review-chat"].isHittable)
         XCTAssertTrue(app.buttons["plan-review-refuse"].isHittable)
         XCTAssertTrue(app.buttons["plan-review-approve"].isHittable)
-        XCTAssertTrue(app.staticTexts["计划审阅"].exists)
+        XCTAssertTrue(app.staticTexts["Plan Review"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "plan-review"
         screenshot.lifetime = .keepAlways
@@ -1389,7 +1392,7 @@ final class HarnessMobileISHTerminalUITests: XCTestCase {
         let stopButton = app.buttons["ish-stop-command"]
         XCTAssertTrue(stopButton.waitForExistence(timeout: 5))
         stopButton.tap()
-        XCTAssertTrue(app.staticTexts["已停止"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Stopped"].waitForExistence(timeout: 15))
     }
 
     func testLiveMarketplaceEndpointsOnPhysicalDevice() throws {
@@ -1500,15 +1503,15 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.navigationBars["社区插件"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.navigationBars["Community Plugins"].waitForExistence(timeout: 15))
         let trace = app.descendants(matching: .any)["community-plugin-compilation-summary"]
         XCTAssertTrue(trace.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["失败"].exists)
-        XCTAssertFalse(app.staticTexts["已结束"].exists)
-        XCTAssertTrue(app.staticTexts["下载源码"].exists)
-        let validation = app.staticTexts["Swift 校验"]
+        XCTAssertTrue(app.staticTexts["Failed"].exists)
+        XCTAssertFalse(app.staticTexts["Finished"].exists)
+        XCTAssertTrue(app.staticTexts["Download Source"].exists)
+        let validation = app.staticTexts["Swift Validation"]
         XCTAssertTrue(validation.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["拒绝未审计的 Web client contribution。"].exists)
+        XCTAssertTrue(app.staticTexts["Rejected unaudited Web client contribution."].exists)
         let summaryScreen = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         summaryScreen.name = "plugin-compilation-failure-summary"
         summaryScreen.lifetime = .keepAlways
@@ -1518,9 +1521,9 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         scrollUntilHittable(logs, in: app)
         XCTAssertTrue(logs.isHittable)
         logs.tap()
-        let sourceSnapshotLog = app.staticTexts["源码快照已完成，凭据仍留在 Keychain。"]
+        let sourceSnapshotLog = app.staticTexts["Source snapshot complete; credentials remain in Keychain."]
         XCTAssertTrue(sourceSnapshotLog.waitForExistence(timeout: 5))
-        let diagnosticTitle = app.staticTexts["结构化诊断 · UNSUPPORTED_CLIENT_CONTRIBUTION"]
+        let diagnosticTitle = app.staticTexts["Structured Diagnostic · UNSUPPORTED_CLIENT_CONTRIBUTION"]
         scrollUntilExists(diagnosticTitle, in: app)
         // The iOS 26 bottom search glass counts as occlusion for hittability;
         // keep scrolling until the title clears it instead of stopping at the
@@ -1528,7 +1531,7 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         scrollUntilHittable(diagnosticTitle, in: app)
         XCTAssertTrue(diagnosticTitle.exists)
         XCTAssertTrue(diagnosticTitle.isHittable)
-        XCTAssertTrue(app.staticTexts["该插件请求 Web client slot；手机端不动态加载 Web 或 Swift 代码。"].exists)
+        XCTAssertTrue(app.staticTexts["This plugin requests a Web client slot; mobile does not dynamically load Web or Swift code."].exists)
         XCTAssertTrue(app.staticTexts["example/unsupported-web-client"].exists)
         let detailsScreen = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         detailsScreen.name = "plugin-compilation-failure-details"
@@ -1549,34 +1552,34 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.navigationBars["社区插件"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.navigationBars["Community Plugins"].waitForExistence(timeout: 15))
 
         let mode = app.segmentedControls["community-plugin-market-mode"]
         XCTAssertTrue(mode.waitForExistence(timeout: 5))
-        XCTAssertTrue(mode.buttons["市场"].isSelected)
+        XCTAssertTrue(mode.buttons["Market"].isSelected)
         XCTAssertTrue(app.descendants(matching: .any)["community-plugin-market-summary"].exists)
         XCTAssertTrue(app.staticTexts["Git Tools"].exists)
         XCTAssertTrue(app.staticTexts["Memory Notes"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["community-plugin-market-error"].exists)
 
-        let search = app.searchFields["搜索插件、分类或仓库"]
+        let search = app.searchFields["Search plugins, categories, or repositories"]
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
         search.typeText("memory")
         XCTAssertTrue(app.staticTexts["Memory Notes"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Git Tools"].exists)
 
-        mode.buttons["已安装"].tap()
-        XCTAssertTrue(mode.buttons["已安装"].isSelected)
+        mode.buttons["Installed"].tap()
+        XCTAssertTrue(mode.buttons["Installed"].isSelected)
         XCTAssertTrue(app.staticTexts["Memory Notes"].waitForExistence(timeout: 5))
 
         let actions = app.buttons["community-plugin-market-actions"]
         XCTAssertTrue(actions.isHittable)
         actions.tap()
-        XCTAssertTrue(app.buttons["刷新目录"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["GitHub 仓库"].exists)
-        XCTAssertTrue(app.buttons["导入 ZIP"].exists)
-        XCTAssertTrue(app.buttons["清理下载缓存"].exists)
+        XCTAssertTrue(app.buttons["Refresh Catalog"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["GitHub Repository"].exists)
+        XCTAssertTrue(app.buttons["Import ZIP"].exists)
+        XCTAssertTrue(app.buttons["Clear Download Cache"].exists)
     }
 
     func testGitHubInstallSheetKeepsRepositoryAndReplaceControlsClear() {
@@ -1590,20 +1593,20 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.navigationBars["社区插件"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.navigationBars["Community Plugins"].waitForExistence(timeout: 15))
         app.buttons["community-plugin-market-actions"].tap()
-        let github = app.buttons["GitHub 仓库"]
+        let github = app.buttons["GitHub Repository"]
         XCTAssertTrue(github.waitForExistence(timeout: 5))
         github.tap()
 
-        XCTAssertTrue(app.navigationBars["安装仓库"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Install Repository"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.textFields["https://github.com/owner/repository"].exists)
-        XCTAssertTrue(app.switches["覆盖同名插件"].exists)
+        XCTAssertTrue(app.switches["Replace Plugin with Same Name"].exists)
         XCTAssertTrue(app.staticTexts.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "先在手机内分析源码")
+            NSPredicate(format: "label BEGINSWITH %@", "Source is analyzed on device")
         ).firstMatch.exists)
-        XCTAssertTrue(app.buttons["取消"].exists)
-        XCTAssertFalse(app.buttons["安装"].isEnabled)
+        XCTAssertTrue(app.buttons["Cancel"].exists)
+        XCTAssertFalse(app.buttons["Install"].isEnabled)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "plugin-github-install-sheet"
         screenshot.lifetime = .keepAlways
@@ -1621,24 +1624,24 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.navigationBars["社区插件"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.navigationBars["Community Plugins"].waitForExistence(timeout: 15))
         let plugin = app.staticTexts["Git Tools"]
         XCTAssertTrue(plugin.waitForExistence(timeout: 5))
         plugin.tap()
 
         XCTAssertTrue(app.navigationBars["Git Tools"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["名称"].exists)
+        XCTAssertFalse(app.staticTexts["Name"].exists)
         XCTAssertTrue(app.descendants(matching: .any).matching(
-            NSPredicate(format: "label CONTAINS %@", "工具与能力")
+            NSPredicate(format: "label CONTAINS %@", "Tools & Capabilities")
         ).firstMatch.exists)
         XCTAssertTrue(app.descendants(matching: .any).matching(
-            NSPredicate(format: "label CONTAINS %@", "Host 兼容")
+            NSPredicate(format: "label CONTAINS %@", "Host Compatible")
         ).firstMatch.exists)
         XCTAssertTrue(app.descendants(matching: .any).matching(
-            NSPredicate(format: "label CONTAINS %@", "原生优先")
+            NSPredicate(format: "label CONTAINS %@", "Native First")
         ).firstMatch.exists)
         XCTAssertTrue(app.staticTexts["https://github.com/example/git-tools"].exists)
-        XCTAssertTrue(app.buttons["原生优先安装"].exists)
+        XCTAssertTrue(app.buttons["Install (Native First)"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "community-plugin-catalog-detail"
         screenshot.lifetime = .keepAlways
@@ -1656,19 +1659,19 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.navigationBars["社区插件"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.navigationBars["Community Plugins"].waitForExistence(timeout: 15))
         let mode = app.segmentedControls["community-plugin-market-mode"]
         XCTAssertTrue(mode.waitForExistence(timeout: 5))
-        mode.buttons["已安装"].tap()
+        mode.buttons["Installed"].tap()
         let plugin = app.staticTexts["File Memory Native"]
         XCTAssertTrue(plugin.waitForExistence(timeout: 5))
         plugin.tap()
 
         XCTAssertTrue(app.navigationBars["File Memory Native"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["入口数"].exists)
+        XCTAssertTrue(app.staticTexts["Entries"].exists)
         XCTAssertFalse(app.staticTexts["Loader entries"].exists)
-        XCTAssertTrue(app.switches["启用插件"].exists)
-        XCTAssertTrue(app.buttons["插件设置"].exists)
+        XCTAssertTrue(app.switches["Enable Plugin"].exists)
+        XCTAssertTrue(app.buttons["Plugin Settings"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "installed-plugin-detail"
         screenshot.lifetime = .keepAlways
@@ -1686,23 +1689,23 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.navigationBars["社区插件"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.navigationBars["Community Plugins"].waitForExistence(timeout: 15))
         let mode = app.segmentedControls["community-plugin-market-mode"]
         XCTAssertTrue(mode.waitForExistence(timeout: 5))
-        mode.buttons["已安装"].tap()
+        mode.buttons["Installed"].tap()
         let plugin = app.staticTexts["File Memory Native"]
         XCTAssertTrue(plugin.waitForExistence(timeout: 5))
         plugin.tap()
 
-        let settings = app.buttons["插件设置"]
+        let settings = app.buttons["Plugin Settings"]
         XCTAssertTrue(settings.waitForExistence(timeout: 5))
         settings.tap()
         XCTAssertTrue(app.navigationBars["File Memory Native"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["native-agent-settings-editor"].exists)
-        XCTAssertTrue(app.staticTexts["运行方式"].exists)
-        XCTAssertFalse(app.staticTexts["插件"].exists)
-        XCTAssertTrue(app.staticTexts["最大回忆字符数"].exists)
-        XCTAssertTrue(app.buttons["恢复全部默认值"].exists)
+        XCTAssertTrue(app.staticTexts["Runtime"].exists)
+        XCTAssertFalse(app.staticTexts["Plugin"].exists)
+        XCTAssertTrue(app.staticTexts["Max Recall Characters"].exists)
+        XCTAssertTrue(app.buttons["Restore All Defaults"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "native-agent-plugin-settings"
         screenshot.lifetime = .keepAlways
@@ -1721,11 +1724,11 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         app.launch()
 
         openConversation(in: app)
-        app.buttons["会话选项"].tap()
-        XCTAssertTrue(app.buttons["定时提醒"].waitForExistence(timeout: 5))
-        app.buttons["定时提醒"].tap()
+        app.buttons["Session Options"].tap()
+        XCTAssertTrue(app.buttons["Scheduled Reminders"].waitForExistence(timeout: 5))
+        app.buttons["Scheduled Reminders"].tap()
 
-        XCTAssertTrue(app.navigationBars["定时提醒"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Scheduled Reminders"].waitForExistence(timeout: 5))
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "schedule-panel"
         screenshot.lifetime = .keepAlways
@@ -1817,12 +1820,12 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         app.launchEnvironment["UITEST_API_KEY"] = apiKey
         app.launch()
 
-        XCTAssertTrue(app.navigationBars["社区插件"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.navigationBars["Community Plugins"].waitForExistence(timeout: 15))
         // A fresh reset starts with an empty directory; the refresh control
         // repopulates it within a few seconds on a live network.
         let firstEntry = app.staticTexts["Git Tools"]
         if !firstEntry.waitForExistence(timeout: 10) {
-            app.buttons["刷新目录"].firstMatch.tap()
+            app.buttons["Refresh Catalog"].firstMatch.tap()
         }
         XCTAssertTrue(firstEntry.waitForExistence(timeout: 20))
         // Git Tools starts uninstalled in a reset container, so this drives
@@ -1832,14 +1835,14 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         app.staticTexts["Git Tools"].tap()
 
         // The detail sheet gates the install behind a confirmation dialog;
-        // the button label reflects the strategy (原生优先安装 / iSH 安装).
+        // the button label reflects the strategy ("Install (Native First)" / iSH install).
         let install = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "安装")
+            NSPredicate(format: "label CONTAINS %@", "Install")
         ).firstMatch
         XCTAssertTrue(install.waitForExistence(timeout: 10))
         install.tap()
         let confirm = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "安装")
+            NSPredicate(format: "label CONTAINS %@", "Install")
         ).firstMatch
         if confirm.waitForExistence(timeout: 3) {
             confirm.tap()
@@ -1847,7 +1850,7 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
 
         // Compilation is a real model round trip; allow a generous budget.
         let installedLabel = app.staticTexts.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "已安装")
+            NSPredicate(format: "label BEGINSWITH %@", "Installed")
         ).firstMatch
         let deadline = Date().addingTimeInterval(300)
         var sawInstalled = false
@@ -1883,7 +1886,7 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
-        let toolsButton = app.buttons["工具"]
+        let toolsButton = app.buttons["Tools"]
         XCTAssertTrue(toolsButton.waitForExistence(timeout: 5))
         toolsButton.tap()
 
@@ -1894,7 +1897,7 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         let marketplaceButton = app.buttons["community-plugin-market"]
         XCTAssertTrue(marketplaceButton.waitForExistence(timeout: 15))
         marketplaceButton.tap()
-        XCTAssertTrue(app.navigationBars["社区插件"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Community Plugins"].waitForExistence(timeout: 10))
 
         let status = app.descendants(matching: .any)["community-plugin-market-status"]
         _ = status.waitForExistence(timeout: 3)
@@ -1907,7 +1910,7 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
             "The real market/catalog RPC surfaced an error."
         )
         XCTAssertTrue(
-            app.staticTexts["社区目录"].waitForExistence(timeout: 10),
+            app.staticTexts["Community Catalog"].waitForExistence(timeout: 10),
             "The real market/catalog RPC returned no catalog rows."
         )
     }
@@ -1925,10 +1928,10 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
-        let toolsButton = app.buttons["工具"]
+        let toolsButton = app.buttons["Tools"]
         XCTAssertTrue(toolsButton.waitForExistence(timeout: 5))
         toolsButton.tap()
-        XCTAssertTrue(app.navigationBars["工具"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Tools"].waitForExistence(timeout: 5))
 
         let pluginsButton = app.buttons["tool-route-plugins"]
         XCTAssertTrue(pluginsButton.waitForExistence(timeout: 5))
@@ -1943,9 +1946,9 @@ final class HarnessMobilePluginManagementUITests: XCTestCase {
         let addPlugin = app.buttons["add-plugin-menu"]
         XCTAssertTrue(addPlugin.exists)
         addPlugin.tap()
-        app.buttons["iSH JavaScript 插件"].tap()
+        app.buttons["iSH JavaScript Plugin"].tap()
 
-        XCTAssertTrue(app.navigationBars["iSH 插件"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["iSH Plugin"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.textFields["ish-plugin-name"].exists)
         XCTAssertTrue(app.textFields["ish-plugin-purpose"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["ish-plugin-host-code"].exists)
@@ -1957,7 +1960,7 @@ private func openConversation(in app: XCUIApplication) {
     XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
 
     let activeConversation = app.buttons.matching(
-        NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "新会话", "当前")
+        NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "New Session", "Current")
     ).firstMatch
     if activeConversation.waitForExistence(timeout: 3), activeConversation.isHittable {
         activeConversation.tap()
@@ -1968,19 +1971,19 @@ private func openConversation(in app: XCUIApplication) {
         if activeConversation.waitForExistence(timeout: 2), activeConversation.isHittable {
             activeConversation.tap()
         } else {
-            let newProject = app.buttons["新建项目"]
+            let newProject = app.buttons["New Project"]
             XCTAssertTrue(newProject.waitForExistence(timeout: 5))
             newProject.tap()
         }
     }
 
-    XCTAssertTrue(app.buttons["会话选项"].waitForExistence(timeout: 15))
+    XCTAssertTrue(app.buttons["Session Options"].waitForExistence(timeout: 15))
 }
 
 @MainActor
 private func openTerminal(in app: XCUIApplication) {
     XCTAssertTrue(app.navigationBars["Harness"].waitForExistence(timeout: 15))
-    let toolsButton = app.buttons["工具"]
+    let toolsButton = app.buttons["Tools"]
     XCTAssertTrue(toolsButton.waitForExistence(timeout: 5))
     toolsButton.tap()
     let terminalButton = app.descendants(matching: .any)["tool-route-terminal"]

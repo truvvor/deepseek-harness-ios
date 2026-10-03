@@ -10,19 +10,19 @@ extension AppModel {
         isConfigured = true
         messages = [
             AgentMessage.assistant("""
-            ## 工具能力对照
+            ## Tool Capability Comparison
 
-            | 能力 | 桌面端 | 手机端 | 状态 | 解释 |
+            | Capability | Desktop | Mobile | Status | Notes |
             | :--- | :----: | :----: | ----: | :--- |
-            | **文件工具** | 支持 | 支持 | 100% | 工作目录内直接读写 |
-            | Web 搜索 | 支持 | 支持 | 95% | 手机直连并发查询，不经过服务器执行 |
+            | **File Tools** | Supported | Supported | 100% | Direct read/write inside the working directory |
+            | Web Search | Supported | Supported | 95% | Concurrent queries direct from the phone, no server execution |
             """)
         ]
     }
 
     func presentLongConversationForUITesting() {
         messages = (0..<1_000).map { index in
-            let payload = "长对话性能夹具"
+            let payload = "Long conversation performance fixture"
             if index.isMultiple(of: 2) {
                 return AgentMessage.user("perf-message-\(index) \(payload)")
             }
@@ -41,7 +41,7 @@ extension AppModel {
             )
         }
         var presentation = uiTestingRunPresentation()
-        presentation.streamingText = String(repeating: "流式尾部 ", count: 160)
+        presentation.streamingText = String(repeating: "Streaming tail ", count: 160)
             + "perf-stream-tail"
         presentation.streamingPresentationRevision &+= 1
         selectedRunPresentation = presentation
@@ -50,19 +50,19 @@ extension AppModel {
     func presentChatErrorForUITesting() {
         isConfigured = true
         messages = [
-            AgentMessage.user("继续完成当前任务"),
-            AgentMessage.assistant("当前进度已经保留在这个会话里。")
+            AgentMessage.user("Continue the current task"),
+            AgentMessage.assistant("Current progress is saved in this session.")
         ]
-        errorMessage = "切换应用后连接中断，请重试上一条消息。"
+        errorMessage = "The connection was interrupted after switching apps. Retry the last message."
     }
 
     func presentReasoningForUITesting() {
         isConfigured = true
         messages = [
-            AgentMessage.user("检查当前实现"),
+            AgentMessage.user("Review the current implementation"),
             AgentMessage.assistant(
-                "检查完成，没有修改模型原始推理内容。",
-                reasoning: "先核对入口，再检查状态与可见操作。"
+                "Review complete. The model's original reasoning was not modified.",
+                reasoning: "Verify the entry point first, then check state and visible actions."
             )
         ]
     }
@@ -82,7 +82,7 @@ extension AppModel {
             for: firstIdentity
         )
 
-        await createConversation(title: "并发会话 B")
+        await createConversation(title: "Concurrent Session B")
         guard let secondSessionID = activeSessionID else { return }
         let secondIdentity = await sessionRunRegistry.allocateIdentity(sessionID: secondSessionID)
         let second = try? await sessionRunRegistry.register(identity: secondIdentity) {
@@ -269,8 +269,8 @@ extension AppModel {
                     name: "Git Tools",
                     repositoryURL: "https://github.com/example/git-tools",
                     repositoryKey: "example/git-tools",
-                    description: "在本机 iSH 中整理提交、分支和变更摘要。",
-                    category: "工具与能力",
+                    description: "Organize commits, branches, and change summaries in on-device iSH.",
+                    category: "Tools & Capabilities",
                     compatibility: .supported,
                     unsupportedReason: nil,
                     installed: false,
@@ -282,10 +282,10 @@ extension AppModel {
                     name: "Memory Notes",
                     repositoryURL: "https://github.com/example/memory-notes",
                     repositoryKey: "example/memory-notes",
-                    description: "为 Agent 提供可插拔的本地 Markdown 记忆索引。",
-                    category: "记忆",
+                    description: "Provides a pluggable local Markdown memory index for the Agent.",
+                    category: "Memory",
                     compatibility: .review,
-                    unsupportedReason: "安装时会在手机内校验 Host 服务兼容性。",
+                    unsupportedReason: "Host service compatibility is verified on the phone during installation.",
                     installed: true,
                     installedPluginID: "memory-notes",
                     installedVersion: "1.2.0"
@@ -295,8 +295,8 @@ extension AppModel {
                     name: "File Memory Native",
                     repositoryURL: "https://github.com/example/file-memory",
                     repositoryKey: "example/file-memory",
-                    description: "按对话隔离、可动态注入上下文的原生文件记忆插件。",
-                    category: "记忆",
+                    description: "A native file memory plugin, isolated per conversation, that can dynamically inject context.",
+                    category: "Memory",
                     compatibility: .supported,
                     unsupportedReason: nil,
                     installed: true,
@@ -308,10 +308,10 @@ extension AppModel {
                     name: "Desktop Theme",
                     repositoryURL: "https://github.com/example/desktop-theme",
                     repositoryKey: "example/desktop-theme",
-                    description: "仅提供桌面 Web Client 主题，手机 Host 不执行。",
-                    category: "主题与外观",
+                    description: "Provides only a desktop Web Client theme; the mobile Host does not run it.",
+                    category: "Themes & Appearance",
                     compatibility: .unsupported,
-                    unsupportedReason: "该分类主要注入 DSH 桌面 Web UI，当前手机端不兼容。",
+                    unsupportedReason: "This category mainly injects into the DSH desktop Web UI and is not currently compatible with mobile.",
                     installed: false,
                     installedPluginID: nil,
                     installedVersion: nil
@@ -323,7 +323,7 @@ extension AppModel {
                 id: "memory-notes",
                 name: "Memory Notes",
                 version: "1.2.0",
-                description: "为 Agent 提供可插拔的本地 Markdown 记忆索引。",
+                description: "Provides a pluggable local Markdown memory index for the Agent.",
                 license: "MIT",
                 source: ISHMarketplacePluginSource(
                     kind: .market,
@@ -342,7 +342,7 @@ extension AppModel {
             id: "native-agent.file-memory",
             name: "File Memory Native",
             version: "1.0.0-native",
-            description: "按对话隔离的原生文件记忆插件。",
+            description: "A native file memory plugin isolated per conversation.",
             source: ISHMarketplacePluginSource(
                 kind: .github,
                 location: "https://github.com/example/file-memory"
@@ -370,8 +370,8 @@ extension AppModel {
                     "properties": .object([
                         "maxRecallChars": .object([
                             "type": .string("integer"),
-                            "title": .string("最大回忆字符数"),
-                            "description": .string("单次注入到上下文的字符上限。"),
+                            "title": .string("Max Recall Characters"),
+                            "description": .string("Maximum characters injected into context at once."),
                             "minimum": .number(256),
                             "maximum": .number(32_768),
                             "default": .number(6_000)
@@ -386,8 +386,8 @@ extension AppModel {
             tools: [],
             toolGuards: [],
             compatibilityNotes: [
-                "桌面 Node fs 已替换为 iPhone 工作区文件系统。",
-                "每个对话使用独立存储目录。"
+                "Desktop Node fs has been replaced with the iPhone workspace file system.",
+                "Each conversation uses its own storage directory."
             ]
         )
         nativeAgentPlugins = [nativePlugin]
@@ -409,14 +409,14 @@ extension AppModel {
                         "properties": .object([
                             "autoIndex": .object([
                                 "type": .string("boolean"),
-                                "title": .string("自动索引"),
-                                "description": .string("保存文件后自动更新本地记忆索引。"),
+                                "title": .string("Auto Index"),
+                                "description": .string("Automatically updates the local memory index after saving files."),
                                 "default": .bool(true)
                             ]),
                             "maxItems": .object([
                                 "type": .string("integer"),
-                                "title": .string("最大记录数"),
-                                "description": .string("单个命名空间保留的记录上限。"),
+                                "title": .string("Max Records"),
+                                "description": .string("Maximum records kept per namespace."),
                                 "minimum": .number(10),
                                 "maximum": .number(500),
                                 "default": .number(50)
@@ -447,35 +447,35 @@ extension AppModel {
             now: timestamp
         )
         trace.finishedAt = timestamp.addingTimeInterval(12)
-        trace.outcome = "失败：检测到未审计的 Web client contribution。"
+        trace.outcome = "Failed: unaudited Web client contribution detected."
         trace.diagnostic = NativeAgentCompilationDiagnostic(
             code: "UNSUPPORTED_CLIENT_CONTRIBUTION",
             stage: NativePluginCompilationStage.validation.rawValue,
-            message: "该插件请求 Web client slot；手机端不动态加载 Web 或 Swift 代码。",
+            message: "This plugin requests a Web client slot; mobile does not dynamically load Web or Swift code.",
             retryable: false,
-            suggestedAction: "删除 Web client contribution，改用受控 native manifest 后重新编译。"
+            suggestedAction: "Remove the Web client contribution, switch to a controlled native manifest, and recompile."
         )
         trace.steps = trace.steps.map { step in
             var updated = step
             switch step.stage {
             case .sourceAcquisition:
                 updated.state = .succeeded
-                updated.detail = "源码快照已完成，凭据仍留在 Keychain。"
+                updated.detail = "Source snapshot complete; credentials remain in Keychain."
             case .sourceAnalysis:
                 updated.state = .succeeded
-                updated.detail = "已识别插件贡献和本机 Host 边界。"
+                updated.detail = "Plugin contributions and on-device Host boundaries identified."
             case .adaptability:
                 updated.state = .succeeded
-                updated.detail = "核心能力可投影为受控原生清单。"
+                updated.detail = "Core capabilities can be projected into a controlled native manifest."
             case .modelCompilation:
                 updated.state = .succeeded
-                updated.detail = "Agent 已返回候选原生插件清单。"
+                updated.detail = "Agent returned a candidate native plugin manifest."
             case .validation:
                 updated.state = .failed
-                updated.detail = "拒绝未审计的 Web client contribution。"
+                updated.detail = "Rejected unaudited Web client contribution."
             case .nativeInstallation, .ishFallback:
                 updated.state = .skipped
-                updated.detail = "校验失败，未继续执行。"
+                updated.detail = "Validation failed; execution stopped."
             }
             updated.updatedAt = timestamp
             return updated
@@ -486,14 +486,14 @@ extension AppModel {
                 timestamp: timestamp,
                 stage: .sourceAcquisition,
                 state: .succeeded,
-                message: "源码快照已完成，凭据仍留在 Keychain。"
+                message: "Source snapshot complete; credentials remain in Keychain."
             ),
             NativePluginCompilationLogEntry(
                 id: UUID(uuidString: "00000000-0000-0000-0000-000000000010")!,
                 timestamp: timestamp.addingTimeInterval(12),
                 stage: .validation,
                 state: .failed,
-                message: "拒绝未审计的 Web client contribution。"
+                message: "Rejected unaudited Web client contribution."
             ),
         ]
         nativePluginCompilationTrace = trace
