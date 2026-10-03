@@ -48,9 +48,20 @@ final class BridgeSessionSyncTests: XCTestCase {
         BridgeSessionMirrorStore(fileURL: root.appendingPathComponent("bridge-sessions.json"))
     }
 
+    private final class LiveLog: @unchecked Sendable {
+        private let lock = NSLock()
+        private(set) var updates: [BridgeLiveUpdate] = []
+
+        func append(_ update: BridgeLiveUpdate) {
+            lock.lock(); defer { lock.unlock() }
+            updates.append(update)
+        }
+    }
+
     private func makeSync(
         refresher: CountingRefresher,
-        root: URL
+        root: URL,
+        liveHandler: BridgeLiveHandler? = nil
     ) throws -> BridgeSessionSync {
         let client = BridgeClient(
             configuration: try BridgeClientConfiguration(
@@ -61,7 +72,12 @@ final class BridgeSessionSyncTests: XCTestCase {
             ),
             tokenProvider: { "bridge-sync-test-token" }
         )
-        return BridgeSessionSync(client: client, refresher: refresher, mappings: makeStore(root))
+        return BridgeSessionSync(
+            client: client,
+            refresher: refresher,
+            mappings: makeStore(root),
+            liveHandler: liveHandler
+        )
     }
 
     private func frames(_ json: [String]) throws -> AsyncThrowingStream<BridgeStreamFrame, Error> {
@@ -108,6 +124,43 @@ final class BridgeSessionSyncTests: XCTestCase {
         // flushed together by `turn/end`.
         let refreshed = await refresher.refreshedSessionIDs
         XCTAssertEqual(refreshed, [Self.bridgeSessionID, Self.bridgeSessionID])
+    }
+
+    func testStreamedTextReachesTheLiveHandlerAndAMessageEventRefreshesAtOnce() async throws {
+        let root = makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let refresher = CountingRefresher()
+        let live = LiveLog()
+        let sync = try makeSync(refresher: refresher, root: root) { _, update in live.append(update) }
+        let clock = ManualClock()
+        let localID = UUID()
+
+        _ = try await sync.consume(
+            try frames([
+                #"{"type":"event","sessionId":"s","seq":10,"time":1,"eventType":"turn/start"}"#,
+                #"{"type":"reasoning","sessionId":"s","text":"hm"}"#,
+                #"{"type":"delta","sessionId":"s","text":"Hel"}"#,
+                #"{"type":"delta","sessionId":"s","text":"lo"}"#,
+                eventFrame(11),
+                #"{"type":"event","sessionId":"s","seq":12,"time":1,"eventType":"assistant/message","role":"assistant","content":"Hello"}"#,
+                #"{"type":"turn/end","sessionId":"s","reason":"stop"}"#,
+                #"{"type":"closed","sessionId":"s"}"#
+            ]),
+            bridgeSessionID: Self.bridgeSessionID,
+            importedThrough: 9,
+            localSessionID: localID,
+            now: { clock.now() }
+        )
+
+        XCTAssertEqual(
+            live.updates,
+            [.turnStarted, .reasoning("hm"), .delta("Hel"), .delta("lo"), .messageCommitted, .turnEnded]
+        )
+        // turn/start refreshes at once (first event), the chunk at seq 11 is
+        // inside the rate limit, the assistant message at seq 12 refreshes
+        // immediately regardless of it, and turn/end has nothing pending left.
+        let refreshed = await refresher.refreshedSessionIDs
+        XCTAssertEqual(refreshed.count, 2)
     }
 
     func testSnapshotAheadOfTheMirrorCatchesUpButACurrentSnapshotDoesNot() async throws {
@@ -171,7 +224,9 @@ final class BridgeSessionSyncTests: XCTestCase {
         XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 0, consecutiveIdlePasses: 0), 0.5)
         XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 0, consecutiveIdlePasses: 1), 2)
         XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 0, consecutiveIdlePasses: 3), 8)
-        XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 0, consecutiveIdlePasses: 50), 32)
+        // Idle reconnects cap at 8 s so a turn the desktop starts is noticed
+        // within seconds.
+        XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 0, consecutiveIdlePasses: 50), 8)
         XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 1, consecutiveIdlePasses: 0), 1)
         XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 4, consecutiveIdlePasses: 9), 8)
         XCTAssertEqual(BridgeSessionSync.reconnectDelay(consecutiveFailures: 50, consecutiveIdlePasses: 0), 16)

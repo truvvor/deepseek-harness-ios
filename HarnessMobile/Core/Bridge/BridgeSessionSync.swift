@@ -27,6 +27,22 @@ extension BridgeSessionImporter: BridgeMirrorRefreshing {
     }
 }
 
+/// Live signal from a followed mirror's SSE stream, delivered to the UI as it
+/// arrives (D-014). Durable history still comes through the importer.
+enum BridgeLiveUpdate: Sendable, Equatable {
+    case turnStarted
+    /// Streamed assistant text, appended to what came before in this turn.
+    case delta(String)
+    /// Streamed reasoning text.
+    case reasoning(String)
+    /// A durable message was written on the desktop; the refresh that follows
+    /// carries it.
+    case messageCommitted
+    case turnEnded
+}
+
+typealias BridgeLiveHandler = @Sendable (UUID, BridgeLiveUpdate) async -> Void
+
 /// What one follow connection observed, which drives the reconnect pacing.
 struct BridgeFollowPass: Sendable, Equatable {
     /// Durable desktop events were announced during this connection.
@@ -51,22 +67,33 @@ struct BridgeFollowPass: Sendable, Equatable {
 actor BridgeSessionSync {
     /// Refresh at most this often while a long desktop turn keeps producing
     /// events, so the mirror stays live without re-reading the export per frame.
-    static let minimumRefreshInterval: TimeInterval = 3
+    static let minimumRefreshInterval: TimeInterval = 1
+
+    /// Desktop event types that are a chat message; their `event` frame
+    /// refreshes the mirror at once instead of waiting for the throttle.
+    static let messageEventTypes: Set<String> = [
+        SessionEventVocabulary.userMessage,
+        SessionEventVocabulary.assistantMessage,
+        SessionEventVocabulary.toolResult
+    ]
 
     private let client: BridgeClient
     private let refresher: any BridgeMirrorRefreshing
     private let mappings: BridgeSessionMirrorStore
+    private let liveHandler: BridgeLiveHandler?
 
     private var rootTasks: [UUID: Task<Void, Never>] = [:]
 
     init(
         client: BridgeClient,
         refresher: any BridgeMirrorRefreshing,
-        mappings: BridgeSessionMirrorStore
+        mappings: BridgeSessionMirrorStore,
+        liveHandler: BridgeLiveHandler? = nil
     ) {
         self.client = client
         self.refresher = refresher
         self.mappings = mappings
+        self.liveHandler = liveHandler
     }
 
     var followedSessionIDs: [UUID] {
@@ -103,14 +130,16 @@ actor BridgeSessionSync {
     ///
     /// Failures back off from 1 s to 16 s. A connection that ended cleanly
     /// without any new event (an idle or finished desktop session, which the
-    /// bridge closes after the snapshot) backs off from 2 s to 32 s, so an idle
-    /// mirror is not polled in a tight loop. Any announced event resets both.
+    /// bridge closes after the snapshot) backs off from 2 s to 8 s: the open
+    /// mirror must notice a turn the desktop starts within seconds, and a
+    /// reconnect against the idle bridge costs one small request. Any
+    /// announced event resets both.
     static func reconnectDelay(consecutiveFailures: Int, consecutiveIdlePasses: Int) -> TimeInterval {
         if consecutiveFailures > 0 {
             return pow(2, Double(min(consecutiveFailures, 5) - 1))
         }
         if consecutiveIdlePasses > 0 {
-            return 2 * pow(2, Double(min(consecutiveIdlePasses, 5) - 1))
+            return 2 * pow(2, Double(min(consecutiveIdlePasses, 3) - 1))
         }
         return 0.5
     }
@@ -151,7 +180,12 @@ actor BridgeSessionSync {
             sessionID: bridgeSessionID,
             since: importedThrough >= 0 ? importedThrough : nil
         )
-        return try await consume(stream, bridgeSessionID: bridgeSessionID, importedThrough: importedThrough)
+        return try await consume(
+            stream,
+            bridgeSessionID: bridgeSessionID,
+            importedThrough: importedThrough,
+            localSessionID: mapping?.localSessionID
+        )
     }
 
     /// Applies one stream's frames. Split out so the pacing and refresh rules can
@@ -160,11 +194,17 @@ actor BridgeSessionSync {
         _ frames: AsyncThrowingStream<BridgeStreamFrame, Error>,
         bridgeSessionID: String,
         importedThrough: Int64,
+        localSessionID: UUID? = nil,
         now: @Sendable () -> Date = { .now }
     ) async throws -> BridgeFollowPass {
         var pass = BridgeFollowPass()
         var pending = false
         var lastRefresh: Date?
+
+        func live(_ update: BridgeLiveUpdate) async {
+            guard let localSessionID, let liveHandler else { return }
+            await liveHandler(localSessionID, update)
+        }
 
         for try await frame in frames {
             try Task.checkCancellation()
@@ -181,21 +221,36 @@ actor BridgeSessionSync {
             case .event:
                 pass.sawEvents = true
                 pending = true
-                if let lastRefresh {
+                let eventType = frame.eventType ?? ""
+                if eventType == SessionEventVocabulary.turnStart {
+                    await live(.turnStarted)
+                }
+                if Self.messageEventTypes.contains(eventType) {
+                    // A chat message landed on the desktop: show it now.
+                    await live(.messageCommitted)
+                    shouldRefresh = true
+                } else if let lastRefresh {
                     shouldRefresh = now().timeIntervalSince(lastRefresh) >= Self.minimumRefreshInterval
                 } else {
                     shouldRefresh = true
                 }
+            case .delta:
+                if let text = frame.text ?? frame.content, !text.isEmpty {
+                    await live(.delta(text))
+                }
+            case .reasoning:
+                if let text = frame.text ?? frame.content, !text.isEmpty {
+                    await live(.reasoning(text))
+                }
             case .turnEnd:
+                await live(.turnEnded)
                 shouldRefresh = pending
             case .closed:
                 shouldRefresh = pending
                 isFinal = true
             case .error:
                 throw BridgeClientError.streamEnded(frame.message)
-            case .unknown, .delta, .reasoning, .usage:
-                // Token deltas are transient; durable history arrives as `event`
-                // frames and is read from the export.
+            case .unknown, .usage:
                 break
             }
             if shouldRefresh {

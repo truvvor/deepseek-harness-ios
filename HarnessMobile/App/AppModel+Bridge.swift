@@ -21,6 +21,13 @@ final class DesktopTurnBackgroundLease {
     }
 }
 
+/// What the desktop is streaming right now in a followed mirror.
+struct DesktopMirrorLiveState: Sendable, Equatable {
+    var text = ""
+    var reasoning = ""
+    var isTurnActive = false
+}
+
 /// One desktop turn in flight for a mirrored session.
 struct DesktopMirrorTurn: Sendable, Equatable {
     var startedAt: Date
@@ -62,6 +69,9 @@ extension AppModel {
         followedMirrorSessionIDs = []
         await coordinator.setMirrorUpdateHandler { [weak self] localSessionID in
             await self?.reloadDesktopMirrorIfActive(localSessionID)
+        }
+        await coordinator.setLiveHandler { [weak self] localSessionID, update in
+            await self?.applyDesktopMirrorLive(localSessionID, update)
         }
         await coordinator.connectIfConfigured()
         await refreshDesktopMirrorProjection()
@@ -180,8 +190,46 @@ extension AppModel {
         return desktopMirrorTurns[activeSessionID] != nil
     }
 
-    /// Chat busy state: a local run or a desktop turn of the selected session.
-    var isChatBusy: Bool { isRunning || activeDesktopTurnInFlight }
+    var activeDesktopMirrorLive: DesktopMirrorLiveState? {
+        guard let activeSessionID, activeSessionIsDesktopMirror else { return nil }
+        return desktopMirrorLive[activeSessionID]
+    }
+
+    /// Chat busy state: a local run, a desktop turn sent from here, or a desktop
+    /// turn observed on the stream.
+    var isChatBusy: Bool {
+        isRunning || activeDesktopTurnInFlight || activeDesktopMirrorLive?.isTurnActive == true
+    }
+
+    /// Applies one SSE signal of a followed mirror to the chat: streamed text
+    /// shows in the streaming bubble until the durable message replaces it.
+    func applyDesktopMirrorLive(_ sessionID: UUID, _ update: BridgeLiveUpdate) {
+        var state = desktopMirrorLive[sessionID] ?? DesktopMirrorLiveState()
+        switch update {
+        case .turnStarted:
+            state = DesktopMirrorLiveState(isTurnActive: true)
+            if desktopMirrorTurns[sessionID] == nil {
+                desktopMirrorTurns[sessionID] = DesktopMirrorTurn(startedAt: .now, pendingPrompts: 0)
+            }
+        case let .delta(text):
+            state.text += text
+            state.isTurnActive = true
+        case let .reasoning(text):
+            state.reasoning += text
+            state.isTurnActive = true
+        case .messageCommitted:
+            // The refresh that follows appends the durable message and clears
+            // the streamed copy in `reloadDesktopMirrorIfActive`.
+            break
+        case .turnEnded:
+            state = DesktopMirrorLiveState()
+            if desktopMirrorTurns[sessionID]?.pendingPrompts == 0 {
+                desktopMirrorTurns[sessionID] = nil
+            }
+        }
+        desktopMirrorLive[sessionID] = state
+        desktopMirrorLiveRevision &+= 1
+    }
 
     var chatRunStartedAt: Date? {
         if let runStartedAt { return runStartedAt }
@@ -268,13 +316,25 @@ extension AppModel {
         guard let session = try? await sessionStore.session(id: sessionID) else { return }
         let tail = session.messages
         let total = session.bridgeMirror?.transcriptMessageCount ?? tail.count
+        var appendedAssistant = false
         if let lastID = messages.last?.id,
            let index = tail.firstIndex(where: { $0.id == lastID }) {
             let fresh = tail[(index + 1)...]
-            if !fresh.isEmpty { messages.append(contentsOf: fresh) }
+            if !fresh.isEmpty {
+                messages.append(contentsOf: fresh)
+                appendedAssistant = fresh.contains { $0.role == .assistant }
+            }
         } else {
             messages = tail
             desktopMirrorLoadedStart = max(0, total - tail.count)
+            appendedAssistant = true
+        }
+        // The durable assistant message now stands where its streamed text was.
+        if appendedAssistant, var live = desktopMirrorLive[sessionID], !live.text.isEmpty || !live.reasoning.isEmpty {
+            live.text = ""
+            live.reasoning = ""
+            desktopMirrorLive[sessionID] = live
+            desktopMirrorLiveRevision &+= 1
         }
         await refreshTrajectory()
     }
@@ -407,6 +467,7 @@ extension AppModel {
         for id in removed {
             followedMirrorSessionIDs.remove(id)
             desktopMirrorTurns[id] = nil
+            desktopMirrorLive[id] = nil
         }
         if let activeSessionID, removed.contains(activeSessionID) {
             await reconcileActiveSessionAfterMirrorRemoval()

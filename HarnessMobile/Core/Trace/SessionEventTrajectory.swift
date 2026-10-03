@@ -1741,6 +1741,9 @@ actor SessionEventJSONLStore {
             }
             try fileHandle.synchronize()
             pendingBatches.removeAll(keepingCapacity: true)
+            if !repairsInterruptedTurns {
+                try writeHead()
+            }
         } catch {
             // A write or synchronize failure leaves the barrier uncommitted.
             // Roll back the complete barrier so retrying the same pending
@@ -1801,6 +1804,21 @@ actor SessionEventJSONLStore {
         }
 
         let handle = try FileHandle(forUpdating: fileURL)
+        // An append-only mirror log is never repaired, so its head can be
+        // trusted from the sidecar written at the last flush: no need to decode
+        // tens of MB to learn the next sequence number.
+        if !repairsInterruptedTurns,
+           let head = Self.readHead(for: fileURL),
+           let size = try? handle.seekToEnd(),
+           head.fileSize == size {
+            nextSequence = head.nextSequence
+            durableNextSequence = head.nextSequence
+            events = []
+            metrics = SessionTrajectoryAccumulator()
+            fileHandle = handle
+            isLoaded = true
+            return
+        }
         do {
             let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
             let recovery = try decodeLog(data)
@@ -1833,6 +1851,9 @@ actor SessionEventJSONLStore {
             if !closers.isEmpty {
                 _ = try appendAssigned(closers)
                 try flush()
+            }
+            if !repairsInterruptedTurns {
+                try writeHead()
             }
         } catch {
             try? handle.close()
@@ -1904,6 +1925,29 @@ actor SessionEventJSONLStore {
             truncateTo: UInt64(lineStart),
             needsTrailingNewline: false
         )
+    }
+
+    // MARK: - Mirror head sidecar
+
+    private struct Head: Codable {
+        let nextSequence: UInt64
+        let fileSize: UInt64
+    }
+
+    static func headURL(for fileURL: URL) -> URL {
+        fileURL.appendingPathExtension("head")
+    }
+
+    private static func readHead(for fileURL: URL) -> Head? {
+        guard let data = try? Data(contentsOf: headURL(for: fileURL)) else { return nil }
+        return try? JSONDecoder().decode(Head.self, from: data)
+    }
+
+    private func writeHead() throws {
+        guard let fileHandle else { return }
+        let size = try fileHandle.offset()
+        let head = Head(nextSequence: durableNextSequence, fileSize: size)
+        try JSONEncoder().encode(head).write(to: Self.headURL(for: fileURL), options: .atomic)
     }
 
     private func assertSupported(_ event: SessionEvent) throws {

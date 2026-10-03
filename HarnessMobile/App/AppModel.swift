@@ -197,10 +197,14 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     }
     private(set) var messagesRevision = 0
     var selectedRunPresentation: SessionRunPresentation?
-    var streamingText: String { selectedRunPresentation?.streamingText ?? "" }
-    var streamingReasoning: String { selectedRunPresentation?.streamingReasoning ?? "" }
+    var streamingText: String {
+        selectedRunPresentation?.streamingText ?? activeDesktopMirrorLive?.text ?? ""
+    }
+    var streamingReasoning: String {
+        selectedRunPresentation?.streamingReasoning ?? activeDesktopMirrorLive?.reasoning ?? ""
+    }
     var streamingPresentationRevision: UInt64 {
-        selectedRunPresentation?.streamingPresentationRevision ?? 0
+        (selectedRunPresentation?.streamingPresentationRevision ?? 0) &+ desktopMirrorLiveRevision
     }
     var isSubmitting = false
     var submissionStatus: String?
@@ -264,6 +268,10 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     /// Transcript position of `messages.first` for the open mirror; the number
     /// of older messages still in the transcript store.
     var desktopMirrorLoadedStart = 0
+    /// Token stream of the desktop turn running in each followed mirror,
+    /// straight from the SSE `delta`/`reasoning` frames (D-014).
+    var desktopMirrorLive: [UUID: DesktopMirrorLiveState] = [:]
+    var desktopMirrorLiveRevision: UInt64 = 0
     @ObservationIgnored var desktopMirrorLastCatchUp: Date?
     @ObservationIgnored var desktopMirrorCatchUpInFlight = false
     @ObservationIgnored var desktopBridgeCoordinator: BridgeMirrorCoordinator?
@@ -7708,6 +7716,13 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             resetTrajectoryProjection()
             return
         }
+        // A mirror's local log is a copy of the desktop's (30 MB for a long
+        // session); folding it into the trajectory outline on every open and
+        // refresh cost more than the chat itself. Mirrors show the chat only.
+        if activeSessionIsDesktopMirror {
+            if trajectorySessionID != activeSessionID { resetTrajectoryProjection() }
+            return
+        }
         await refreshTrajectory(for: activeSessionID)
         if let identity = selectedRunPresentation?.identity,
            identity.sessionID == activeSessionID {
@@ -9498,7 +9513,10 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     func refreshSessionSummaries() async {
         do {
             await refreshSessionRunProjection()
-            _ = try await sessionQueryReadModel.rebuild(persistence: trajectoryRepository)
+            // The search index is rebuilt by the search entry points on demand
+            // (`searchConversations`, `session/search`) and refreshed per session
+            // by the bridge importer. Rebuilding it here decoded every local log
+            // (tens of MB for desktop mirrors) on each list refresh.
             sessions = try await sessionStore.listSessions()
                 .sorted { $0.updatedAt > $1.updatedAt }
             refreshLocalStateProjection()

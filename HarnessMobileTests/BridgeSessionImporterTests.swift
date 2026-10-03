@@ -815,6 +815,37 @@ final class BridgeSessionImporterTests: XCTestCase {
         XCTAssertEqual(all.map(\.content), ["one", "two", "three", "four"])
     }
 
+    func testMirrorLogReopensFromItsHeadSidecarWithoutDecodingTheLog() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+        let first = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: report.events,
+            lastBridgeSequence: report.lastBridgeSequence
+        )
+        let logURL = harness.root.appendingPathComponent(first.localSessionID.uuidString.lowercased() + ".jsonl")
+        let headURL = SessionEventJSONLStore.headURL(for: logURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: headURL.path))
+
+        // A fresh repository over the same files: the head comes from the
+        // sidecar, appending continues the sequence, and the full read still
+        // sees every event.
+        let reopened = SessionTrajectoryRepository(root: harness.root)
+        let next = try await reopened.nextSequence(sessionID: first.localSessionID)
+        XCTAssertEqual(next, 10)
+        let more = try userMessageEvents(count: 2, startingAt: 10)
+        let envelope = try HarnessSyncEnvelope(sessionID: first.localSessionID, baseSequence: 9, events: more)
+        _ = try await reopened.admitSyncEnvelope(envelope)
+        let all = try await reopened.allEvents(sessionID: first.localSessionID)
+        XCTAssertEqual(all.map(\.seq), (0...11).map { UInt64($0) })
+        let again = SessionTrajectoryRepository(root: harness.root)
+        let nextAgain = try await again.nextSequence(sessionID: first.localSessionID)
+        XCTAssertEqual(nextAgain, 12)
+    }
+
     // MARK: - Failure handling
 
     func testPartialImportIsRolledBackWhenAdmissionFails() async throws {

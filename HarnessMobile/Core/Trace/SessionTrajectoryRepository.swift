@@ -255,6 +255,10 @@ actor SessionTrajectoryRepository: SessionPersistence {
         if FileManager.default.fileExists(atPath: marker.path) {
             try FileManager.default.removeItem(at: marker)
         }
+        let head = SessionEventJSONLStore.headURL(for: fileURL)
+        if FileManager.default.fileExists(atPath: head.path) {
+            try FileManager.default.removeItem(at: head)
+        }
     }
 
     func resetAll() async throws {

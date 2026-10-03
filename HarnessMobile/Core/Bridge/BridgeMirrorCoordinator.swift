@@ -46,6 +46,7 @@ actor BridgeMirrorCoordinator {
     private var importer: BridgeSessionImporter?
     private var sync: BridgeSessionSync?
     private var mirrorUpdateHandler: (@Sendable (UUID) async -> Void)?
+    private var liveHandler: BridgeLiveHandler?
 
     init(
         settings: BridgeSettings,
@@ -213,6 +214,15 @@ actor BridgeMirrorCoordinator {
         mirrorUpdateHandler = handler
     }
 
+    /// Receives the token stream and turn boundaries of followed mirrors.
+    func setLiveHandler(_ handler: BridgeLiveHandler?) {
+        liveHandler = handler
+    }
+
+    private func forwardLive(_ localSessionID: UUID, _ update: BridgeLiveUpdate) async {
+        await liveHandler?(localSessionID, update)
+    }
+
     /// Sends `text` to the desktop agent of the mirrored session and returns
     /// after the desktop turn ends. The mirror is followed for the duration of
     /// the turn so intermediate desktop events (tool calls, partial answers)
@@ -335,7 +345,10 @@ actor BridgeMirrorCoordinator {
         self.sync = BridgeSessionSync(
             client: client,
             refresher: NotifyingMirrorRefresher(importer: importer, coordinator: self),
-            mappings: mappings
+            mappings: mappings,
+            liveHandler: { [weak self] localSessionID, update in
+                await self?.forwardLive(localSessionID, update)
+            }
         )
     }
 
