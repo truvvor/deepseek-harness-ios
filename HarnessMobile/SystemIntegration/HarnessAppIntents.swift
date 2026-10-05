@@ -31,15 +31,15 @@ private enum HarnessAppIntentInbox {
 }
 
 struct ComposeHarnessTaskIntent: AppIntent {
-    static let title: LocalizedStringResource = "在 Harness 中开始任务"
+    static let title: LocalizedStringResource = "Start Task in Harness"
     static let description = IntentDescription(
-        "打开 Harness，并把任务放入输入框。模型请求只会在你确认发送后开始。"
+        "Opens Harness and places the task in the input field. The model request starts only after you confirm sending."
     )
     static let openAppWhenRun = true
 
     @Parameter(
-        title: "任务",
-        description: "要交给 Harness 的任务内容",
+        title: "Task",
+        description: "The task to hand to Harness",
         inputConnectionBehavior: .connectToPreviousIntentResult
     )
     var task: String?
@@ -55,15 +55,15 @@ struct ComposeHarnessTaskIntent: AppIntent {
 }
 
 struct ListHarnessSessionsIntent: AppIntent {
-    static let title: LocalizedStringResource = "列出 Harness 会话"
-    static let description = IntentDescription("列出本机 Harness 会话的标题、ID 和更新时间。")
+    static let title: LocalizedStringResource = "List Harness Sessions"
+    static let description = IntentDescription("Lists the title, ID, and update time of Harness sessions on this device.")
     static let openAppWhenRun = false
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
         let sessions = try await SessionStore().listSessions(includeArchived: false)
             .sorted { $0.updatedAt > $1.updatedAt }
         guard !sessions.isEmpty else {
-            return .result(value: "没有可用会话。")
+            return .result(value: "No sessions available.")
         }
         let formatter = ISO8601DateFormatter()
         let output = sessions.map { session in
@@ -74,20 +74,20 @@ struct ListHarnessSessionsIntent: AppIntent {
 }
 
 struct GetHarnessSessionStatusIntent: AppIntent {
-    static let title: LocalizedStringResource = "获取 Harness 会话状态"
-    static let description = IntentDescription("读取某个本机 Harness 会话的持久化状态和当前运行投影。")
+    static let title: LocalizedStringResource = "Get Harness Session Status"
+    static let description = IntentDescription("Reads the persisted state and current run projection of a Harness session on this device.")
     static let openAppWhenRun = false
 
-    @Parameter(title: "会话 ID")
+    @Parameter(title: "Session ID")
     var sessionID: String
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
         let id = try Self.parseSessionID(sessionID)
         let session = try await SessionStore().session(id: id)
         let isRunning = try await HarnessAppIntentInbox.store.isSessionRunning(id)
-        let state = isRunning ? "运行中" : "空闲"
+        let state = isRunning ? "Running" : "Idle"
         return .result(
-            value: "\(session.title) | \(id.uuidString) | \(state) | 消息 \(session.summary.messageCount) | \(ISO8601DateFormatter().string(from: session.updatedAt))"
+            value: "\(session.title) | \(id.uuidString) | \(state) | Messages \(session.summary.messageCount) | \(ISO8601DateFormatter().string(from: session.updatedAt))"
         )
     }
 
@@ -100,11 +100,11 @@ struct GetHarnessSessionStatusIntent: AppIntent {
 }
 
 struct OpenHarnessSessionIntent: AppIntent {
-    static let title: LocalizedStringResource = "打开 Harness 会话"
-    static let description = IntentDescription("在 Harness 中打开指定的本机会话。")
+    static let title: LocalizedStringResource = "Open Harness Session"
+    static let description = IntentDescription("Opens the specified on-device session in Harness.")
     static let openAppWhenRun = true
 
-    @Parameter(title: "会话 ID")
+    @Parameter(title: "Session ID")
     var sessionID: String
 
     func perform() async throws -> some IntentResult {
@@ -119,11 +119,11 @@ struct OpenHarnessSessionIntent: AppIntent {
 }
 
 struct RetryHarnessSessionIntent: AppIntent {
-    static let title: LocalizedStringResource = "重试 Harness 会话"
-    static let description = IntentDescription("从指定本机会话的最后一条用户消息重新执行。")
+    static let title: LocalizedStringResource = "Retry Harness Session"
+    static let description = IntentDescription("Reruns the specified on-device session from its last user message.")
     static let openAppWhenRun = true
 
-    @Parameter(title: "会话 ID")
+    @Parameter(title: "Session ID")
     var sessionID: String
 
     func perform() async throws -> some IntentResult {
@@ -138,14 +138,14 @@ struct RetryHarnessSessionIntent: AppIntent {
 }
 
 struct SendHarnessPromptIntent: AppIntent {
-    static let title: LocalizedStringResource = "发送 Harness 任务"
-    static let description = IntentDescription("在 Harness 中创建任务并按既有权限和审批策略执行。")
+    static let title: LocalizedStringResource = "Send Harness Task"
+    static let description = IntentDescription("Creates a task in Harness and runs it under the existing permission and approval policy.")
     static let openAppWhenRun = true
 
-    @Parameter(title: "任务")
+    @Parameter(title: "Task")
     var prompt: String
 
-    @Parameter(title: "会话 ID", default: nil)
+    @Parameter(title: "Session ID", default: nil)
     var sessionID: String?
 
     func perform() async throws -> some IntentResult {
@@ -170,43 +170,43 @@ struct HarnessAppShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: ComposeHarnessTaskIntent(),
             phrases: [
-                "用 \(.applicationName) 开始任务",
-                "在 \(.applicationName) 中写任务"
+                "Start a task with \(.applicationName)",
+                "Write a task in \(.applicationName)"
             ],
-            shortTitle: "开始 Harness 任务",
+            shortTitle: "Start Harness Task",
             systemImageName: "bolt.horizontal.circle"
         )
         AppShortcut(
             intent: SendHarnessPromptIntent(),
             phrases: [
-                "用 \(.applicationName) 发送任务",
-                "在 \(.applicationName) 中执行任务"
+                "Send a task with \(.applicationName)",
+                "Run a task in \(.applicationName)"
             ],
-            shortTitle: "发送 Harness 任务",
+            shortTitle: "Send Harness Task",
             systemImageName: "paperplane"
         )
         AppShortcut(
             intent: ListHarnessSessionsIntent(),
-            phrases: ["列出 \(.applicationName) 会话"],
-            shortTitle: "列出 Harness 会话",
+            phrases: ["List \(.applicationName) sessions"],
+            shortTitle: "List Harness Sessions",
             systemImageName: "list.bullet"
         )
         AppShortcut(
             intent: GetHarnessSessionStatusIntent(),
-            phrases: ["获取 \(.applicationName) 会话状态"],
-            shortTitle: "会话状态",
+            phrases: ["Get \(.applicationName) session status"],
+            shortTitle: "Session Status",
             systemImageName: "info.circle"
         )
         AppShortcut(
             intent: OpenHarnessSessionIntent(),
-            phrases: ["打开 \(.applicationName) 会话"],
-            shortTitle: "打开 Harness 会话",
+            phrases: ["Open \(.applicationName) session"],
+            shortTitle: "Open Harness Session",
             systemImageName: "arrow.up.right.square"
         )
         AppShortcut(
             intent: RetryHarnessSessionIntent(),
-            phrases: ["重试 \(.applicationName) 会话"],
-            shortTitle: "重试 Harness 会话",
+            phrases: ["Retry \(.applicationName) session"],
+            shortTitle: "Retry Harness Session",
             systemImageName: "arrow.clockwise"
         )
     }

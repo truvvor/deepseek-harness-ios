@@ -63,7 +63,7 @@ final class WebFetchToolTests: XCTestCase {
             try tool.approvalResources(arguments: arguments),
             ["web:origin:https://example.com"]
         )
-        XCTAssertEqual(tool.summary(arguments: arguments), "从手机访问网页：https://example.com")
+        XCTAssertEqual(tool.summary(arguments: arguments), "Fetch web page from phone: https://example.com")
     }
 
     func testClientReadsTextWithoutCookiesCredentialsOrRealNetwork() async throws {

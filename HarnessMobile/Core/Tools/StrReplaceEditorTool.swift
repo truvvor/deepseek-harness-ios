@@ -76,10 +76,10 @@ struct StrReplaceEditorTool: LocalAgentTool {
                 throw LocalToolError.missingArgument("old_str")
             }
             guard !old.isEmpty else {
-                throw LocalToolError.invalidField(field: "old_str", reason: "必须是非空字符串")
+                throw LocalToolError.invalidField(field: "old_str", reason: "must be a non-empty string")
             }
             if let value = arguments["new_str"], value.stringValue == nil {
-                throw LocalToolError.invalidField(field: "new_str", reason: "必须是字符串")
+                throw LocalToolError.invalidField(field: "new_str", reason: "must be a string")
             }
         case "insert":
             _ = try parsedInsertLine(arguments)
@@ -140,7 +140,7 @@ struct StrReplaceEditorTool: LocalAgentTool {
             guard viewRange == nil else {
                 throw LocalToolError.invalidField(
                     field: "view_range",
-                    reason: "path 指向目录时不允许使用"
+                    reason: "not allowed when path points to a directory"
                 )
             }
             return try await directoryView(target)
@@ -243,7 +243,7 @@ struct StrReplaceEditorTool: LocalAgentTool {
         guard (0...lines.count).contains(line) else {
             throw LocalToolError.invalidField(
                 field: "insert_line",
-                reason: "\(line) 不在 0...\(lines.count) 范围内"
+                reason: "\(line) is not within 0...\(lines.count)"
             )
         }
         let insertion = Self.linesLikeJavaScript(text)
@@ -312,7 +312,7 @@ struct StrReplaceEditorTool: LocalAgentTool {
         guard path == "/workspace" || path.hasPrefix("/workspace/") else {
             throw LocalToolError.invalidField(
                 field: "path",
-                reason: "必须是 /workspace 内的绝对路径"
+                reason: "must be an absolute path inside /workspace"
             )
         }
         return path
@@ -325,7 +325,7 @@ struct StrReplaceEditorTool: LocalAgentTool {
               raw >= 0,
               raw <= Double(Int.max) else {
             if arguments["insert_line"] == nil { throw LocalToolError.missingArgument("insert_line") }
-            throw LocalToolError.invalidField(field: "insert_line", reason: "必须是非负整数")
+            throw LocalToolError.invalidField(field: "insert_line", reason: "must be a non-negative integer")
         }
         return Int(raw)
     }
@@ -333,7 +333,7 @@ struct StrReplaceEditorTool: LocalAgentTool {
     private func parsedViewRange(_ arguments: [String: JSONValue]) throws -> [Int]? {
         guard let value = arguments["view_range"] else { return nil }
         guard case let .array(values) = value, values.count == 2 else {
-            throw LocalToolError.invalidField(field: "view_range", reason: "必须包含两个整数")
+            throw LocalToolError.invalidField(field: "view_range", reason: "must contain two integers")
         }
         return try values.map { value in
             guard case let .number(raw) = value,
@@ -341,7 +341,7 @@ struct StrReplaceEditorTool: LocalAgentTool {
                   raw.rounded() == raw,
                   raw >= Double(Int.min),
                   raw <= Double(Int.max) else {
-                throw LocalToolError.invalidField(field: "view_range", reason: "必须包含两个整数")
+                throw LocalToolError.invalidField(field: "view_range", reason: "must contain two integers")
             }
             return Int(raw)
         }
@@ -359,17 +359,17 @@ struct StrReplaceEditorTool: LocalAgentTool {
             guard (1...allLines.count).contains(initial) else {
                 throw LocalToolError.invalidField(
                     field: "view_range",
-                    reason: "起始行 \(initial) 不在 1...\(allLines.count) 范围内"
+                    reason: "start line \(initial) is not within 1...\(allLines.count)"
                 )
             }
             guard final == -1 || (final ?? -1) >= initial else {
-                throw LocalToolError.invalidField(field: "view_range", reason: "结束行必须为 -1 或不小于起始行")
+                throw LocalToolError.invalidField(field: "view_range", reason: "end line must be -1 or not less than the start line")
             }
             if let final, final != -1 {
                 guard final <= allLines.count else {
                     throw LocalToolError.invalidField(
                         field: "view_range",
-                        reason: "结束行 \(final) 超过总行数 \(allLines.count)"
+                        reason: "end line \(final) exceeds the total line count \(allLines.count)"
                     )
                 }
                 lines = Array(allLines[(initial - 1)..<final])

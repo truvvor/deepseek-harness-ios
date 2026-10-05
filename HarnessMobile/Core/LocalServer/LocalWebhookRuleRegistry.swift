@@ -48,7 +48,7 @@ struct LocalWebhookRule: Codable, Sendable, Equatable, Identifiable {
     }
 
     func renderedPrompt(for event: LocalWebhookEvent) -> String {
-        let fallback = "处理 \(event.providerKind) webhook：\(event.eventName)\n\n\(event.payload.displayText)"
+        let fallback = "Handle \(event.providerKind) webhook: \(event.eventName)\n\n\(event.payload.displayText)"
         guard let prompt, !prompt.isEmpty else { return fallback }
         return prompt
             .replacingOccurrences(of: "{event}", with: event.eventName)
@@ -72,8 +72,8 @@ enum LocalWebhookRuleError: LocalizedError, Sendable, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .invalidRule: "Webhook rule 无效。"
-        case let .duplicateID(id): "Webhook rule 已存在：\(id)"
+        case .invalidRule: "Invalid webhook rule."
+        case let .duplicateID(id): "Webhook rule already exists: \(id)"
         }
     }
 }

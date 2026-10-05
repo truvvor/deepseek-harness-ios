@@ -146,7 +146,7 @@ final class HarnessLiveActivityManager {
         }
 
         let previous = projections.states[runID] ?? HarnessLiveActivityState.make(
-            sessionTitle: "Harness 任务",
+            sessionTitle: "Harness Task",
             phase: phase,
             detail: "",
             completedUnitCount: 0,

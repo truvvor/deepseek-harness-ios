@@ -53,7 +53,7 @@ struct ChatInputBar: View {
 
             if hasStagedImage {
                 HarnessStatusPill(
-                    title: "图片已就绪，可供本机 OCR 工具读取",
+                    title: "Image ready for the on-device OCR tool",
                     systemImage: "text.viewfinder",
                     tint: .accentColor
                 )
@@ -62,7 +62,7 @@ struct ChatInputBar: View {
 
             if hasStagedFile {
                 HarnessStatusPill(
-                    title: "文件已就绪；将只发送类型、名称和大小说明",
+                    title: "File ready; only its type, name, and size will be sent",
                     systemImage: "doc.badge.plus",
                     tint: .orange
                 )
@@ -73,13 +73,13 @@ struct ChatInputBar: View {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text(submissionStatus ?? "正在准备请求")
+                    Text(submissionStatus ?? "Preparing request")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel(submissionStatus ?? "正在准备请求")
+                .accessibilityLabel(submissionStatus ?? "Preparing request")
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background(Color.accentColor.opacity(0.08), in: Capsule())
@@ -107,16 +107,16 @@ struct ChatInputBar: View {
         HStack(alignment: .bottom, spacing: 6) {
             Menu {
                 PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                    Label("选择图片", systemImage: "photo")
+                    Label("Choose Photo", systemImage: "photo")
                 }
 
                 Button(action: onCamera) {
-                    Label("拍照", systemImage: "camera")
+                    Label("Take Photo", systemImage: "camera")
                 }
                 .disabled(!UIImagePickerController.isSourceTypeAvailable(.camera))
 
                 Button(action: onPickFile) {
-                    Label("选择 PDF、音频或视频", systemImage: "doc")
+                    Label("Choose PDF, Audio, or Video", systemImage: "doc")
                 }
             } label: {
                 Image(systemName: "plus")
@@ -124,7 +124,7 @@ struct ChatInputBar: View {
                     .frame(width: 44, height: 44)
                     .background(Color(uiColor: .secondarySystemBackground), in: Circle())
             }
-            .accessibilityLabel("添加内容")
+            .accessibilityLabel("Add Content")
 
             // Commands are a high-frequency developer action. Keep the
             // standalone entry visible at large Dynamic Type and in VoiceOver.
@@ -135,16 +135,16 @@ struct ChatInputBar: View {
                     .background(Color(uiColor: .secondarySystemBackground), in: Circle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("命令")
-            .accessibilityHint("打开开发者命令")
+            .accessibilityLabel("Commands")
+            .accessibilityHint("Opens developer commands")
 
             TextField(
-                isRunning ? "输入后加入队列" : "输入任务",
+                isRunning ? "Type to add to queue" : "Enter a task",
                 text: $draft,
                 axis: .vertical
             )
             .accessibilityIdentifier("chat-input")
-            .accessibilityLabel(isRunning ? "排队消息" : "任务输入")
+            .accessibilityLabel(isRunning ? "Queued Message" : "Task Input")
             .lineLimit(1...6)
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
@@ -169,8 +169,8 @@ struct ChatInputBar: View {
                         .background(Color.orange.opacity(0.12), in: Circle())
                 }
                 .disabled(!hasDraft || isSubmitting)
-                .accessibilityLabel("作为 steer 发送")
-                .accessibilityHint("在下一个安全步骤改变当前任务方向")
+                .accessibilityLabel("Send as Steer")
+                .accessibilityHint("Redirects the current task at the next safe step")
                 .accessibilityIdentifier("chat-steer-button")
             }
 
@@ -196,7 +196,7 @@ struct ChatInputBar: View {
                 )
             }
             .disabled(!canSend || isSubmitting)
-            .accessibilityLabel(isRunning ? "加入队列" : "发送")
+            .accessibilityLabel(isRunning ? "Add to Queue" : "Send")
             .accessibilityIdentifier("chat-send-button")
 
             if isRunning {
@@ -207,7 +207,7 @@ struct ChatInputBar: View {
                         .frame(width: 44, height: 44)
                         .background(Color.red, in: Circle())
                 }
-                .accessibilityLabel("停止当前运行")
+                .accessibilityLabel("Stop Current Run")
                 .accessibilityIdentifier("chat-stop-button")
             }
         }
@@ -270,20 +270,20 @@ private struct InputTriggerPalette: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .background(Color(uiColor: .secondarySystemBackground), in: .rect(cornerRadius: 14))
-        .accessibilityLabel("输入建议")
+        .accessibilityLabel("Input Suggestions")
     }
 
     private func title(for source: String) -> String {
         switch source {
-        case "command": "命令"
+        case "command": "Command"
         case "skill": "Skills"
-        case "file": "文件"
-        case "history": "历史会话"
-        case "subagent": "子 Agent"
-        case "model": "模型"
+        case "file": "File"
+        case "history": "Past Session"
+        case "subagent": "Subagent"
+        case "model": "Model"
         case "agent": "Agent"
-        case "plugin": "插件"
-        case "session": "会话"
+        case "plugin": "Plugin"
+        case "session": "Session"
         default: source
         }
     }
@@ -316,7 +316,7 @@ struct SlashCommandInteractionSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { onResolve(.cancelled) }
+                    Button("Cancel") { onResolve(.cancelled) }
                 }
             }
         }
@@ -328,7 +328,7 @@ struct SlashCommandInteractionSheet: View {
     ) -> some View {
         List {
             Section {
-                TextField("搜索", text: $search)
+                TextField("Search", text: $search)
             } header: {
                 Text(title)
             }
@@ -418,14 +418,14 @@ private struct QueuedInputList: View {
     var body: some View {
         VStack(spacing: 6) {
             HStack {
-                Label("排队 \(inputs.count)", systemImage: "text.line.last.and.arrowtriangle.forward")
+                Label("Queued \(inputs.count)", systemImage: "text.line.last.and.arrowtriangle.forward")
                     .font(.caption.weight(.semibold))
                 Spacer()
                 Button(action: onSteerAll) {
                     Image(systemName: "arrow.triangle.branch")
                 }
                 .disabled(inputs.allSatisfy { $0.disposition == .steer })
-                .accessibilityLabel("将全部排队消息设为 steer")
+                .accessibilityLabel("Convert All Queued Messages to Steer")
             }
             .foregroundStyle(.secondary)
 
@@ -442,26 +442,26 @@ private struct QueuedInputList: View {
                         Button {
                             onEdit(input)
                         } label: {
-                            Label("编辑排队消息", systemImage: "pencil")
+                            Label("Edit Queued Message", systemImage: "pencil")
                         }
 
                         Button {
                             onSteer(input.id)
                         } label: {
-                            Label("将排队消息设为 steer", systemImage: "arrow.triangle.branch")
+                            Label("Convert Queued Message to Steer", systemImage: "arrow.triangle.branch")
                         }
                         .disabled(input.disposition == .steer)
 
                         Button(role: .destructive) {
                             onRemove(input.id)
                         } label: {
-                            Label("移除排队消息", systemImage: "trash")
+                            Label("Remove Queued Message", systemImage: "trash")
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                             .frame(width: 44, height: 44)
                     }
-                    .accessibilityLabel("排队消息操作")
+                    .accessibilityLabel("Queued Message Actions")
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
@@ -487,19 +487,19 @@ struct EditQueuedInputView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(disposition == .steer ? "Steer" : "排队消息") {
-                    TextField("内容", text: $text, axis: .vertical)
+                Section(disposition == .steer ? "Steer" : "Queued Message") {
+                    TextField("Content", text: $text, axis: .vertical)
                         .lineLimit(3...10)
                 }
             }
-            .navigationTitle("编辑消息")
+            .navigationTitle("Edit Message")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存", action: onSave)
+                    Button("Save", action: onSave)
                         .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -526,7 +526,7 @@ struct DirectCommandOutputView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
         }

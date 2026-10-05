@@ -19,15 +19,15 @@ enum ToolRisk: String, Codable, Sendable {
     var title: String {
         switch self {
         case .pure:
-            "只读计算"
+            "Read-Only Compute"
         case .localState:
-            "本地状态"
+            "Local State"
         case .sensitiveRead:
-            "敏感读取"
+            "Sensitive Read"
         case .sideEffect:
-            "本机操作"
+            "On-Device Action"
         case .destructive:
-            "危险操作"
+            "Destructive Action"
         }
     }
 }
@@ -160,15 +160,15 @@ enum ToolApprovalScopeError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidToolName:
-            "工具授权包含无效的工具名称。"
+            "The tool grant contains an invalid tool name."
         case .invalidModelDestination:
-            "工具授权包含无效的模型 API 来源。"
+            "The tool grant contains an invalid model API origin."
         case .invalidResource:
-            "工具授权包含无效的资源范围。"
+            "The tool grant contains an invalid resource scope."
         case .tooManyResources:
-            "单个工具授权的资源范围过多。"
+            "A single tool grant has too many resource scopes."
         case .tooManyGrants:
-            "已记住的工具授权数量超过上限。"
+            "The number of remembered tool grants exceeds the limit."
         }
     }
 }
@@ -334,28 +334,28 @@ enum LocalToolError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case let .unknownTool(name):
-            return "未注册的本地工具：\(name)。"
+            return "Unregistered local tool: \(name)."
         case .invalidArguments:
-            return "工具参数不是有效的 JSON 对象。"
+            return "Tool arguments are not a valid JSON object."
         case let .invalidField(field, reason):
-            return "工具参数 \(field) 无效：\(reason)。"
+            return "Invalid tool argument \(field): \(reason)."
         case let .invalidEnumValue(field, value, allowed):
-            let renderedValue = value.map { "“\($0)”" } ?? "（非字符串）"
-            return "工具参数 \(field) 取值 \(renderedValue) 无效；允许：\(allowed.joined(separator: "、"))。"
+            let renderedValue = value.map { "'\($0)'" } ?? "(non-string)"
+            return "Invalid value \(renderedValue) for tool argument \(field); allowed: \(allowed.joined(separator: ", "))."
         case let .missingArgument(name):
-            return "缺少工具参数：\(name)。"
+            return "Missing tool argument: \(name)."
         case .argumentsTooLarge:
-            return "工具参数超过 64 KiB 上限。"
+            return "Tool arguments exceed the 64 KiB limit."
         case .resultTooLarge:
-            return "工具结果超过 128 KiB 上限。"
+            return "Tool result exceeds the 128 KiB limit."
         case .userDenied:
-            return "用户拒绝了这次工具调用。"
+            return "The user denied this tool call."
         case let .permissionModeDenied(mode):
-            return "当前“\(mode.title)”权限模式不允许这次工具调用。"
+            return "The current '\(mode.title)' permission mode does not allow this tool call."
         case let .pluginDenied(reason):
-            return "Cordis 插件拒绝了这次工具调用：\(reason)"
+            return "The Cordis plugin rejected this tool call: \(reason)"
         case let .pluginFailed(reason):
-            return "本机插件操作失败：\(reason)"
+            return "On-device plugin operation failed: \(reason)"
         case let .providerBundleFailed(facts):
             return facts.userMessage
         }

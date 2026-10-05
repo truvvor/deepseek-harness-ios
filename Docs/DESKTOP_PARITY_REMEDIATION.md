@@ -1,5 +1,59 @@
 # DeepSeek Harness Mobile 对齐与插件迁移
 
+### BRIDGE-002 · 镜像会话驱动桌面 Agent + 大会话导入（2026-10-02）
+
+- **状态**：`VERIFY`（真机/真实桌面桥接未验收）。
+- **决策**：D-014（取代 D-012 第 1、2 条）。桌面为会话主控，iPhone 只保存镜像日志；用户明确拒绝本地 fork。
+- **生产路径**：`BridgeClient.prompt/cancel`（`POST /bridge/v1/sessions/{id}/prompt|cancel`，`mode: queue|steer`，6 h 请求超时，`{error:{code,message}}` → `BridgeClientError.rejected`）；`BridgeMirrorCoordinator.sendPrompt/cancelPrompt`（回合期间 0.4 s 后重启跟随，结束后再从 `/export` 追平；导入有新事件时回调 `AppModel.reloadDesktopMirrorIfActive`）；`AppModel.submit` 在镜像会话转发到 `submitToDesktopMirror`；`ChatView` 使用 `isChatBusy`/`chatRunStartedAt`/`cancelActiveTurn`。附件被明确拒绝；编辑/重跑与本地命令仍拒绝。
+- **导入上限**：`BridgeSessionEventConverter.maximumLogBytes` 16 MiB → 128 MiB，`maximumEvents` 20 000 → 200 000；按字节切行解码，不再把整份导出复制成 `String`。
+- **镜像列表清理**：设置页 Import 改为 Sync——导入/刷新桥接列出的会话，并删除本地已不在列表中的镜像（归档、删除或被桥接侧边栏规则隐藏）；新增 Forget All Mirrors（可选随后重新 Sync），连同无映射的孤儿镜像一起删除，只删手机副本；映射存在但本地会话已被删除时重新完整导入，不再永久失败。桥接侧 `/sessions` 默认隐藏 archived/subagent/blank（rev-2026-10-02-l，用户提交）；Windows `cwd` 标题与空会话拒绝导入来自用户提交 e1838e9。
+- **长会话完整显示**：镜像改用 `SessionTrajectoryConversationProjection.transcriptMessages`（忽略 `surfaceOp.replace`），桌面压缩过的长会话不再只显示摘要 + 尾部；模型面投影 `messages(from:)` 不变。
+- **镜像 append-only**（移植自用户提交 1c5b96e）：转换器不再在镜像事件上安装 `surfaceOp.replace`（范围仍解析校验并计入 `droppedSurfaceOperations`），镜像与桌面 GUI 一样显示完整日志，包括被修正前的草稿；导入测试期望 4 → 5。
+- **增量导出**：桥接 rev-2026-10-02-m 支持 `GET …/export?since=<seq>`（响应头 `x-dsh-since`/`x-dsh-through-seq`）。已映射且本地头部等于桌面游标的镜像只拉取尾部（实测 30.8 MB → 214 KB）；后缀必须从 `since+1` 连续，否则（或桥接忽略 `since`）回退全量导出。首次导入仍需全量，受 128 MiB / 200 000 事件上限约束。桌面日志回退（`x-dsh-through-seq` 或全量导出头部小于本地游标）时，清空该镜像本地轨迹、保留会话与映射身份，再全量重建。
+- **分页导入与镜像不修复**：桥接 rev-2026-10-02-n 支持 `?since=&limit=`（`x-dsh-head-seq`/`x-dsh-has-more`/`x-dsh-through-seq` 空页回显 since）。导入改为每页 1000 事件循环、每页后记录映射游标，失败只丢当前页、下次从最后成功处继续。`SessionEventJSONLStore` 冷启动会为未闭合回合追加合成 closer，这会占用桌面下一事件的 seq，使镜像永久卡住（“541 条”）；镜像日志旁写 `<id>.mirror` 标记，仓库据此关闭该修复；无标记的旧镜像若本地头部与游标不符则清空重建。
+- **镜像消息不截断**：`SessionStore` 在保存和加载规范化时对所有会话执行 `ConversationCompactor.repairIncompleteToolTurn`，遇到第一个未应答的工具调用（append-only 镜像中被替换的草稿、桌面仍在运行的回合）就截掉之后的全部消息，镜像因此永远停在同一前缀。镜像会话现在跳过该修复；`AppModel.persistSession` 不再回写镜像（导入器是唯一写入者），Sync 后重新加载打开的镜像。
+- **实时跟随与自动追平**：`followsSelectedMirrorAutomatically` 默认改为开启；从任何列表打开镜像即启动 `/stream` 跟随；启动与回到前台时静默执行增量 Sync（最小间隔 20 s），镜像不再停在上次手动 Sync 的位置。标题优先使用桥接列表（桌面侧边栏）名称，刷新时跟随桌面重命名。
+- **镜像性能**：新增 `BridgeMirrorTranscriptStore`（每镜像一份 append-only 投影消息 JSONL + 行偏移索引）；刷新只投影本次导入的事件（工具名种子来自已投影尾部），会话快照只保留最新 120 条 + `transcriptMessageCount`，列表计数取该值；搜索索引仅在手动 Sync 后刷新（跟随/前台追平跳过）。聊天打开镜像时只渲染尾部，向上滚动按滚动速度提前分页加载（先扩大内存窗口，再从转录存储取更早 80 条），刷新只追加新消息不重置已加载的旧页。旧版镜像首次刷新时由会话消息播种转录存储，无需 Forget All。
+- **实时性**：`AppModel.refreshSessionSummaries` 不再重建搜索索引（此前每次列表刷新都解码全部本地日志）；镜像不再加载轨迹大纲；镜像日志写 `<id>.jsonl.head` 侧车，冷启动按侧车头部打开而不解码整份日志；SSE `delta`/`reasoning` 直接进入聊天的流式气泡，`turn/start`/`turn/end` 驱动忙碌状态，消息类 `event` 立即刷新（节流 3 s → 1 s 仅对其余事件），空闲重连上限 32 s → 8 s。
+- **聊天视觉修复**：流式 delta 以 10 Hz 合并发布且气泡只显示最后 4000 字符（桌面单步可流式数十 KB，逐 token 布局曾饿死主线程导致白屏）；读历史时末尾新到的消息扩大渲染窗口而不是把最旧行挤出窗口（此前内容在视口下方移动）；向上预取只在末尾离开视口超过一屏时触发；跟随末尾时 300 ms 后再滚动一次以纠正 LazyVStack 估算高度。
+- **健康探针**：`BridgeSessionHealth.displayStatus`，无 `status` 字段的 200 响应显示为 `reachable`（此前误显示 `unavailable`）。
+- **测试命令**：`swift test --build-path $RUNNER_TEMP/hm-build --filter Bridge`（CI `bridge-tests.yml`），新增 `BridgeClientPromptTests`。
+- **剩余真机边界**：真实桌面回合/取消/排队与 steer；后台超过 iOS 宽限期时桥接因客户端断开而中止回合（需桥接侧支持断开后继续）；超大会话导入的内存峰值。
+
+### BRIDGE-001 · 桌面 DSH 会话只读镜像（2026-09-05）
+
+- **状态**：VERIFY
+- **边界**（`DECISIONS.md` D-012）：只读方向为 desktop → app；app → desktop 的单向上传本补丁**未开启**（`sessionLogEnabled` 保持 `false`）。应用不实现桥接的 prompt/cancel/archive/chat-completions 写路由，因此结构上不可能把本机 prompt、工具集或 Agent 循环发到桌面。镜像会话标记为只读，不启动本地 Agent 循环。
+- **上游契约复核**：`bridge/dsh-api-bridge/impl.js`（工作区副本）确认 `GET /bridge/v1/{health,sessions,sessions/{id}/messages,sessions/{id}/export,sessions/{id}/stream}`、`Authorization: Bearer <token>`、`{object:"list",data:[{sessionId,title,updatedAt,running,blank,archived,cwd,parentSessionId,origin}]}`、`{sessionId,throughSeq,hasMore,messages:[{role,content,seq,time,model?,provider?,usage?}]}`、v4 JSONL 头行 `{"type":"session","version":4,...}`、SSE 帧 `snapshot|event|delta|reasoning|usage|turn/end|closed|error`，以及 `surfaceOp` 的 `{op:"replace",startSeq,endSeq}` 拼写（`:69-80`、`:267-355`、`:690-764`）。
+- **生产路径**：新增 `HarnessMobile/Core/Bridge/`：`BridgeSettings.swift`（URL 规范化 + 校验）、`BridgeClient.swift`（URLSession + 读接口 + SSE）、`BridgeSessionModel.swift`（桥接 wire 类型与 `BridgeSessionMirror`）、`BridgeSessionEventConverter.swift`（v4 JSONL → 本地 `SessionEvent`）、`BridgeSessionMirrorStore.swift`（`localUUID ↔ bridgeSessionId` 原子 JSON 映射）、`BridgeSessionImporter.swift`（经 `admitSyncEnvelope` 导入）、`BridgeSessionSync.swift`（`/stream?since=` 幂等 follow + 有界重连）、`BridgeMirrorCoordinator.swift`（组合根）。接线在 `HarnessMobile/App/AppModel+Bridge.swift`，UI 在 `Features/Settings/SettingsView.swift` 与 `Features/Sessions/SessionsView.swift`。
+- **重用的既有 API**：`SessionTrajectoryRepository.admitSyncEnvelope`（`Core/Trace/SessionTrajectoryRepository.swift:151-173`）、`SessionTrajectoryRepository.delete`（`:236-248`）、`HarnessSyncEnvelope`（`Core/Sync/HarnessSyncEnvelope.swift:6-65`，`maximumEvents=512`，空日志基线 `baseSequence = .max`）、`SSEEventDecoder.consume(byte:)`（`Core/Network/SSEEventDecoder.swift:19-46`）、`SessionEvent`/`SessionSurfaceOperation`（`Core/Trace/SessionEventTrajectory.swift:261-377`）、`SessionTrajectoryConversationProjection.messages(from:)`（`Core/Trace/SessionTrajectoryConversationProjection.swift:10-12`）、`SessionStore.createSession/checkpointSession/renameSession/listSessions`（`Core/Storage/SessionStore.swift:485-673`）、`SessionQueryReadModel.refresh(sessionID:persistence:)`（`Core/Trace/SessionQueryReadModel.swift:117-168`）、`SettingsStore`（`Core/Configuration/SettingsStore.swift`，新键 `bridge.desktop-mirror.v1`）、`CredentialStore` 私有 `upsert`/`readData`（`Core/Security/CredentialStore.swift:283`、`:308`，新账号 `desktop-bridge-token`，`WhenUnlockedThisDeviceOnly`）。
+- **id 映射与只读标记**：`BridgeSessionMirrorStore` 以桥接会话 id 为键维护 `BridgeSessionMapping{bridgeSessionID, localSessionID, importedThroughBridgeSeq, importedEventCount, title, createdAt, updatedAt}`，原子写 `Application Support/HarnessMobile/Bridge/bridge-sessions.json`（iOS 下 `.complete` 文件保护）。本地会话用新建 UUID；`ConversationSession.bridgeMirror`（可选字段，快照版本 4 不变，旧快照解码为 `nil`）记录来源，`isResumable` 恒为 `false`，`AppModel.send` 与重跑路径拒绝在镜像上启动本地循环。会话列表与设置页显示 “Desktop Mirror” 徽标与只读说明。
+- **ATS**：`project.yml:103-108`（`targets.HarnessMobile.info.properties`）新增 `NSAppTransportSecurity → NSAllowsLocalNetworking: true` 与单条 `NSExceptionDomains → dsh-host.local → NSExceptionAllowsInsecureHTTPLoads: true`（数值 IP 不在 `NSAllowsLocalNetworking` 覆盖范围内，故显式列出宿主机）。未加入 `NSAllowsArbitraryLoads`。生成物 `HarnessMobile/Resources/Info.plist:34-47` 同步更新；tailnet/HTTPS 形态下这两个键可整体删除（模型 Provider 仍强制 HTTPS，见 `CredentialStore.validatedOrigin`）。
+- **测试命令与预期结果**（**尚未执行**：本工作区无 Swift 工具链，无法编译）：
+  - `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer swift test --build-path /tmp/hm-build --filter BridgeSessionEventConverterTests`
+  - `… --filter BridgeClientDecodingTests`
+  - `… --filter BridgeSessionImporterTests`
+  - `… --filter BridgeSessionSyncTests`
+  - 收尾：`./Scripts/audit-no-remote-execution.sh`、`./Scripts/verify-capability-manifest.sh`、`./Scripts/check-upstream-parity.sh`、`git diff --check`、`xcodebuild -project HarnessMobile.xcodeproj -scheme HarnessMobile -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build`
+  - 断言覆盖：v4 头行丢弃、`startSeq/endSeq → start/end` 转换、密集 seq 原样保留、稀疏/重复 seq 重编号、未知类型 `ignorable`、越界与向前 `surfaceOp` 丢弃、转换结果可被 `admitSyncEnvelope` 接受且会话投影为 7 条消息；桥接响应解码、URL 规范化、设置持久化与旧值回退；导入幂等、增量后缀、部分失败回滚、只读标记与旧快照兼容；follow 幂等追加与映射持久化。
+- **合成夹具**：`HarnessMobileTests/Fixtures/desktop-session-export-v4.jsonl`（头行 + 10 个事件，含 1 个 `surfaceOp.replace` 与 1 个未知类型）。全部为合成内容：无真实日志、无个人数据、无凭据。
+- **剩余边界**：① 本补丁未在 macOS/Xcode 上编译或跑测试（工作区只有 Windows，无 Swift 工具链），所有代码路径未经编译器验证，`swift test` 与 `xcodebuild` 结果未知；② 未对真实 `dsh-api-bridge` 发起任何请求，SSE 帧形状与 `since` 断线恢复未经真实桥验证；③ ATS `NSExceptionDomains` 行为、局域网/tailnet 可达性与明文 HTTP 例外未经真机验证；④ `NSExceptionDomains` 中的 `dsh-host.local` 是占位宿主机，部署时须替换为真实地址并运行 `Scripts/regenerate-project.sh`；⑤ 增量 follow 的实时帧不带 `surfaceOp`（保持只追加），桌面端中途 compaction 的收窄要等下一次完整 `import` 才生效；⑥ `HarnessSyncEnvelope` 会拒绝数据里含 `token`/`secret`/`api_key` 等字段名的事件（fail-closed），此类会话的导入会整体失败并报错。
+
+- **离线验证（本次补丁提交时执行，非 macOS 编译）**：
+  - `swiftc -parse`（Swift 6.0.3 Linux 工具链，仅语法）对全部 19 个新增/修改的 `.swift` 文件 → 全部通过；这不等于类型检查，Apple SDK 相关错误仍可能在 Xcode 中暴露。
+  - `mod-pbxproj` 解析 `HarnessMobile.xcodeproj/project.pbxproj` → 通过：365 个 `PBXFileReference`、363 个 `PBXBuildFile`、5 个 target，桥接文件全部存在、无重复引用（`project.yml` 的 `sources: {path: HarnessMobile}` 为目录 glob，因此 `Scripts/regenerate-project.sh` 也会自动纳入新文件）。
+  - `./Scripts/verify-capability-manifest.sh` → 通过（该脚本在补丁开发过程中曾捕获一次真实回归：`Docs/CAPABILITY_MANIFEST.json` 中单元素数组被压成字符串，已修复）。
+  - `git diff --check` 干净；`bash -n` 覆盖 `Scripts/*`；`Info.plist` 为合法 XML；敏感内容门禁（bridge token、凭据字面量、私有地址、真实会话文本）无命中。
+  - 仍无法在此环境运行：`./Scripts/audit-no-remote-execution.sh`（需要 vendored `HarnessISH.xcframework.zip`）与 `./Scripts/check-upstream-parity.sh`（需要 upstream checkout），以及 `swift test` / `xcodebuild` / 真机验证。
+- **审查修复（2026-10-02）**：
+  - 编译：`AppModel+Bridge.swift` 依赖的 `settingsStore`/`credentialStore`/`sessionStore`/`sessionQueryReadModel`/`desktopBridgeCoordinator`/`refreshSessionSummaries()` 改为 internal；补齐 `try`/`await`；`BridgeSessionSync` 不再把 `SessionEvent` 传给只接受 `SessionEventDraft` 的 `append`。
+  - 映射表：`BridgeSessionMirrorStore` 解码改用 `.iso8601`，与编码一致（此前首次保存后即 `unreadableStore`）。
+  - 导入：`admit` 以本地日志头为准，只提交 `seq >= localNext` 的后缀（转换器保证从 0 开始的密集序号），不再依赖 512 分块边界；同一桌面会话的导入串行执行。
+  - 跟随：SSE 只作为变更信号；收到 `event`（≥3 s 节流）、`turn/end`、`closed` 或领先的 `snapshot` 时通过导入器重读 `/export` 追加后缀，不再把有损的 `{role, content}` 帧写入轨迹；空闲连接 2→32 s、失败 1→16 s 退避，不再 0.5 s 轮询。
+  - 传输：`timeoutIntervalForResource` 改为 24 h 上限，静默由请求级 `timeoutInterval` 控制，SSE 不再每 120 s 被强制断开；启动时 `connectIfConfigured()` 构建客户端。
+  - 只读门禁：`submit()`（含斜杠命令与 `@subagent`）、`startRun`、`appendCommandRun`、`hasResumableRun` 计算统一拒绝镜像会话（D-012）。
+  - ATS（D-013 取代 D-012 第 5 条）：为支持裸 IP（含公网）明文 HTTP 桥接地址，`NSAppTransportSecurity` 只保留 `NSAllowsArbitraryLoads = true`（存在 `NSAllowsLocalNetworking` 时该键会被 iOS 忽略）；模型 Provider 的 HTTPS 由 `AgentConfiguration`/`CredentialStore` 在代码中强制。设置页提示明文 HTTP 下令牌与内容不加密。
+
 ### PARITY-023 · file-upload binary route + staged receipt（2026-09-04）
 
 - **状态**：VERIFY
@@ -1033,3 +1087,10 @@ git diff --check
 - **根因**：iPhone 真机启动注册完整生产工具目录时，`ProductionToolCatalog` 的审计白名单遗漏已存在的 `list_subagent_models`，触发 `precondition` 并以 signal 5 退出。
 - **修复**：将 `list_subagent_models` 补入 `baseApprovedNames`；不改变工具实现、权限或执行边界。
 - **验证**：Xcode `ProductionToolCatalogTests` 3/3 通过；iphoneos arm64 构建成功；iPhone 16 Pro 覆盖安装成功并启动稳定。`devicectl --console` 捕获真实 DeepSeek 流式响应（HTTP 200）、iSH rootfs 初始化和工作区挂载；20 秒观察命令因应用持续运行而超时退出，不是应用崩溃。
+
+### L10N-EN · 英文界面本地化 + TestFlight 发布流水线（2026-10-02）
+
+- **状态**：VERIFY
+- **变更**：`HarnessMobile/`、`HarnessMobileLiveActivity/`、`HarnessMobileShare/` 中全部用户可见中文文案、错误信息、工具描述、系统提示词与 Info.plist 权限说明原位翻译为英文；识别用户输入的中文匹配词（反馈别名、预设别名、旧默认标题 `新会话`、marketplace 中文分类、NativeAgent 关键词）保留并补英文等价词。`ChatView` 的 accessibilityIdentifier 改为英文。测试断言同步为英文。
+- **发布**：新增 `.github/workflows/testflight.yml`，在 self-hosted Apple Silicon Mac runner 上构建/缓存 iSH 产物、按仓库变量重写 bundle ID / Team、用 App Store Connect API key 自动签名、archive 并 `exportArchive destination=upload` 上传 TestFlight。
+- **验证**：Han 字符扫描、引号/插值静态检查、`git diff --check`、`node --check marketplace.mjs`；Mac mini runner（Xcode 26.4.1）上 Release archive 成功，设备工具审计通过，并于 2026-10-02 以 build 118 上传 App Store Connect（run #18）。`swift test` 与 iPhone 16 Pro 真机证据仍缺，继续保持 `VERIFY`。

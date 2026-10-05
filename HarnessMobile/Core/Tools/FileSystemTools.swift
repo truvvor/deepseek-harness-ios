@@ -221,7 +221,7 @@ private struct WorkspaceReadImageTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "读取图片：\(String((arguments["file_path"]?.stringValue ?? "").prefix(96)))"
+        "Read image: \(String((arguments["file_path"]?.stringValue ?? "").prefix(96)))"
     }
 
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool { true }
@@ -345,7 +345,7 @@ private struct WorkspaceSearchTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "搜索工作区：\(String((arguments["query"]?.stringValue ?? "").prefix(72)))"
+        "Search workspace: \(String((arguments["query"]?.stringValue ?? "").prefix(72)))"
     }
 
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -499,7 +499,7 @@ private struct HarnessReadTool: LocalAgentTool {
         try arguments.requireOnlyKeys(["file_path", "offset", "limit"])
         let path = try arguments.requiredString("file_path", maximumUTF8Bytes: 4 * 1_024)
         guard !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw LocalToolError.invalidField(field: "file_path", reason: "必须是非空路径")
+            throw LocalToolError.invalidField(field: "file_path", reason: "must be a non-empty path")
         }
         _ = try Self.integer(
             arguments["offset"],
@@ -516,7 +516,7 @@ private struct HarnessReadTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "读取 \(arguments["file_path"]?.stringValue ?? "文件")"
+        "Read \(arguments["file_path"]?.stringValue ?? "file")"
     }
 
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool {
@@ -603,13 +603,13 @@ private struct HarnessReadTool: LocalAgentTool {
               number.rounded() == number,
               number >= Double(Int.min),
               number <= Double(Int.max) else {
-            throw LocalToolError.invalidField(field: field, reason: "必须是正整数")
+            throw LocalToolError.invalidField(field: field, reason: "must be a positive integer")
         }
         let integer = Int(number)
         guard range.contains(integer) else {
             throw LocalToolError.invalidField(
                 field: field,
-                reason: "必须在 \(range.lowerBound)...\(range.upperBound) 范围内"
+                reason: "must be within \(range.lowerBound)...\(range.upperBound)"
             )
         }
         return integer
@@ -643,7 +643,7 @@ private struct HarnessWriteTool: LocalAgentTool {
         try arguments.requireOnlyKeys(["file_path", "content"])
         let path = try arguments.requiredString("file_path", maximumUTF8Bytes: 4 * 1_024)
         guard !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw LocalToolError.invalidField(field: "file_path", reason: "必须是非空路径")
+            throw LocalToolError.invalidField(field: "file_path", reason: "must be a non-empty path")
         }
         _ = try arguments.requiredString(
             "content",
@@ -653,7 +653,7 @@ private struct HarnessWriteTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "写入 \(arguments["file_path"]?.stringValue ?? "文件")"
+        "Write \(arguments["file_path"]?.stringValue ?? "file")"
     }
 
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -743,22 +743,22 @@ private struct HarnessEditTool: LocalAgentTool {
               !oldString.isEmpty else {
             throw LocalToolError.invalidField(
                 field: path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "file_path" : "old_string",
-                reason: "必须是非空字符串"
+                reason: "must be a non-empty string"
             )
         }
         guard oldString != newString else {
             throw LocalToolError.invalidField(
                 field: "new_string",
-                reason: "必须与 old_string 不同"
+                reason: "must differ from old_string"
             )
         }
         if let replaceAll = arguments["replace_all"], boolValue(replaceAll) == nil {
-            throw LocalToolError.invalidField(field: "replace_all", reason: "必须是布尔值")
+            throw LocalToolError.invalidField(field: "replace_all", reason: "must be a boolean")
         }
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "编辑 \(arguments["file_path"]?.stringValue ?? "文件")"
+        "Edit \(arguments["file_path"]?.stringValue ?? "file")"
     }
 
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> {

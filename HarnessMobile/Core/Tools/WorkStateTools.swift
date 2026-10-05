@@ -21,15 +21,15 @@ enum ConversationGoalLifecycleError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .noGoal:
-            "当前会话没有可操作的目标。"
+            "The current session has no actionable goal."
         case .goalAlreadyExists:
-            "当前目标尚未完成，请先完成或清空后再创建新目标。"
+            "The current goal is not complete yet; complete or clear it before creating a new goal."
         case .emptyTitle:
-            "目标内容不能为空。"
+            "Goal content cannot be empty."
         case let .titleTooLong(maximumUTF8Bytes):
-            "目标内容过长，最多允许 \(maximumUTF8Bytes) 字节。"
+            "Goal content is too long; at most \(maximumUTF8Bytes) bytes are allowed."
         case let .invalidTransition(from, to):
-            "目标不能从 \(from.rawValue) 切换到 \(to.rawValue)。"
+            "Goal cannot transition from \(from.rawValue) to \(to.rawValue)."
         }
     }
 }
@@ -96,7 +96,7 @@ actor WorkStateCoordinator {
         guard var goal = state.goal, goal.canStartRound else { return false }
         goal.usedRounds += 1
         if goal.usedRounds >= goal.effectiveMaximumRounds {
-            goal.blocker = "已达目标轮次上限（\(goal.effectiveMaximumRounds) 轮）。"
+            goal.blocker = "Reached the goal round limit (\(goal.effectiveMaximumRounds) rounds)."
         }
         state.goal = goal
         return true
@@ -268,7 +268,7 @@ enum WorkStateToolSupport {
         Objective: \(objective)
         Round: \(round)/\(maximum)
 
-        继续在同一会话中朝该目标推进。以当前工作区、工具结果与持久会话状态为准，先检查再判断，不要假定先前的叙述仍然有效。取得具体进展并验证结果。在宣告完成前，收集整个目标已达成的证据、读取当前目标并标记完成。若仍有剩余工作，保持目标 active 以进入下一轮。
+        Continue working toward this objective in the same session. Treat the current workspace, tool results, and persistent session state as the source of truth; inspect before deciding, and do not assume earlier narration is still valid. Make concrete progress and verify the results. Before declaring completion, gather evidence that the whole objective is achieved, read the current goal, and mark it complete. If work remains, keep the goal active to continue to the next round.
         </goal_round>
         """
     }
@@ -304,7 +304,7 @@ struct WorkStateSetGoalTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "更新本机会话目标：\(arguments["title"]?.stringValue ?? "未命名")"
+        "Update local session goal: \(arguments["title"]?.stringValue ?? "Untitled")"
     }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -338,7 +338,7 @@ struct WorkStateGetTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "读取本机会话目标与待办"
+        "Read local session goal and to-dos"
     }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -379,7 +379,7 @@ struct WorkStateReplacePlanTool: LocalAgentTool {
         } else {
             count = 0
         }
-        return "更新本地执行计划（\(count) 步）"
+        return "Update local execution plan (\(count) steps)"
     }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -423,7 +423,7 @@ struct WorkStateReplaceTodosTool: LocalAgentTool {
         } else {
             count = 0
         }
-        return "更新本地待办（\(count) 项）"
+        return "Update local to-dos (\(count) items)"
     }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {

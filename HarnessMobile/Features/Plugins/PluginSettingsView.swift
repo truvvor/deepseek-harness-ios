@@ -9,12 +9,12 @@ struct PluginSettingsView: View {
         Group {
             if model.ishPluginSettingsSnapshot?.namespaces.isEmpty == false {
                 settingsList
-                    .searchable(text: $query, prompt: "搜索命名空间")
+                    .searchable(text: $query, prompt: "Search Namespaces")
             } else {
                 settingsList
             }
         }
-        .navigationTitle("插件设置")
+        .navigationTitle("Plugin Settings")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -23,9 +23,9 @@ struct PluginSettingsView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .disabled(isRefreshing)
-                .accessibilityLabel("刷新插件设置")
+                .accessibilityLabel("Refresh Plugin Settings")
                 .accessibilityIdentifier("ish-plugin-settings-refresh")
-                .help("刷新插件设置")
+                .help("Refresh Plugin Settings")
             }
         }
         .task {
@@ -42,45 +42,45 @@ struct PluginSettingsView: View {
         List {
             if let snapshot = model.ishPluginSettingsSnapshot {
                 Section {
-                    LabeledContent("命名空间", value: "\(snapshot.namespaces.count)")
+                    LabeledContent("Namespaces", value: "\(snapshot.namespaces.count)")
                     HStack {
-                        Text("写入")
+                        Text("Writes")
                         Spacer()
                         HarnessStatusPill(
-                            title: snapshot.writable ? "可用" : "只读",
+                            title: snapshot.writable ? "Available" : "Read-Only",
                             systemImage: snapshot.writable ? "pencil" : "lock.fill",
                             tint: snapshot.writable ? .green : .secondary
                         )
                     }
                     HStack {
-                        Text("配置文件")
+                        Text("Config File")
                         Spacer()
                         HarnessStatusPill(
-                            title: snapshot.hasDocument ? "已挂载" : "未挂载",
+                            title: snapshot.hasDocument ? "Mounted" : "Not Mounted",
                             systemImage: snapshot.hasDocument ? "checkmark" : "minus",
                             tint: snapshot.hasDocument ? .green : .secondary
                         )
                     }
                 } header: {
-                    Label("设置提供方", systemImage: "slider.horizontal.3")
+                    Label("Settings Provider", systemImage: "slider.horizontal.3")
                 }
 
                 if filteredNamespaces.isEmpty {
                     Section {
                         Label(
-                            query.isEmpty ? "没有插件设置" : "没有匹配的设置",
+                            query.isEmpty ? "No Plugin Settings" : "No Matching Settings",
                             systemImage: "slider.horizontal.3"
                         )
                         .foregroundStyle(.secondary)
                         Text(
                             query.isEmpty
-                                ? "启用注册设置命名空间的 Host 插件后会显示在这里。"
-                                : "尝试搜索其他命名空间。"
+                                ? "Host plugins that register a settings namespace appear here once enabled."
+                                : "Try searching for a different namespace."
                         )
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     } header: {
-                        Label("命名空间", systemImage: "square.stack.3d.up")
+                        Label("Namespaces", systemImage: "square.stack.3d.up")
                     }
                 } else {
                     Section {
@@ -92,25 +92,25 @@ struct PluginSettingsView: View {
                             }
                         }
                     } header: {
-                        Label("命名空间", systemImage: "square.stack.3d.up")
+                        Label("Namespaces", systemImage: "square.stack.3d.up")
                     }
                 }
             } else {
                 Section {
                     VStack(spacing: HarnessTheme.Spacing.medium) {
                         ContentUnavailableView(
-                            isRefreshing ? "正在启动设置 Host" : "设置 Host 未就绪",
+                            isRefreshing ? "Starting Settings Host" : "Settings Host Not Ready",
                             systemImage: "terminal",
-                            description: Text("启动手机内的 iSH Cordis Host 后即可读取插件设置。")
+                            description: Text("Start the on-device iSH Cordis Host to read plugin settings.")
                         )
 
                         if isRefreshing {
                             ProgressView()
                                 .controlSize(.large)
-                                .accessibilityLabel("正在启动设置 Host")
+                                .accessibilityLabel("Starting Settings Host")
                                 .accessibilityIdentifier("ish-plugin-settings-loading")
                         } else {
-                            Button("启动 Host", systemImage: "play.fill") {
+                            Button("Start Host", systemImage: "play.fill") {
                                 Task { await refresh() }
                             }
                             .buttonStyle(.borderedProminent)
@@ -198,7 +198,7 @@ private struct PluginSettingsNamespaceRow: View {
             Spacer(minLength: 8)
 
             if namespace.user?.objectValue?.isEmpty == false {
-                HarnessStatusPill(title: "已覆盖", systemImage: "checkmark", tint: .accentColor)
+                HarnessStatusPill(title: "Overridden", systemImage: "checkmark", tint: .accentColor)
             }
         }
         .padding(.vertical, HarnessTheme.Spacing.xSmall)
@@ -209,7 +209,7 @@ private struct PluginSettingsNamespaceRow: View {
     @ViewBuilder
     private var metadata: some View {
         Label(namespace.applies.displayName, systemImage: namespace.applies.systemImage)
-        Text("版本 \(namespace.revision)")
+        Text("Revision \(namespace.revision)")
             .monospacedDigit()
         if !namespace.secrets.isEmpty {
             Label("\(namespace.secrets.count)", systemImage: "key.fill")
@@ -261,7 +261,7 @@ struct PluginSettingsNamespaceView: View {
                             Section {
                                 HStack(spacing: 10) {
                                     HarnessIconTile(systemImage: "arrow.triangle.2.circlepath", tint: .accentColor, size: 28)
-                                    Text("读取 schema")
+                                    Text("Load Schema")
                                         .foregroundStyle(.secondary)
                                 }
                             }
@@ -281,9 +281,9 @@ struct PluginSettingsNamespaceView: View {
                 .background(HarnessTheme.pageBackground)
             } else {
                 ContentUnavailableView(
-                    "设置已释放",
+                    "Settings Released",
                     systemImage: "slider.horizontal.3",
-                    description: Text("对应插件可能已停用、卸载或重启。")
+                    description: Text("The plugin may have been disabled, uninstalled, or restarted.")
                 )
             }
         }
@@ -299,9 +299,9 @@ struct PluginSettingsNamespaceView: View {
                             .frame(width: 44, height: 44)
                     }
                     .disabled(isSaving || draft?.isDirty != true)
-                    .accessibilityLabel("放弃设置草稿")
+                    .accessibilityLabel("Discard Settings Draft")
                     .accessibilityIdentifier("ish-plugin-settings-discard")
-                    .help("放弃设置草稿")
+                    .help("Discard Settings Draft")
 
                     Button {
                         saveDraft()
@@ -310,9 +310,9 @@ struct PluginSettingsNamespaceView: View {
                             .frame(width: 44, height: 44)
                     }
                     .disabled(!canSave)
-                    .accessibilityLabel("保存插件设置")
+                    .accessibilityLabel("Save Plugin Settings")
                     .accessibilityIdentifier("ish-plugin-settings-save")
-                    .help("保存插件设置")
+                    .help("Save Plugin Settings")
                 }
             }
         }
@@ -348,34 +348,34 @@ struct PluginSettingsNamespaceView: View {
     @ViewBuilder
     private func namespaceStatusSection(_ namespace: ISHPluginSettingsNamespace) -> some View {
         Section {
-            LabeledContent("修订版本", value: "\(namespace.revision)")
-            LabeledContent("生效", value: namespace.applies.displayName)
-            LabeledContent("编辑", value: namespace.editable && providerIsWritable ? "可用" : "只读")
+            LabeledContent("Revision", value: "\(namespace.revision)")
+            LabeledContent("Applies", value: namespace.applies.displayName)
+            LabeledContent("Editing", value: namespace.editable && providerIsWritable ? "Available" : "Read-Only")
             if let draft {
-                LabeledContent("草稿覆盖", value: "\(draft.overriddenFieldCount)")
+                LabeledContent("Draft Overrides", value: "\(draft.overriddenFieldCount)")
             }
         } header: {
-            Label("状态", systemImage: "waveform.path.ecg")
+            Label("Status", systemImage: "waveform.path.ecg")
         }
     }
 
     @ViewBuilder
     private func conflictSection(_ namespace: ISHPluginSettingsNamespace) -> some View {
         Section {
-            Label("设置已在其他位置更新到版本 \(namespace.revision)", systemImage: "arrow.triangle.2.circlepath")
+            Label("Settings were updated elsewhere to revision \(namespace.revision)", systemImage: "arrow.triangle.2.circlepath")
                 .foregroundStyle(.orange)
             Button {
                 rebaseDraft()
             } label: {
-                Label("在新版本上重放草稿", systemImage: "arrow.triangle.branch")
+                Label("Replay Draft on New Revision", systemImage: "arrow.triangle.branch")
             }
             Button(role: .destructive) {
                 discardDraft()
             } label: {
-                Label("放弃草稿并重新载入", systemImage: "trash")
+                Label("Discard Draft and Reload", systemImage: "trash")
             }
         } header: {
-            Label("版本冲突", systemImage: "exclamationmark.arrow.circlepath")
+            Label("Revision Conflict", systemImage: "exclamationmark.arrow.circlepath")
         }
     }
 
@@ -383,7 +383,7 @@ struct PluginSettingsNamespaceView: View {
     private func readOnlySection(_ namespace: ISHPluginSettingsNamespace) -> some View {
         Section {
             Label(
-                namespace.unsupportedReason ?? "此命名空间当前不能从原生表单写入。",
+                namespace.unsupportedReason ?? "This namespace can't currently be written from the native form.",
                 systemImage: "lock.fill"
             )
                 .foregroundStyle(.secondary)
@@ -393,7 +393,7 @@ struct PluginSettingsNamespaceView: View {
                     .textSelection(.enabled)
             }
         } header: {
-            Label("只读配置", systemImage: "lock.fill")
+            Label("Read-Only Configuration", systemImage: "lock.fill")
         }
     }
 
@@ -424,7 +424,7 @@ struct PluginSettingsNamespaceView: View {
         guard namespace.revision != draft.expectedRevision else { return }
         if draft.isDirty {
             hasConflict = true
-            notice = .warning("当前草稿仍保留，保存前需要处理版本冲突。")
+            notice = .warning("Your draft is kept. Resolve the revision conflict before saving.")
         } else {
             seedFromCurrentNamespace(force: true)
         }
@@ -443,7 +443,7 @@ struct PluginSettingsNamespaceView: View {
             self.form = parsed
             self.draft = try draft.rebased(onto: namespace, form: parsed)
             hasConflict = false
-            notice = .success("草稿已重放到版本 \(namespace.revision)。")
+            notice = .success("Draft replayed onto revision \(namespace.revision).")
         } catch {
             notice = .error(error.localizedDescription)
         }
@@ -469,13 +469,13 @@ struct PluginSettingsNamespaceView: View {
                 hasConflict = false
                 notice = .success(
                     updated.applies == .live
-                        ? "设置已生效。"
-                        : "设置已保存，将在插件重启后生效。"
+                        ? "Settings applied."
+                        : "Settings saved. They take effect after the plugin restarts."
                 )
             } catch let error as ISHPluginHostError {
                 if error.settingsConflict != nil {
                     hasConflict = true
-                    notice = .warning("保存被修订版本校验拒绝，草稿未丢失。")
+                    notice = .warning("Save was rejected by the revision check. Your draft was not lost.")
                 } else {
                     notice = .error(error.localizedDescription)
                 }
@@ -502,10 +502,10 @@ struct NativeAgentPluginSettingsView: View {
             if let plugin, plugin.settings != nil {
                 Form {
                     Section {
-                        LabeledContent("生效", value: "立即替换运行时贡献")
-                        LabeledContent("存储", value: "App 本地插件注册表")
+                        LabeledContent("Applies", value: "Replaces runtime contributions immediately")
+                        LabeledContent("Storage", value: "App-local plugin registry")
                     } header: {
-                        Label("运行方式", systemImage: "power")
+                        Label("Runtime", systemImage: "power")
                     }
 
                     if let notice {
@@ -530,7 +530,7 @@ struct NativeAgentPluginSettingsView: View {
                         Section {
                             HStack(spacing: 10) {
                                 HarnessIconTile(systemImage: "arrow.triangle.2.circlepath", tint: .accentColor, size: 28)
-                                Text("读取原生设置 schema")
+                                Text("Load Native Settings Schema")
                                     .foregroundStyle(.secondary)
                             }
                         }
@@ -539,13 +539,13 @@ struct NativeAgentPluginSettingsView: View {
                     if let defaults = plugin.settings?.defaults {
                         Section {
                             Button {
-                                save(values: defaults, successMessage: "已恢复插件默认设置。")
+                                save(values: defaults, successMessage: "Plugin defaults restored.")
                             } label: {
-                                Label("恢复全部默认值", systemImage: "arrow.counterclockwise")
+                                Label("Restore All Defaults", systemImage: "arrow.counterclockwise")
                             }
                             .disabled(isSaving || plugin.settings?.values == defaults)
                         } header: {
-                            Label("默认值", systemImage: "arrow.counterclockwise")
+                            Label("Defaults", systemImage: "arrow.counterclockwise")
                         }
                     }
                 }
@@ -556,13 +556,13 @@ struct NativeAgentPluginSettingsView: View {
                 .background(HarnessTheme.pageBackground)
             } else {
                 ContentUnavailableView(
-                    "没有可编辑设置",
+                    "No Editable Settings",
                     systemImage: "slider.horizontal.3",
-                    description: Text("插件可能已卸载，或源码没有声明可迁移的设置 schema。")
+                    description: Text("The plugin may have been uninstalled, or its source doesn't declare a migratable settings schema.")
                 )
             }
         }
-        .navigationTitle(plugin?.name ?? "原生插件设置")
+        .navigationTitle(plugin?.name ?? "Native Plugin Settings")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if draft != nil {
@@ -574,8 +574,8 @@ struct NativeAgentPluginSettingsView: View {
                             .frame(width: 44, height: 44)
                     }
                     .disabled(isSaving || draft?.isDirty != true)
-                    .accessibilityLabel("放弃设置草稿")
-                    .help("放弃设置草稿")
+                    .accessibilityLabel("Discard Settings Draft")
+                    .help("Discard Settings Draft")
 
                     Button {
                         saveDraft()
@@ -584,8 +584,8 @@ struct NativeAgentPluginSettingsView: View {
                             .frame(width: 44, height: 44)
                     }
                     .disabled(!canSave)
-                    .accessibilityLabel("保存原生插件设置")
-                    .help("保存原生插件设置")
+                    .accessibilityLabel("Save Native Plugin Settings")
+                    .help("Save Native Plugin Settings")
                 }
             }
         }
@@ -647,7 +647,7 @@ struct NativeAgentPluginSettingsView: View {
             base: settings.defaults,
             overrides: draft.user
         )
-        save(values: values, successMessage: "原生插件设置已生效。")
+        save(values: values, successMessage: "Native plugin settings applied.")
     }
 
     private func save(values: JSONValue, successMessage: String) {
@@ -683,7 +683,7 @@ private struct PluginSettingsFormSections: View {
                     )
                 }
             } header: {
-                Label("配置", systemImage: "slider.horizontal.3")
+                Label("Configuration", systemImage: "slider.horizontal.3")
             }
         }
 
@@ -720,13 +720,13 @@ private struct PluginSettingsFormSections: View {
                 if draft.operations.count > 256 {
                     HStack(alignment: .top, spacing: 10) {
                         HarnessIconTile(systemImage: "exclamationmark.triangle.fill", tint: .red, size: 28)
-                        Text("一次最多写入 256 个字段。")
+                        Text("Up to 256 fields can be written at once.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
                 }
             } header: {
-                Label("校验", systemImage: "checkmark.shield")
+                Label("Validation", systemImage: "checkmark.shield")
             }
         }
     }
@@ -744,7 +744,7 @@ private struct PluginSettingsFieldEditor: View {
                     .font(.subheadline.weight(.semibold))
                 Spacer(minLength: 8)
                 if draft.isOverridden(at: leaf.field.path) {
-                    HarnessStatusPill(title: "覆盖", systemImage: "checkmark", tint: .accentColor)
+                    HarnessStatusPill(title: "Override", systemImage: "checkmark", tint: .accentColor)
                     Button {
                         var updated = draft
                         updated.reset(leaf.field.path)
@@ -755,10 +755,10 @@ private struct PluginSettingsFieldEditor: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(isDisabled || leaf.disabled)
-                    .accessibilityLabel("重置 \(leaf.label)")
-                    .help("重置为继承值")
+                    .accessibilityLabel("Reset \(leaf.label)")
+                    .help("Reset to inherited value")
                 } else {
-                    HarnessStatusPill(title: "继承", systemImage: "arrow.down.left", tint: .secondary)
+                    HarnessStatusPill(title: "Inherited", systemImage: "arrow.down.left", tint: .secondary)
                 }
             }
 
@@ -779,26 +779,26 @@ private struct PluginSettingsFieldEditor: View {
     private var fieldControl: some View {
         switch leaf.field.kind {
         case .boolean:
-            Toggle("值", isOn: booleanBinding)
+            Toggle("Value", isOn: booleanBinding)
                 .labelsHidden()
                 .accessibilityLabel(leaf.label)
         case let .number(minimum, maximum, step):
             numberControl(minimum: minimum, maximum: maximum, step: step)
         case .string:
-            TextField("值", text: stringBinding, axis: .vertical)
+            TextField("Value", text: stringBinding, axis: .vertical)
                 .lineLimit(1...4)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
         case let .selection(options):
             if options.count <= 3 {
-                Picker("值", selection: selectionBinding(options)) {
+                Picker("Value", selection: selectionBinding(options)) {
                     ForEach(options) { option in
                         Text(option.label).tag(option.id)
                     }
                 }
                 .pickerStyle(.segmented)
             } else {
-                Picker("值", selection: selectionBinding(options)) {
+                Picker("Value", selection: selectionBinding(options)) {
                     ForEach(options) { option in
                         Text(option.label).tag(option.id)
                     }
@@ -829,7 +829,7 @@ private struct PluginSettingsFieldEditor: View {
 
     private var numberTextField: some View {
         TextField(
-            "值",
+            "Value",
             value: numberBinding,
             format: .number.precision(.fractionLength(0...6))
         )
@@ -901,14 +901,14 @@ private struct PluginSettingsSecretsSection: View {
             ForEach(secrets, id: \.self) { secret in
                 LabeledContent(secret.path.joined(separator: " / ")) {
                     Label(
-                        secret.set ? "已配置" : "未配置",
+                        secret.set ? "Configured" : "Not Configured",
                         systemImage: secret.set ? "checkmark.shield.fill" : "shield"
                     )
                     .foregroundStyle(secret.set ? Color.green : Color.secondary)
                 }
             }
         } header: {
-            Label("受保护字段", systemImage: "key.fill")
+            Label("Protected Fields", systemImage: "key.fill")
         }
     }
 }
@@ -947,8 +947,8 @@ private struct EditorNotice: Equatable {
 private extension ISHPluginSettingsApplies {
     var displayName: String {
         switch self {
-        case .live: "立即生效"
-        case .restart: "重启后生效"
+        case .live: "Live"
+        case .restart: "After Restart"
         }
     }
 

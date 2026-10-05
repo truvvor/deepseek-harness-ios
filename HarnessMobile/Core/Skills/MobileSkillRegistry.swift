@@ -61,11 +61,11 @@ enum MobileSkillError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case let .invalidName(name):
-            "无效的 Skill 名称：\(name)。"
+            "Invalid Skill name: \(name)."
         case let .unknownSkill(name):
-            "Skill \(name) 不存在、无效或已被移除。"
+            "Skill \(name) does not exist, is invalid, or was removed."
         case let .modelInvocationDisabled(name):
-            "Skill \(name) 不能由模型调用，只能由用户显式启用。"
+            "Skill \(name) cannot be invoked by the model; only the user can enable it explicitly."
         }
     }
 }

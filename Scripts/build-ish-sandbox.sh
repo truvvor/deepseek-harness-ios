@@ -511,7 +511,7 @@ smoke_test_xcframework_slice() {
     -lsqlite3 \
     -lresolv \
     -o "$objc_executable"
-  "$lipo" -verify_arch arm64 "$objc_executable"
+  "$lipo" "$objc_executable" -verify_arch arm64
 
   /usr/bin/printf '%s\n' \
     'import Foundation' \
@@ -559,7 +559,7 @@ smoke_test_xcframework_slice() {
     -lsqlite3 \
     -lresolv \
     -o "$swift_executable"
-  "$lipo" -verify_arch arm64 "$swift_executable"
+  "$lipo" "$swift_executable" -verify_arch arm64
 }
 
 deterministic_zip_directory() {
@@ -623,8 +623,8 @@ build_libraries() {
     "$work_root/build-iphonesimulator/libfakefs.a" \
     "$work_root/bridge-iphonesimulator/libHarnessISHBridge.a"
 
-  "$lipo" -verify_arch arm64 "$device_library"
-  "$lipo" -verify_arch arm64 "$simulator_library"
+  "$lipo" "$device_library" -verify_arch arm64
+  "$lipo" "$simulator_library" -verify_arch arm64
   device_symbols="$work_root/device-symbols.txt"
   "$nm" -gU "$device_library" > "$device_symbols"
   grep '_ish_set_guest_network_enabled' "$device_symbols" >/dev/null \

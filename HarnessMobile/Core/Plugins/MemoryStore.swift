@@ -392,7 +392,7 @@ private struct MemoryWriteTool: LocalAgentTool {
         }
     }
 
-    func summary(arguments _: [String: JSONValue]) -> String { "保存本机记忆" }
+    func summary(arguments _: [String: JSONValue]) -> String { "Save on-device memory" }
 
     func concurrencyResources(arguments _: [String: JSONValue]) throws -> Set<String> { ["memory:global"] }
 
@@ -438,7 +438,7 @@ private struct MemoryGetTool: LocalAgentTool {
         }
     }
 
-    func summary(arguments _: [String: JSONValue]) -> String { "读取本机记忆" }
+    func summary(arguments _: [String: JSONValue]) -> String { "Read on-device memory" }
 
     func concurrencyResources(arguments _: [String: JSONValue]) throws -> Set<String> { ["memory:read"] }
 

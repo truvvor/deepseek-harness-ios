@@ -17,17 +17,17 @@ enum ISHRootfsError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .archiveMissing:
-            return "App 中缺少 Alpine rootfs 镜像。"
+            return "The Alpine rootfs image is missing from the app."
         case .invalidArchive:
-            return "Alpine rootfs 镜像格式无效。"
+            return "The Alpine rootfs image format is invalid."
         case let .unsafeArchivePath(path):
-            return "rootfs 镜像包含不安全路径：\(path)。"
+            return "The rootfs image contains an unsafe path: \(path)."
         case let .unsupportedCompression(method):
-            return "rootfs 镜像使用了不支持的 ZIP 压缩方式（\(method)）。"
+            return "The rootfs image uses an unsupported ZIP compression method (\(method))."
         case let .decompressionFailed(path):
-            return "无法解压 rootfs 文件：\(path)。"
+            return "Unable to extract rootfs file: \(path)."
         case .invalidInstallation:
-            return "解压后的 rootfs 缺少 data 或 meta.db。"
+            return "The extracted rootfs is missing data or meta.db."
         }
     }
 }

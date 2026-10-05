@@ -89,12 +89,12 @@ enum ProviderOAuthCredentialError: LocalizedError, Sendable, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .invalidAccessToken: "OAuth access token 无效。"
-        case .invalidRefreshToken: "OAuth refresh token 无效。"
-        case .invalidTokenType: "OAuth token type 无效。"
-        case .invalidTokenEndpoint: "OAuth token endpoint 必须是无凭据的 HTTPS URL。"
-        case .invalidClientID: "OAuth client ID 无效。"
-        case .missingRefreshToken: "OAuth 凭据没有 refresh token。"
+        case .invalidAccessToken: "Invalid OAuth access token."
+        case .invalidRefreshToken: "Invalid OAuth refresh token."
+        case .invalidTokenType: "Invalid OAuth token type."
+        case .invalidTokenEndpoint: "OAuth token endpoint must be an HTTPS URL without credentials."
+        case .invalidClientID: "Invalid OAuth client ID."
+        case .missingRefreshToken: "OAuth credential has no refresh token."
         }
     }
 }
@@ -133,7 +133,7 @@ enum ProviderRequestRouteError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .changedRoute:
-            "服务商请求路由在发送前发生变化；已取消请求，未使用备用路由。"
+            "The provider request route changed before sending. The request was canceled and no fallback route was used."
         }
     }
 }
@@ -237,13 +237,13 @@ enum ProviderQuickTestError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .unexpectedToolCall:
-            "快速测试收到工具调用，已停止。"
+            "Quick test received a tool call and stopped."
         case .incompleteFinish:
-            "快速测试未正常完成。"
+            "Quick test did not complete normally."
         case .emptyOutput:
-            "快速测试未返回文本。"
+            "Quick test returned no text."
         case .outputTooLarge:
-            "快速测试输出超过限制。"
+            "Quick test output exceeded the limit."
         }
     }
 }
@@ -379,11 +379,11 @@ enum ProviderOAuthRefreshError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .missingConfiguration:
-            return "OAuth refresh 缺少 token endpoint、client ID 或 refresh token。"
+            return "OAuth refresh is missing the token endpoint, client ID, or refresh token."
         case .invalidResponse:
-            return "OAuth refresh 服务返回了无效响应。"
+            return "OAuth refresh service returned an invalid response."
         case let .httpFailure(status, message):
-            return "OAuth refresh 失败（" + String(status) + "）：" + message
+            return "OAuth refresh failed (" + String(status) + "): " + message
         }
     }
 }

@@ -21,7 +21,7 @@ struct CameraOCRTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "本地识别最近图片，并把识别文字发送给模型"
+        "Recognize text in the latest image on-device and send the recognized text to the model"
     }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -41,7 +41,7 @@ struct CameraOCRTool: LocalAgentTool {
             let text = (request.results ?? [])
                 .compactMap { $0.topCandidates(1).first?.string }
                 .joined(separator: "\n")
-            return text.isEmpty ? "(未识别到文字)" : text
+            return text.isEmpty ? "(No text recognized)" : text
         }
         return try await withTaskCancellationHandler {
             try await task.value
@@ -74,6 +74,6 @@ enum OCRToolError: LocalizedError, Sendable {
     case invalidImage
 
     var errorDescription: String? {
-        "无法读取所选图片。"
+        "Unable to read the selected image."
     }
 }

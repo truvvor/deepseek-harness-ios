@@ -251,9 +251,9 @@ enum ReasoningMode: String, Codable, CaseIterable, Sendable, Identifiable {
     var title: String {
         switch self {
         case .providerDefault:
-            return "服务默认"
+            return "Provider Default"
         case .off:
-            return "关闭"
+            return "Off"
         case .minimal:
             return "Minimal"
         case .low:
@@ -292,26 +292,26 @@ enum AgentConfigurationError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .invalidHTTPSURL:
-            return "API 地址必须是有效的 HTTPS URL。"
+            return "API URL must be a valid HTTPS URL."
         case .emptyModel:
-            return "模型名称不能为空。"
+            return "Model name cannot be empty."
         case .invalidInputModalities:
-            return "模型输入类型必须包含 text，且不能包含重复项。"
+            return "Model input types must include text and cannot contain duplicates."
         case .invalidMaxOutputTokens:
-            return "最大输出 Token 必须至少为 128。已知模型会使用其 API 声明的输出上限。"
+            return "Max output tokens must be at least 128. Known models use the output limit declared by their API."
         case let .unsupportedProviderWire(providerID):
             let provider = ModelProviderCatalog.descriptor(for: providerID)
             return provider.compatibilityNotice
-                ?? "当前版本尚未实现 \(provider.displayName) 的推理协议。"
+                ?? "This version does not yet implement the inference protocol for \(provider.displayName)."
         case let .unsupportedModelDiscovery(providerID):
             let provider = ModelProviderCatalog.descriptor(for: providerID)
-            return "当前版本不能从 \(provider.displayName) 远端获取模型列表，请使用内建目录或手动输入模型。"
+            return "This version can't fetch the model list from \(provider.displayName). Use the built-in catalog or enter a model manually."
         case let .unsupportedReasoningMode(providerID, mode):
             let provider = ModelProviderCatalog.descriptor(for: providerID)
-            return "\(provider.displayName) 当前不能使用 \(mode.title) 思考模式；请选“服务默认”或“关闭”。"
+            return "\(provider.displayName) can't currently use the \(mode.title) thinking mode. Choose 'Provider Default' or 'Off'."
         case let .unsupportedWireCompatibility(providerID):
             let provider = ModelProviderCatalog.descriptor(for: providerID)
-            return "\(provider.displayName) 不使用 OpenAI Chat Completions 兼容配置。"
+            return "\(provider.displayName) does not use the OpenAI Chat Completions compatibility settings."
         }
     }
 }

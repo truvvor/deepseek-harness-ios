@@ -12,7 +12,7 @@ struct ToolEventTreeView: View {
                 Button {
                     showsAllEvents = true
                 } label: {
-                    Label("显示前面的 \(hiddenEventCount) 个工具调用", systemImage: "ellipsis")
+                    Label("Show \(hiddenEventCount) earlier tool calls", systemImage: "ellipsis")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -24,7 +24,7 @@ struct ToolEventTreeView: View {
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(isLive ? "正在执行的工具" : "工具调用")
+        .accessibilityLabel(isLive ? "Running tool" : "Tool call")
     }
 
     private var visibleEvents: ArraySlice<AgentToolEvent> {
@@ -56,7 +56,7 @@ private struct ToolEventNodeView: View {
                         Button {
                             showsAllChildren = true
                         } label: {
-                            Text("显示前面的 \(hiddenChildCount) 个子工具")
+                            Text("Show \(hiddenChildCount) earlier subtools")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
@@ -85,7 +85,7 @@ private struct ToolEventNodeView: View {
         var presented = event
         presented.finishNonterminalRecursively(
             status: .interrupted,
-            message: "任务结束前工具未返回最终状态。",
+            message: "The tool did not report a final status before the task ended.",
             at: event.finishedAt ?? .now
         )
         return presented
@@ -143,7 +143,7 @@ struct ToolEventCard: View {
                 .accessibilityLabel(
                     "\(ToolEventPresentation.title(for: event.name))，\(summary.text)，\(ToolEventPresentation.statusTitle(event.status))"
                 )
-                .accessibilityHint(isExpanded ? "收起工具内容" : "展开工具内容")
+                .accessibilityHint(isExpanded ? "Collapse tool content" : "Expand tool content")
 
                 Button(action: onInspect) {
                     Image(systemName: "info.circle")
@@ -153,7 +153,7 @@ struct ToolEventCard: View {
                         .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("查看工具详情")
+                .accessibilityLabel("View tool details")
             }
 
             if isExpanded {
@@ -256,7 +256,7 @@ private struct ToolEventStatusView: View {
 
     private var statusTitle: String {
         if hasFailingExit, let terminalExitCode {
-            return "退出 \(terminalExitCode)"
+            return "Exit \(terminalExitCode)"
         }
         return ToolEventPresentation.statusTitle(status)
     }
@@ -291,7 +291,7 @@ private struct ToolEventOutputView: View {
             .frame(maxHeight: 180)
             .padding(8)
             .background(.black.opacity(0.86), in: .rect(cornerRadius: 6))
-            .accessibilityLabel("工具输出")
+            .accessibilityLabel("Tool output")
         } else if let result = event.result, !result.isEmpty {
             Text(limited(result))
                 .font(.caption.monospaced())
@@ -317,24 +317,24 @@ private struct ToolEventInspectorView: View {
         NavigationStack {
             List {
                 Section {
-                    LabeledContent("工具", value: ToolEventPresentation.title(for: event.name))
-                    LabeledContent("状态", value: ToolEventPresentation.statusTitle(event.status))
+                    LabeledContent("Tool", value: ToolEventPresentation.title(for: event.name))
+                    LabeledContent("Status", value: ToolEventPresentation.statusTitle(event.status))
                     if !event.summary.isEmpty {
                         Text(event.summary)
                             .textSelection(.enabled)
                     }
                     if let startedAt = event.startedAt {
-                        LabeledContent("开始") {
+                        LabeledContent("Started") {
                             Text(startedAt, format: .dateTime.hour().minute().second())
                         }
                     }
                     if let finishedAt = event.finishedAt {
-                        LabeledContent("结束") {
+                        LabeledContent("Ended") {
                             Text(finishedAt, format: .dateTime.hour().minute().second())
                         }
                     }
                 } header: {
-                    Label("状态", systemImage: "waveform.path.ecg")
+                    Label("Status", systemImage: "waveform.path.ecg")
                 }
 
                 Section {
@@ -342,14 +342,14 @@ private struct ToolEventInspectorView: View {
                         .font(.footnote.monospaced())
                         .textSelection(.enabled)
                 } header: {
-                    Label("参数", systemImage: "slider.horizontal.3")
+                    Label("Arguments", systemImage: "slider.horizontal.3")
                 }
 
                 if !event.output.isEmpty {
                     Section {
                         ToolEventOutputView(event: event, maximumCharacters: 64 * 1_024)
                     } header: {
-                        Label("输出", systemImage: "arrow.up.doc")
+                        Label("Output", systemImage: "arrow.up.doc")
                     }
                 }
 
@@ -359,7 +359,7 @@ private struct ToolEventInspectorView: View {
                             .font(.footnote.monospaced())
                             .textSelection(.enabled)
                     } header: {
-                        Label("返回值", systemImage: "return")
+                        Label("Return Value", systemImage: "return")
                     }
                 }
 
@@ -369,7 +369,7 @@ private struct ToolEventInspectorView: View {
                             .foregroundStyle(.red)
                             .textSelection(.enabled)
                     } header: {
-                        Label("错误", systemImage: "exclamationmark.triangle")
+                        Label("Error", systemImage: "exclamationmark.triangle")
                     }
                 }
 
@@ -385,15 +385,15 @@ private struct ToolEventInspectorView: View {
                             }
                         }
                     } header: {
-                        Label("子工具", systemImage: "point.3.connected.trianglepath.dotted")
+                        Label("Subtools", systemImage: "point.3.connected.trianglepath.dotted")
                     }
                 }
             }
-            .navigationTitle("工具详情")
+            .navigationTitle("Tool Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") {
+                    Button("Done") {
                         dismiss()
                     }
                 }
@@ -406,60 +406,60 @@ private struct ToolEventInspectorView: View {
 enum ToolEventPresentation {
     static func title(for name: String) -> String {
         switch name {
-        case "shell_execute": "iSH 终端"
+        case "shell_execute": "iSH Terminal"
         case "run_code": "Code Mode"
-        case "code_execute": "本机代码"
-        case "read": "读取文件"
-        case "write": "写入文件"
-        case "edit": "编辑文件"
-        case "job_output": "后台任务输出"
-        case "job_list": "后台任务列表"
-        case "job_kill": "停止后台任务"
-        case "schedule_create": "创建定时任务"
-        case "schedule_list": "定时任务列表"
-        case "schedule_delete": "取消定时任务"
-        case "workspace_list_files": "文件列表"
-        case "workspace_read_text": "读取文件"
-        case "workspace_write_text": "写入文件"
-        case "camera_ocr": "相机 OCR"
-        case "vision_analyze": "本机视觉分析"
-        case "natural_language_analyze": "本机文本分析"
-        case "speech_synthesize": "系统朗读"
-        case "speech_transcribe": "语音转文字"
-        case "maps_search": "地图搜索"
-        case "maps_route": "地图路线"
-        case "system_open": "打开系统目标"
-        case "photo_library_list": "照片图库"
-        case "media_library_search": "媒体搜索"
-        case "media_playback": "媒体播放"
-        case "health_query": "健康数据"
-        case "bluetooth_scan": "蓝牙扫描"
-        case "calendar_events": "日历事件"
-        case "reminders_list": "提醒事项"
-        case "clipboard_read": "读取剪贴板"
-        case "clipboard_write": "写入剪贴板"
-        case "device_status": "设备状态"
-        case "ask_user_question": "询问用户"
-        case "exit_plan_mode": "计划审核"
-        case "work_state_set_goal": "更新目标"
-        case "work_state_replace_plan": "更新计划"
-        case "work_state_replace_todos": "更新待办"
-        case "contacts_search": "搜索联系人"
-        case "location_current": "当前位置"
-        case "motion_activity": "运动活动"
-        case "notification_schedule": "本地通知"
-        case "secure_authenticate": "设备验证"
-        case "device_time": "设备时间"
-        case "device_capabilities": "设备能力"
-        case "web_fetch": "网页读取"
-        case "plugin_marketplace": "插件市场"
-        case "cordis_inspect_list": "检查 Cordis 插件"
-        case "cordis_inspect_query": "查询 Cordis 能力"
-        case "cordis_inspect_self": "检查当前 Cordis 插件"
-        case "cordis_define": "定义 Cordis 插件"
-        case "cordis_run": "运行 Cordis 插件"
-        case "cordis_stop": "停止 Cordis 插件"
-        case "cordis_undefine": "移除 Cordis 插件"
+        case "code_execute": "Local Code"
+        case "read": "Read File"
+        case "write": "Write File"
+        case "edit": "Edit File"
+        case "job_output": "Background Job Output"
+        case "job_list": "Background Jobs"
+        case "job_kill": "Stop Background Job"
+        case "schedule_create": "Create Scheduled Task"
+        case "schedule_list": "Scheduled Tasks"
+        case "schedule_delete": "Cancel Scheduled Task"
+        case "workspace_list_files": "List Files"
+        case "workspace_read_text": "Read File"
+        case "workspace_write_text": "Write File"
+        case "camera_ocr": "Camera OCR"
+        case "vision_analyze": "On-Device Vision"
+        case "natural_language_analyze": "On-Device Text Analysis"
+        case "speech_synthesize": "Speak Text"
+        case "speech_transcribe": "Speech to Text"
+        case "maps_search": "Maps Search"
+        case "maps_route": "Maps Route"
+        case "system_open": "Open System Target"
+        case "photo_library_list": "Photo Library"
+        case "media_library_search": "Media Search"
+        case "media_playback": "Media Playback"
+        case "health_query": "Health Data"
+        case "bluetooth_scan": "Bluetooth Scan"
+        case "calendar_events": "Calendar Events"
+        case "reminders_list": "Reminders"
+        case "clipboard_read": "Read Clipboard"
+        case "clipboard_write": "Write Clipboard"
+        case "device_status": "Device Status"
+        case "ask_user_question": "Ask User"
+        case "exit_plan_mode": "Plan Review"
+        case "work_state_set_goal": "Update Goal"
+        case "work_state_replace_plan": "Update Plan"
+        case "work_state_replace_todos": "Update To-Dos"
+        case "contacts_search": "Search Contacts"
+        case "location_current": "Current Location"
+        case "motion_activity": "Motion Activity"
+        case "notification_schedule": "Local Notification"
+        case "secure_authenticate": "Device Authentication"
+        case "device_time": "Device Time"
+        case "device_capabilities": "Device Capabilities"
+        case "web_fetch": "Web Fetch"
+        case "plugin_marketplace": "Plugin Marketplace"
+        case "cordis_inspect_list": "Inspect Cordis Plugins"
+        case "cordis_inspect_query": "Query Cordis Capabilities"
+        case "cordis_inspect_self": "Inspect Current Cordis Plugin"
+        case "cordis_define": "Define Cordis Plugin"
+        case "cordis_run": "Run Cordis Plugin"
+        case "cordis_stop": "Stop Cordis Plugin"
+        case "cordis_undefine": "Remove Cordis Plugin"
         default: name.replacingOccurrences(of: "_", with: " ")
         }
     }
@@ -524,13 +524,13 @@ enum ToolEventPresentation {
 
     static func statusTitle(_ status: AgentToolEventStatus) -> String {
         switch status {
-        case .pending: "等待"
-        case .awaitingApproval: "待授权"
-        case .running: "运行中"
-        case .succeeded: "完成"
-        case .failed: "失败"
-        case .denied: "已拒绝"
-        case .interrupted: "已中断"
+        case .pending: "Pending"
+        case .awaitingApproval: "Awaiting Approval"
+        case .running: "Running"
+        case .succeeded: "Done"
+        case .failed: "Failed"
+        case .denied: "Denied"
+        case .interrupted: "Interrupted"
         }
     }
 

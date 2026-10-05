@@ -18,12 +18,12 @@ final class SlashCommandCoreTests: XCTestCase {
             )
         )
         XCTAssertEqual(
-            InputTriggerDetector.detect("第一行\n@worker"),
+            InputTriggerDetector.detect("first\n@worker"),
             InputTriggerHit(
                 trigger: .at,
                 query: "worker",
                 position: .inline,
-                span: InputTriggerSpan(start: 4, end: 11, draftRevision: 0)
+                span: InputTriggerSpan(start: 6, end: 13, draftRevision: 0)
             )
         )
         XCTAssertNil(InputTriggerDetector.detect("user@host"))
@@ -35,7 +35,7 @@ final class SlashCommandCoreTests: XCTestCase {
     }
 
     func testInputTriggerDetectorUsesNearestTokenAndRevisionGuardedReplacement() {
-        let draft = "先处理 /goal @worker"
+        let draft = "First /goal @worker"
         let hit = InputTriggerDetector.detect(
             draft,
             draftRevision: 7
@@ -51,7 +51,7 @@ final class SlashCommandCoreTests: XCTestCase {
                     currentRevision: 7
                 )
             },
-            "先处理 /goal @researcher "
+            "First /goal @researcher "
         )
         XCTAssertNil(
             hit.flatMap {
@@ -109,15 +109,15 @@ final class SlashCommandCoreTests: XCTestCase {
     func testAddressedSubagentInputRequiresDurableUUIDAndMessage() {
         let address = "A24CBBD8-D577-4A9F-AEFC-26FC9C9AFEA4"
         XCTAssertEqual(
-            AddressedSubagentInputParser.parse("@\(address) 继续检查缓存"),
+            AddressedSubagentInputParser.parse("@\(address) continue checking the cache"),
             AddressedSubagentInput(
                 address: address.lowercased(),
-                message: "继续检查缓存"
+                message: "continue checking the cache"
             )
         )
-        XCTAssertNil(AddressedSubagentInputParser.parse("@worker 继续"))
+        XCTAssertNil(AddressedSubagentInputParser.parse("@worker continue"))
         XCTAssertNil(AddressedSubagentInputParser.parse("@\(address)"))
-        XCTAssertNil(AddressedSubagentInputParser.parse("普通消息 @\(address) 继续"))
+        XCTAssertNil(AddressedSubagentInputParser.parse("plain message @\(address) continue"))
         XCTAssertNil(
             AddressedSubagentInputParser.parse(
                 "@\(address) "
@@ -175,7 +175,7 @@ final class SlashCommandCoreTests: XCTestCase {
 
         let messageID = try XCTUnwrap(UUID(uuidString: "A24CBBD8-D577-4A9F-AEFC-26FC9C9AFEA4"))
         guard case let .prepared(note) = await registry.prepare(
-            "/feedback \(messageID.uuidString) note 需要补充回归测试"
+            "/feedback \(messageID.uuidString) note needs more regression tests"
         ) else {
             return XCTFail("expected /feedback note to prepare")
         }
@@ -184,7 +184,7 @@ final class SlashCommandCoreTests: XCTestCase {
             return XCTFail("expected note feedback action")
         }
         XCTAssertEqual(parsedID, messageID)
-        XCTAssertEqual(text, "需要补充回归测试")
+        XCTAssertEqual(text, "needs more regression tests")
     }
 
     func testFeedbackCommandRejectsUnknownOperationAndOversizedNote() async {

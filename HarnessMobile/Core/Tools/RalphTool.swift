@@ -101,7 +101,7 @@ private struct RalphTool: LocalAgentTool {
 
     func summary(arguments: [String: JSONValue]) -> String {
         let objective = arguments["objective"]?.stringValue ?? "ralph"
-        return "Ralph 循环：\(String(objective.trimmingCharacters(in: .whitespacesAndNewlines).prefix(64)))"
+        return "Ralph loop: \(String(objective.trimmingCharacters(in: .whitespacesAndNewlines).prefix(64)))"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -111,7 +111,7 @@ private struct RalphTool: LocalAgentTool {
     func execute(arguments: [String: JSONValue]) async throws -> String {
         try validate(arguments: arguments)
         guard let runner else {
-            throw LocalToolError.pluginDenied("手机 Ralph 子 Agent 运行器尚未就绪。")
+            throw LocalToolError.pluginDenied("The mobile Ralph subagent runner is not ready yet.")
         }
         let objective = try arguments.requiredString("objective", maximumUTF8Bytes: Self.maximumObjectiveBytes)
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -174,7 +174,7 @@ private struct RalphTool: LocalAgentTool {
                 let read = try await registry.read(id: jobID, ownerSession: ownerSession)
                 guard read.snapshot.status == HarnessJobStatus.completed else {
                     throw LocalToolError.pluginFailed(
-                        "Ralph 第 \(round) 轮子 Agent 未完成：\(String(read.text.prefix(1_000)))"
+                        "Ralph round \(round) subagent did not complete: \(String(read.text.prefix(1_000)))"
                     )
                 }
                 let report = try Self.decodeReport(read.text)
@@ -198,7 +198,7 @@ private struct RalphTool: LocalAgentTool {
                 }
             }
             guard let previous else {
-                throw LocalToolError.pluginFailed("Ralph 没有产生结构化轮次报告。")
+                throw LocalToolError.pluginFailed("Ralph produced no structured round report.")
             }
             return try Self.render(
                 status: "budget-limited",
@@ -263,7 +263,7 @@ private struct RalphTool: LocalAgentTool {
     private static func decodeReport(_ text: String) throws -> RalphRoundReport {
         guard let data = text.data(using: .utf8),
               let value = try? JSONDecoder().decode(RalphRoundReport.self, from: data) else {
-            throw LocalToolError.pluginFailed("Ralph 子 Agent 没有返回合法的结构化轮次报告。")
+            throw LocalToolError.pluginFailed("Ralph subagent did not return a valid structured round report.")
         }
         try value.validate()
         return value
@@ -304,15 +304,15 @@ private struct RalphRoundReport: Codable, Sendable {
               evidence.allSatisfy({ !$0.isEmpty && $0 == $0.trimmingCharacters(in: .whitespacesAndNewlines) }),
               nextSteps.allSatisfy({ !$0.isEmpty && $0 == $0.trimmingCharacters(in: .whitespacesAndNewlines) }),
               blocker == blocker.trimmingCharacters(in: .whitespacesAndNewlines) else {
-            throw LocalToolError.pluginFailed("Ralph 轮次报告包含未规范化的文本。")
+            throw LocalToolError.pluginFailed("Ralph round report contains unnormalized text.")
         }
         switch status {
         case .continue:
-            guard !nextSteps.isEmpty, blocker.isEmpty else { throw LocalToolError.pluginFailed("Ralph continue 报告需要 nextSteps 且 blocker 为空。") }
+            guard !nextSteps.isEmpty, blocker.isEmpty else { throw LocalToolError.pluginFailed("Ralph continue report requires nextSteps and an empty blocker.") }
         case .complete:
-            guard !evidence.isEmpty, nextSteps.isEmpty, blocker.isEmpty else { throw LocalToolError.pluginFailed("Ralph complete 报告需要 evidence、空 nextSteps 和空 blocker。") }
+            guard !evidence.isEmpty, nextSteps.isEmpty, blocker.isEmpty else { throw LocalToolError.pluginFailed("Ralph complete report requires evidence, empty nextSteps, and an empty blocker.") }
         case .blocked:
-            guard !blocker.isEmpty else { throw LocalToolError.pluginFailed("Ralph blocked 报告需要具体 blocker。") }
+            guard !blocker.isEmpty else { throw LocalToolError.pluginFailed("Ralph blocked report requires a specific blocker.") }
         }
         let encoded = try JSONEncoder().encode(self)
         guard encoded.count <= 16 * 1_024 else { throw LocalToolError.resultTooLarge }

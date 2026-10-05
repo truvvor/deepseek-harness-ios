@@ -41,33 +41,33 @@ enum MCPClientError: Error, LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .unavailable:
-            "本机构建不包含可用的 iSH MCP 边界。"
+            "This build does not include a usable iSH MCP boundary."
         case let .invalidConfiguration(reason):
-            "MCP 配置无效：\(reason)"
+            "Invalid MCP configuration: \(reason)"
         case let .invalidState(reason):
-            "MCP 客户端状态无效：\(reason)"
+            "Invalid MCP client state: \(reason)"
         case .malformedJSON:
-            "MCP 服务返回了无法解析的 JSON。"
+            "The MCP server returned JSON that could not be parsed."
         case let .invalidJSONRPC(reason):
-            "MCP JSON-RPC 消息无效：\(reason)"
+            "Invalid MCP JSON-RPC message: \(reason)"
         case let .frameTooLarge(maximumBytes):
-            "MCP 消息超过 \(maximumBytes) 字节上限。"
+            "MCP message exceeds the \(maximumBytes)-byte limit."
         case let .payloadTooLarge(kind, maximumBytes):
-            "MCP \(kind) 超过 \(maximumBytes) 字节上限。"
+            "MCP \(kind) exceeds the \(maximumBytes)-byte limit."
         case .transportEOF:
-            "MCP 本地 stdio 通道已结束。"
+            "The local MCP stdio channel has closed."
         case let .transportFailure(reason):
-            "MCP 本地通道失败：\(reason)"
+            "Local MCP channel failed: \(reason)"
         case let .remote(code, message, _):
-            "MCP 服务错误 \(code)：\(message)"
+            "MCP server error \(code): \(message)"
         case let .unauthorized(server, tool):
-            "未获授权调用 MCP 服务 \(server) 的工具 \(tool)。"
+            "Not authorized to call tool \(tool) on MCP server \(server)."
         case let .toolNotFound(name):
-            "MCP 工具不存在：\(name)"
+            "MCP tool not found: \(name)"
         case let .timedOut(method):
-            "MCP 请求超时：\(method)"
+            "MCP request timed out: \(method)"
         case .cancelled:
-            "MCP 请求已取消。"
+            "MCP request cancelled."
         }
     }
 }
@@ -132,18 +132,18 @@ struct MCPStdioServerConfiguration: Codable, Sendable, Equatable {
                       || (value >= 97 && value <= 122)
                       || value == 95 || value == 45
               }) else {
-            throw MCPClientError.invalidConfiguration("serverName 必须匹配 [A-Za-z0-9_-]{1,32}")
+            throw MCPClientError.invalidConfiguration("serverName must match [A-Za-z0-9_-]{1,32}")
         }
         guard !command.isEmpty, command.utf8.count <= 512,
               !command.contains("\0"), !command.contains("\n"), !command.contains("\r") else {
-            throw MCPClientError.invalidConfiguration("command 为空或包含非法控制字符")
+            throw MCPClientError.invalidConfiguration("command is empty or contains invalid control characters")
         }
         guard args.count <= 128,
               args.allSatisfy({ $0.utf8.count <= 8 * 1_024 && !$0.contains("\0") }) else {
-            throw MCPClientError.invalidConfiguration("args 超出数量或单项大小上限")
+            throw MCPClientError.invalidConfiguration("args exceed the count or per-item size limit")
         }
         guard env.count <= 128 else {
-            throw MCPClientError.invalidConfiguration("env 超出数量上限")
+            throw MCPClientError.invalidConfiguration("env exceeds the entry count limit")
         }
         for (key, value) in env {
             guard !key.isEmpty, key.utf8.count <= 256,
@@ -156,12 +156,12 @@ struct MCPStdioServerConfiguration: Codable, Sendable, Equatable {
                   }),
                   value.utf8.count <= 8 * 1_024,
                   !value.contains("\0"), !value.contains("\n"), !value.contains("\r") else {
-                throw MCPClientError.invalidConfiguration("env 含有非法键或值")
+                throw MCPClientError.invalidConfiguration("env contains an invalid key or value")
             }
         }
         if let cwd {
             guard cwd.isEmpty || (cwd.utf8.count <= 4 * 1_024 && !cwd.contains("\0") && !cwd.contains("\n") && !cwd.contains("\r")) else {
-                throw MCPClientError.invalidConfiguration("cwd 无效")
+                throw MCPClientError.invalidConfiguration("cwd is invalid")
             }
         }
     }
@@ -188,10 +188,10 @@ struct MCPClientConfiguration: Sendable, Equatable {
     func validate() throws {
         try server.validate()
         guard toolCallTimeout > .zero else {
-            throw MCPClientError.invalidConfiguration("toolCallTimeout 必须大于 0")
+            throw MCPClientError.invalidConfiguration("toolCallTimeout must be greater than 0")
         }
         guard limits.maximumOutboundFrameBytes <= limits.maximumInboundFrameBytes else {
-            throw MCPClientError.invalidConfiguration("出站消息上限不能大于入站消息上限")
+            throw MCPClientError.invalidConfiguration("The outbound message limit cannot exceed the inbound message limit")
         }
         try reconnectPolicy.validate()
     }
@@ -216,10 +216,10 @@ struct MCPReconnectPolicy: Sendable, Equatable {
 
     func validate() throws {
         guard initialDelay > .zero, maximumDelay >= initialDelay else {
-            throw MCPClientError.invalidConfiguration("MCP 重连延迟无效")
+            throw MCPClientError.invalidConfiguration("Invalid MCP reconnect delay")
         }
         guard (1...10).contains(maximumAttempts) else {
-            throw MCPClientError.invalidConfiguration("MCP maximumAttempts 必须在 1 到 10 之间")
+            throw MCPClientError.invalidConfiguration("MCP maximumAttempts must be between 1 and 10")
         }
     }
 

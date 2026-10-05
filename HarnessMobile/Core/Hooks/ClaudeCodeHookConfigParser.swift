@@ -108,7 +108,7 @@ enum ClaudeCodeConfigError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case let .invalidMatcher(matcher, event):
-            "hooks 配置的 matcher 不是合法正则：\(matcher)（事件 \(event)）。"
+            "The hooks config matcher is not a valid regex: \(matcher) (event \(event))."
         }
     }
 }

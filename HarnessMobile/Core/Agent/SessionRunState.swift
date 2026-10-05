@@ -564,8 +564,8 @@ actor SessionRunState {
             presentation.currentStep = step
             resetStreamingState()
             if let status = try? ContinuedProcessingStatus(
-                title: "Harness 正在执行",
-                subtitle: "第 \(step) 步 · 持续执行",
+                title: "Harness is running",
+                subtitle: "Step \(step) · Continuous run",
                 completedUnitCount: Int64(clamping: max(0, step - 1)),
                 totalUnitCount: max(1, Int64(clamping: step))
             ) {
@@ -617,7 +617,7 @@ actor SessionRunState {
             appendToolOutput(callID: callID, chunk: chunk)
             return true
         case let .toolStarted(call, summary):
-            presentation.activeToolStatus = "\(call.name)：\(summary)"
+            presentation.activeToolStatus = "\(call.name): \(summary)"
         case .toolFinished:
             presentation.activeToolStatus = nil
         case let .usage(usage):

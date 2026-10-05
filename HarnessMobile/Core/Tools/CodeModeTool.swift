@@ -190,17 +190,17 @@ struct ISHRunCodeTool: LocalAgentTool {
         self.resolver = resolver
         self.definition = ModelToolDefinition(
             name: "run_code",
-            description: "Code Mode：在手机 iSH 中运行 Python 程序。程序通过生成的 tools SDK 调用已注册的本机工具；所有代码和子工具调用都在本机执行，不经过服务器。",
+            description: "Code Mode: run a Python program in iSH on the phone. The program calls registered local tools through the generated tools SDK; all code and sub-tool calls run on the device and never go through a server.",
             parameters: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "code": .object([
                         "type": .string("string"),
-                        "description": .string("异步 Python 函数体；支持顶层 await 和 return。只能通过 tools SDK 调用工具。")
+                        "description": .string("Async Python function body; supports top-level await and return. Tools can only be called through the tools SDK.")
                     ]),
                     "description": .object([
                         "type": .string("string"),
-                        "description": .string("程序要完成的简短说明。")
+                        "description": .string("A short description of what the program should accomplish.")
                     ])
                 ]),
                 "required": .array([.string("code"), .string("description")]),
@@ -216,7 +216,7 @@ struct ISHRunCodeTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "Code Mode：在手机运行 Python 并调用本机工具"
+        "Code Mode: run Python on the phone and call local tools"
     }
 
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -342,7 +342,7 @@ struct ISHRunCodeTool: LocalAgentTool {
             return
         }
         guard let tool = resolver.tool(named: name) else {
-            await writeResponse(id: requestID, value: nil, error: "未知或未启用的本机工具：\(name)", directory: directory)
+            await writeResponse(id: requestID, value: nil, error: "Unknown or disabled local tool: \(name)", directory: directory)
             return
         }
         do {
@@ -411,7 +411,7 @@ private enum CodeModeToolError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .programFailed(message):
-            "run_code 程序失败：\(message)"
+            "run_code program failed: \(message)"
         }
     }
 }

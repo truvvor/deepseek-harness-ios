@@ -129,7 +129,7 @@ struct LocationCurrentTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "获取一次当前定位；坐标结果会发送给模型"
+        "Get the current location once; the coordinates will be sent to the model"
     }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -145,7 +145,7 @@ struct LocationCurrentTool: LocalAgentTool {
               reading.horizontalAccuracy >= 0,
               reading.altitude?.isFinite != false,
               reading.verticalAccuracy?.isFinite != false else {
-            throw MobileNativeToolError.invalidSystemResult("定位")
+            throw MobileNativeToolError.invalidSystemResult("Location")
         }
 
         var object: [String: JSONValue] = [
@@ -210,7 +210,7 @@ struct MotionActivityTool: LocalAgentTool {
             default: 60,
             range: 1...1_440
         )) ?? 60
-        return "读取最近 \(minutes) 分钟的本机运动活动；结果会发送给模型"
+        return "Read on-device motion activity from the last \(minutes) minutes; results will be sent to the model"
     }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -231,7 +231,7 @@ struct MotionActivityTool: LocalAgentTool {
         ]
         guard !reading.activities.isEmpty,
               reading.activities.allSatisfy(allowedActivities.contains) else {
-            throw MobileNativeToolError.invalidSystemResult("运动活动")
+            throw MobileNativeToolError.invalidSystemResult("Motion activity")
         }
 
         return JSONValue.object([
@@ -296,7 +296,7 @@ struct NotificationScheduleTool: LocalAgentTool {
             range: 1...604_800
         )) ?? 0
         let titleBytes = arguments["title"]?.stringValue?.utf8.count ?? 0
-        return "安排一条本地通知（\(seconds) 秒后，标题 \(titleBytes) 字节）"
+        return "Schedule a local notification (in \(seconds) s, title \(titleBytes) bytes)"
     }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -355,14 +355,14 @@ struct SecureAuthenticateTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "使用 Face ID、Touch ID 或设备密码验证当前设备所有者"
+        "Verify the device owner with Face ID, Touch ID, or the device passcode"
     }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
         try validate(arguments: arguments)
         try Task.checkCancellation()
         try await provider.authenticateDeviceOwner(
-            reason: "验证你本人后继续执行当前本机 Agent 操作",
+            reason: "Verify it's you to continue the current on-device Agent action",
             timeout: .seconds(60)
         )
         try Task.checkCancellation()
@@ -386,7 +386,7 @@ struct ClipboardReadTool: LocalAgentTool {
     let risk: ToolRisk = .sensitiveRead
 
     func validate(arguments: [String: JSONValue]) throws { try arguments.requireOnlyKeys([]) }
-    func summary(arguments: [String: JSONValue]) -> String { "读取本机剪贴板文本" }
+    func summary(arguments: [String: JSONValue]) -> String { "Read text from the device clipboard" }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
         try validate(arguments: arguments)
         return ["clipboard:read"]
@@ -404,7 +404,7 @@ struct ClipboardReadTool: LocalAgentTool {
             "byteCount": .number(Double(text.utf8.count))
         ]).displayText
         #else
-        throw MobileNativeToolError.hardwareUnavailable("剪贴板")
+        throw MobileNativeToolError.hardwareUnavailable("Clipboard")
         #endif
     }
 
@@ -444,7 +444,7 @@ struct ClipboardWriteTool: LocalAgentTool {
     }
     func summary(arguments: [String: JSONValue]) -> String {
         let bytes = arguments["text"]?.stringValue?.utf8.count ?? 0
-        return "写入 \(bytes) 字节到本机剪贴板"
+        return "Write \(bytes) bytes to the device clipboard"
     }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
         try validate(arguments: arguments)
@@ -462,7 +462,7 @@ struct ClipboardWriteTool: LocalAgentTool {
             "byteCount": .number(Double(text.utf8.count))
         ]).displayText
         #else
-        throw MobileNativeToolError.hardwareUnavailable("剪贴板")
+        throw MobileNativeToolError.hardwareUnavailable("Clipboard")
         #endif
     }
 }
@@ -480,7 +480,7 @@ struct DeviceStatusTool: LocalAgentTool {
     let risk: ToolRisk = .localState
 
     func validate(arguments: [String: JSONValue]) throws { try arguments.requireOnlyKeys([]) }
-    func summary(arguments: [String: JSONValue]) -> String { "读取本机设备运行状态" }
+    func summary(arguments: [String: JSONValue]) -> String { "Read the device's runtime status" }
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool {
         try validate(arguments: arguments)
         return true
@@ -522,7 +522,7 @@ struct DeviceStatusTool: LocalAgentTool {
             ]).displayText
         }
         #else
-        throw MobileNativeToolError.hardwareUnavailable("设备状态")
+        throw MobileNativeToolError.hardwareUnavailable("Device status")
         #endif
     }
 
@@ -562,7 +562,7 @@ struct CalendarEventsTool: LocalAgentTool {
         _ = try EventKitToolSupport.date(arguments, key: "end_date")
         _ = try arguments.boundedInteger("limit", default: 50, range: 1...100)
     }
-    func summary(arguments: [String: JSONValue]) -> String { "读取指定日期范围内的本机日历事件" }
+    func summary(arguments: [String: JSONValue]) -> String { "Read on-device calendar events in the given date range" }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
         try validate(arguments: arguments)
         return ["calendar:read"]
@@ -576,7 +576,7 @@ struct CalendarEventsTool: LocalAgentTool {
         #if os(iOS)
         return try await EventKitReadBridge.events(start: start, end: end, limit: limit)
         #else
-        throw MobileNativeToolError.hardwareUnavailable("日历")
+        throw MobileNativeToolError.hardwareUnavailable("Calendar")
         #endif
     }
 }
@@ -610,7 +610,7 @@ struct RemindersListTool: LocalAgentTool {
         }
         _ = try arguments.boundedInteger("limit", default: 50, range: 1...100)
     }
-    func summary(arguments: [String: JSONValue]) -> String { "读取本机提醒事项" }
+    func summary(arguments: [String: JSONValue]) -> String { "Read on-device reminders" }
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
         try validate(arguments: arguments)
         return ["reminders:read"]
@@ -628,7 +628,7 @@ struct RemindersListTool: LocalAgentTool {
         #if os(iOS)
         return try await EventKitReadBridge.reminders(query: query, includeCompleted: includeCompleted, limit: limit)
         #else
-        throw MobileNativeToolError.hardwareUnavailable("提醒事项")
+        throw MobileNativeToolError.hardwareUnavailable("Reminders")
         #endif
     }
 }
@@ -659,25 +659,25 @@ enum MobileNativeToolError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case let .hardwareUnavailable(capability):
-            return "当前设备或模拟器不支持\(capability)。"
+            return "\(capability) is not supported on this device or simulator."
         case let .permissionDenied(capability):
-            return "\(capability)权限已被拒绝，请在系统设置中允许后重试。"
+            return "\(capability) permission was denied. Allow it in Settings and try again."
         case let .restricted(capability):
-            return "\(capability)受到系统或家长控制限制。"
+            return "\(capability) is restricted by the system or parental controls."
         case let .timedOut(capability):
-            return "等待\(capability)超时。"
+            return "Timed out waiting for \(capability)."
         case let .noData(capability):
-            return "没有可用的\(capability)数据。"
+            return "No \(capability) data available."
         case let .requestInProgress(capability):
-            return "已有\(capability)请求正在进行。"
+            return "A \(capability) request is already in progress."
         case let .invalidSystemResult(capability):
-            return "系统返回了无效的\(capability)结果。"
+            return "The system returned an invalid \(capability) result."
         case .authenticationCancelled:
-            return "设备所有者验证已取消。"
+            return "Device owner verification was canceled."
         case .authenticationFailed:
-            return "设备所有者验证失败。"
+            return "Device owner verification failed."
         case let .operationFailed(capability):
-            return "\(capability)操作失败。"
+            return "\(capability) operation failed."
         }
     }
 }
@@ -809,11 +809,11 @@ private final class EventKitReadBridge {
             store.requestFullAccessToEvents { granted, error in
                 if granted { continuation.resume() }
                 else if EKEventStore.authorizationStatus(for: .event) == .restricted {
-                    continuation.resume(throwing: MobileNativeToolError.restricted("日历"))
+                    continuation.resume(throwing: MobileNativeToolError.restricted("Calendar"))
                 } else if error != nil || EKEventStore.authorizationStatus(for: .event) == .denied {
-                    continuation.resume(throwing: MobileNativeToolError.permissionDenied("日历"))
+                    continuation.resume(throwing: MobileNativeToolError.permissionDenied("Calendar"))
                 } else {
-                    continuation.resume(throwing: MobileNativeToolError.operationFailed("日历授权"))
+                    continuation.resume(throwing: MobileNativeToolError.operationFailed("Calendar authorization"))
                 }
             }
         }
@@ -824,11 +824,11 @@ private final class EventKitReadBridge {
             store.requestFullAccessToReminders { granted, error in
                 if granted { continuation.resume() }
                 else if EKEventStore.authorizationStatus(for: .reminder) == .restricted {
-                    continuation.resume(throwing: MobileNativeToolError.restricted("提醒事项"))
+                    continuation.resume(throwing: MobileNativeToolError.restricted("Reminders"))
                 } else if error != nil || EKEventStore.authorizationStatus(for: .reminder) == .denied {
-                    continuation.resume(throwing: MobileNativeToolError.permissionDenied("提醒事项"))
+                    continuation.resume(throwing: MobileNativeToolError.permissionDenied("Reminders"))
                 } else {
-                    continuation.resume(throwing: MobileNativeToolError.operationFailed("提醒事项授权"))
+                    continuation.resume(throwing: MobileNativeToolError.operationFailed("Reminders authorization"))
                 }
             }
         }
@@ -891,7 +891,7 @@ private final class LocationRequestBridge: NSObject, @MainActor CLLocationManage
 
     private func request(timeout: Duration) async throws -> DeviceLocationReading {
         guard timeout > .zero else {
-            throw MobileNativeToolError.timedOut("定位")
+            throw MobileNativeToolError.timedOut("Location")
         }
         try Task.checkCancellation()
         return try await withTaskCancellationHandler {
@@ -901,7 +901,7 @@ private final class LocationRequestBridge: NSObject, @MainActor CLLocationManage
                 manager.delegate = self
                 manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
                 self.manager = manager
-                startTimeout(timeout, capability: "定位")
+                startTimeout(timeout, capability: "Location")
                 beginAuthorizationOrRequest()
             }
         } onCancel: {
@@ -914,7 +914,7 @@ private final class LocationRequestBridge: NSObject, @MainActor CLLocationManage
     private func beginAuthorizationOrRequest() {
         guard !isFinished, let manager else { return }
         guard CLLocationManager.locationServicesEnabled() else {
-            finish(.failure(MobileNativeToolError.hardwareUnavailable("定位服务")))
+            finish(.failure(MobileNativeToolError.hardwareUnavailable("Location Services")))
             return
         }
         switch manager.authorizationStatus {
@@ -925,11 +925,11 @@ private final class LocationRequestBridge: NSObject, @MainActor CLLocationManage
             didRequestLocation = true
             manager.requestLocation()
         case .denied:
-            finish(.failure(MobileNativeToolError.permissionDenied("定位")))
+            finish(.failure(MobileNativeToolError.permissionDenied("Location")))
         case .restricted:
-            finish(.failure(MobileNativeToolError.restricted("定位")))
+            finish(.failure(MobileNativeToolError.restricted("Location")))
         @unknown default:
-            finish(.failure(MobileNativeToolError.operationFailed("定位")))
+            finish(.failure(MobileNativeToolError.operationFailed("Location")))
         }
     }
 
@@ -944,7 +944,7 @@ private final class LocationRequestBridge: NSObject, @MainActor CLLocationManage
         guard let location = locations.last,
               CLLocationCoordinate2DIsValid(location.coordinate),
               location.horizontalAccuracy >= 0 else {
-            finish(.failure(MobileNativeToolError.invalidSystemResult("定位")))
+            finish(.failure(MobileNativeToolError.invalidSystemResult("Location")))
             return
         }
         let verticalAccuracy = location.verticalAccuracy >= 0
@@ -966,11 +966,11 @@ private final class LocationRequestBridge: NSObject, @MainActor CLLocationManage
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         let code = (error as? CLError)?.code
         if code == .denied {
-            finish(.failure(MobileNativeToolError.permissionDenied("定位")))
+            finish(.failure(MobileNativeToolError.permissionDenied("Location")))
         } else if code == .locationUnknown {
-            finish(.failure(MobileNativeToolError.hardwareUnavailable("当前定位")))
+            finish(.failure(MobileNativeToolError.hardwareUnavailable("Current location")))
         } else {
-            finish(.failure(MobileNativeToolError.operationFailed("定位")))
+            finish(.failure(MobileNativeToolError.operationFailed("Location")))
         }
     }
 
@@ -1031,20 +1031,20 @@ private final class MotionActivityRequestBridge {
         timeout: Duration
     ) async throws -> DeviceMotionActivityReading {
         guard CMMotionActivityManager.isActivityAvailable() else {
-            throw MobileNativeToolError.hardwareUnavailable("运动活动识别")
+            throw MobileNativeToolError.hardwareUnavailable("Motion activity recognition")
         }
         switch CMMotionActivityManager.authorizationStatus() {
         case .denied:
-            throw MobileNativeToolError.permissionDenied("运动与健身")
+            throw MobileNativeToolError.permissionDenied("Motion & Fitness")
         case .restricted:
-            throw MobileNativeToolError.restricted("运动与健身")
+            throw MobileNativeToolError.restricted("Motion & Fitness")
         case .authorized, .notDetermined:
             break
         @unknown default:
-            throw MobileNativeToolError.operationFailed("运动活动识别")
+            throw MobileNativeToolError.operationFailed("Motion activity recognition")
         }
         guard timeout > .zero else {
-            throw MobileNativeToolError.timedOut("运动活动识别")
+            throw MobileNativeToolError.timedOut("Motion activity recognition")
         }
         try Task.checkCancellation()
 
@@ -1081,15 +1081,15 @@ private final class MotionActivityRequestBridge {
         if error != nil {
             switch CMMotionActivityManager.authorizationStatus() {
             case .denied:
-                return .failure(MobileNativeToolError.permissionDenied("运动与健身"))
+                return .failure(MobileNativeToolError.permissionDenied("Motion & Fitness"))
             case .restricted:
-                return .failure(MobileNativeToolError.restricted("运动与健身"))
+                return .failure(MobileNativeToolError.restricted("Motion & Fitness"))
             default:
-                return .failure(MobileNativeToolError.operationFailed("运动活动识别"))
+                return .failure(MobileNativeToolError.operationFailed("Motion activity recognition"))
             }
         }
         guard let activity = activities?.max(by: { $0.startDate < $1.startDate }) else {
-            return .failure(MobileNativeToolError.noData("运动活动"))
+            return .failure(MobileNativeToolError.noData("Motion activity"))
         }
         var labels: [String] = []
         if activity.unknown { labels.append("unknown") }
@@ -1125,7 +1125,7 @@ private final class MotionActivityRequestBridge {
             } catch {
                 return
             }
-            self?.finish(.failure(MobileNativeToolError.timedOut("运动活动识别")))
+            self?.finish(.failure(MobileNativeToolError.timedOut("Motion activity recognition")))
         }
     }
 
@@ -1171,7 +1171,7 @@ private final class NotificationScheduleBridge {
         timeout: Duration
     ) async throws {
         guard timeout > .zero else {
-            throw MobileNativeToolError.timedOut("本地通知")
+            throw MobileNativeToolError.timedOut("Local notification")
         }
         try Task.checkCancellation()
         return try await withTaskCancellationHandler {
@@ -1198,7 +1198,7 @@ private final class NotificationScheduleBridge {
     private func handleAuthorizationStatus(_ rawStatus: Int) {
         guard !isFinished, let center else { return }
         guard let status = UNAuthorizationStatus(rawValue: rawStatus) else {
-            finish(.failure(MobileNativeToolError.operationFailed("通知授权")))
+            finish(.failure(MobileNativeToolError.operationFailed("Notification authorization")))
             return
         }
         switch status {
@@ -1206,22 +1206,22 @@ private final class NotificationScheduleBridge {
             center.requestAuthorization(options: [.alert, .sound]) { [weak self] granted, error in
                 Task { @MainActor in
                     guard error == nil else {
-                        self?.finish(.failure(MobileNativeToolError.operationFailed("通知授权")))
+                        self?.finish(.failure(MobileNativeToolError.operationFailed("Notification authorization")))
                         return
                     }
                     if granted {
                         self?.addRequest()
                     } else {
-                        self?.finish(.failure(MobileNativeToolError.permissionDenied("通知")))
+                        self?.finish(.failure(MobileNativeToolError.permissionDenied("Notifications")))
                     }
                 }
             }
         case .denied:
-            finish(.failure(MobileNativeToolError.permissionDenied("通知")))
+            finish(.failure(MobileNativeToolError.permissionDenied("Notifications")))
         case .authorized, .provisional, .ephemeral:
             addRequest()
         @unknown default:
-            finish(.failure(MobileNativeToolError.operationFailed("通知授权")))
+            finish(.failure(MobileNativeToolError.operationFailed("Notification authorization")))
         }
     }
 
@@ -1250,7 +1250,7 @@ private final class NotificationScheduleBridge {
                 } else if error == nil {
                     self.finish(.success(()))
                 } else {
-                    self.finish(.failure(MobileNativeToolError.operationFailed("本地通知")))
+                    self.finish(.failure(MobileNativeToolError.operationFailed("Local notification")))
                 }
             }
         }
@@ -1263,7 +1263,7 @@ private final class NotificationScheduleBridge {
             } catch {
                 return
             }
-            self?.finish(.failure(MobileNativeToolError.timedOut("本地通知")))
+            self?.finish(.failure(MobileNativeToolError.timedOut("Local notification")))
         }
     }
 
@@ -1306,14 +1306,14 @@ private final class DeviceOwnerAuthenticationBridge {
 
     private func authenticate(reason: String, timeout: Duration) async throws {
         guard timeout > .zero else {
-            throw MobileNativeToolError.timedOut("设备所有者验证")
+            throw MobileNativeToolError.timedOut("Device owner verification")
         }
         try Task.checkCancellation()
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 self.continuation = continuation
                 let context = LAContext()
-                context.localizedCancelTitle = "取消"
+                context.localizedCancelTitle = "Cancel"
                 self.context = context
                 var error: NSError?
                 guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
@@ -1349,7 +1349,7 @@ private final class DeviceOwnerAuthenticationBridge {
             } catch {
                 return
             }
-            self?.finish(.failure(MobileNativeToolError.timedOut("设备所有者验证")))
+            self?.finish(.failure(MobileNativeToolError.timedOut("Device owner verification")))
         }
     }
 
@@ -1371,7 +1371,7 @@ private final class DeviceOwnerAuthenticationBridge {
 
     nonisolated private static func mapAuthenticationCode(_ rawCode: Int?) -> Error {
         guard let rawCode, let code = LAError.Code(rawValue: rawCode) else {
-            return MobileNativeToolError.hardwareUnavailable("设备所有者验证")
+            return MobileNativeToolError.hardwareUnavailable("Device owner verification")
         }
         switch code {
         case .userCancel, .appCancel, .systemCancel, .userFallback:
@@ -1379,11 +1379,11 @@ private final class DeviceOwnerAuthenticationBridge {
         case .authenticationFailed:
             return MobileNativeToolError.authenticationFailed
         case .biometryNotAvailable, .biometryNotEnrolled, .passcodeNotSet, .notInteractive:
-            return MobileNativeToolError.hardwareUnavailable("设备所有者验证")
+            return MobileNativeToolError.hardwareUnavailable("Device owner verification")
         case .biometryLockout:
-            return MobileNativeToolError.restricted("生物识别")
+            return MobileNativeToolError.restricted("Biometrics")
         default:
-            return MobileNativeToolError.operationFailed("设备所有者验证")
+            return MobileNativeToolError.operationFailed("Device owner verification")
         }
     }
 }

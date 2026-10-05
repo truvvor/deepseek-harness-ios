@@ -367,7 +367,7 @@ final class DeepSeekWireTests: XCTestCase {
     func testVisionMessageUsesOpenAIImageURLPartsAndKeepsToolMessagesTextual() throws {
         let id = UUID()
         let user = AgentMessage.user(
-            "看这张图",
+            "Look at this image",
             imageAttachments: [
                 AgentImageAttachmentRef(
                     id: id,
@@ -412,7 +412,7 @@ final class DeepSeekWireTests: XCTestCase {
             apiKey: "test-only",
             systemPrompt: "system",
             messages: [AgentMessage.user(
-                "看这张图",
+                "Look at this image",
                 imageAttachments: [AgentImageAttachmentRef(
                     id: id,
                     path: "Attachments/\(id.uuidString).png",
@@ -441,7 +441,7 @@ final class DeepSeekWireTests: XCTestCase {
     func testVisionMessageKeepsExplicitPlaceholderWhenEveryImageWasBudgetOmitted() throws {
         let id = UUID()
         let user = AgentMessage.user(
-            "比较这张历史图片",
+            "Compare this earlier image",
             imageAttachments: [
                 AgentImageAttachmentRef(
                     id: id,
@@ -463,7 +463,7 @@ final class DeepSeekWireTests: XCTestCase {
         )
         let content = try XCTUnwrap(object["content"] as? [[String: Any]])
         XCTAssertEqual(content.count, 2)
-        XCTAssertEqual(content[0]["text"] as? String, "比较这张历史图片")
+        XCTAssertEqual(content[0]["text"] as? String, "Compare this earlier image")
         XCTAssertEqual(
             content[1]["text"] as? String,
             "[1 earlier image(s) omitted because the request image limit was reached.]"
