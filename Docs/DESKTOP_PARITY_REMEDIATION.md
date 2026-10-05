@@ -15,6 +15,7 @@
 - **实时跟随与自动追平**：`followsSelectedMirrorAutomatically` 默认改为开启；从任何列表打开镜像即启动 `/stream` 跟随；启动与回到前台时静默执行增量 Sync（最小间隔 20 s），镜像不再停在上次手动 Sync 的位置。标题优先使用桥接列表（桌面侧边栏）名称，刷新时跟随桌面重命名。
 - **镜像性能**：新增 `BridgeMirrorTranscriptStore`（每镜像一份 append-only 投影消息 JSONL + 行偏移索引）；刷新只投影本次导入的事件（工具名种子来自已投影尾部），会话快照只保留最新 120 条 + `transcriptMessageCount`，列表计数取该值；搜索索引仅在手动 Sync 后刷新（跟随/前台追平跳过）。聊天打开镜像时只渲染尾部，向上滚动按滚动速度提前分页加载（先扩大内存窗口，再从转录存储取更早 80 条），刷新只追加新消息不重置已加载的旧页。旧版镜像首次刷新时由会话消息播种转录存储，无需 Forget All。
 - **实时性**：`AppModel.refreshSessionSummaries` 不再重建搜索索引（此前每次列表刷新都解码全部本地日志）；镜像不再加载轨迹大纲；镜像日志写 `<id>.jsonl.head` 侧车，冷启动按侧车头部打开而不解码整份日志；SSE `delta`/`reasoning` 直接进入聊天的流式气泡，`turn/start`/`turn/end` 驱动忙碌状态，消息类 `event` 立即刷新（节流 3 s → 1 s 仅对其余事件），空闲重连上限 32 s → 8 s。
+- **聊天视觉修复**：流式 delta 以 10 Hz 合并发布且气泡只显示最后 4000 字符（桌面单步可流式数十 KB，逐 token 布局曾饿死主线程导致白屏）；读历史时末尾新到的消息扩大渲染窗口而不是把最旧行挤出窗口（此前内容在视口下方移动）；向上预取只在末尾离开视口超过一屏时触发；跟随末尾时 300 ms 后再滚动一次以纠正 LazyVStack 估算高度。
 - **健康探针**：`BridgeSessionHealth.displayStatus`，无 `status` 字段的 200 响应显示为 `reachable`（此前误显示 `unavailable`）。
 - **测试命令**：`swift test --build-path $RUNNER_TEMP/hm-build --filter Bridge`（CI `bridge-tests.yml`），新增 `BridgeClientPromptTests`。
 - **剩余真机边界**：真实桌面回合/取消/排队与 steer；后台超过 iOS 宽限期时桥接因客户端断开而中止回合（需桥接侧支持断开后继续）；超大会话导入的内存峰值。

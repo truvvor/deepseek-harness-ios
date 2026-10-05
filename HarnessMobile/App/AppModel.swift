@@ -272,6 +272,8 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     /// straight from the SSE `delta`/`reasoning` frames (D-014).
     var desktopMirrorLive: [UUID: DesktopMirrorLiveState] = [:]
     var desktopMirrorLiveRevision: UInt64 = 0
+    @ObservationIgnored var desktopMirrorLiveBuffer: [UUID: DesktopMirrorLiveState] = [:]
+    @ObservationIgnored var desktopMirrorLiveFlushTask: Task<Void, Never>?
     @ObservationIgnored var desktopMirrorLastCatchUp: Date?
     @ObservationIgnored var desktopMirrorCatchUpInFlight = false
     @ObservationIgnored var desktopBridgeCoordinator: BridgeMirrorCoordinator?

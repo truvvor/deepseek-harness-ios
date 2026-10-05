@@ -201,34 +201,72 @@ extension AppModel {
         isRunning || activeDesktopTurnInFlight || activeDesktopMirrorLive?.isTurnActive == true
     }
 
+    /// The streaming bubble shows at most this much of the running text. A
+    /// desktop step can stream tens of KB; laying that out on every token
+    /// starved the main thread until the chat went blank.
+    static let desktopMirrorLiveTextLimit = 4_000
+    /// Deltas are published to the view at most this often.
+    static let desktopMirrorLiveFlushInterval: Duration = .milliseconds(100)
+
     /// Applies one SSE signal of a followed mirror to the chat: streamed text
     /// shows in the streaming bubble until the durable message replaces it.
+    /// Deltas accumulate off the observed state and are flushed at 10 Hz.
     func applyDesktopMirrorLive(_ sessionID: UUID, _ update: BridgeLiveUpdate) {
-        var state = desktopMirrorLive[sessionID] ?? DesktopMirrorLiveState()
+        var state = desktopMirrorLiveBuffer[sessionID] ?? desktopMirrorLive[sessionID] ?? DesktopMirrorLiveState()
         switch update {
         case .turnStarted:
             state = DesktopMirrorLiveState(isTurnActive: true)
             if desktopMirrorTurns[sessionID] == nil {
                 desktopMirrorTurns[sessionID] = DesktopMirrorTurn(startedAt: .now, pendingPrompts: 0)
             }
+            desktopMirrorLiveBuffer[sessionID] = nil
+            publishDesktopMirrorLive(sessionID, state)
+            return
         case let .delta(text):
-            state.text += text
+            state.text = Self.tail(state.text + text)
             state.isTurnActive = true
         case let .reasoning(text):
-            state.reasoning += text
+            state.reasoning = Self.tail(state.reasoning + text)
             state.isTurnActive = true
         case .messageCommitted:
             // The refresh that follows appends the durable message and clears
             // the streamed copy in `reloadDesktopMirrorIfActive`.
-            break
+            return
         case .turnEnded:
             state = DesktopMirrorLiveState()
             if desktopMirrorTurns[sessionID]?.pendingPrompts == 0 {
                 desktopMirrorTurns[sessionID] = nil
             }
+            desktopMirrorLiveBuffer[sessionID] = nil
+            publishDesktopMirrorLive(sessionID, state)
+            return
         }
+        desktopMirrorLiveBuffer[sessionID] = state
+        scheduleDesktopMirrorLiveFlush()
+    }
+
+    private static func tail(_ text: String) -> String {
+        guard text.count > desktopMirrorLiveTextLimit else { return text }
+        return "…" + text.suffix(desktopMirrorLiveTextLimit)
+    }
+
+    private func publishDesktopMirrorLive(_ sessionID: UUID, _ state: DesktopMirrorLiveState) {
         desktopMirrorLive[sessionID] = state
         desktopMirrorLiveRevision &+= 1
+    }
+
+    private func scheduleDesktopMirrorLiveFlush() {
+        guard desktopMirrorLiveFlushTask == nil else { return }
+        desktopMirrorLiveFlushTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.desktopMirrorLiveFlushInterval)
+            guard let self else { return }
+            self.desktopMirrorLiveFlushTask = nil
+            let pending = self.desktopMirrorLiveBuffer
+            self.desktopMirrorLiveBuffer = [:]
+            for (sessionID, state) in pending {
+                self.publishDesktopMirrorLive(sessionID, state)
+            }
+        }
     }
 
     var chatRunStartedAt: Date? {
@@ -333,6 +371,7 @@ extension AppModel {
         if appendedAssistant, var live = desktopMirrorLive[sessionID], !live.text.isEmpty || !live.reasoning.isEmpty {
             live.text = ""
             live.reasoning = ""
+            desktopMirrorLiveBuffer[sessionID] = nil
             desktopMirrorLive[sessionID] = live
             desktopMirrorLiveRevision &+= 1
         }

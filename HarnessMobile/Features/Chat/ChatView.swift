@@ -791,6 +791,9 @@ private struct ConversationScroller: View {
     @State private var isLoadingEarlier = false
     @State private var lastTopSample: (y: CGFloat, at: TimeInterval)?
     @State private var scrollVelocity: CGFloat = 0
+    /// `minY` of the conversation's end in the scroll coordinate space; the
+    /// end is on screen while it is below `scrollViewportHeight`.
+    @State private var lastBottomOffset: CGFloat = .greatestFiniteMagnitude
 
     private let bottomID = "conversation-bottom"
     /// Rows added per load, from the in-memory window first, then from the
@@ -854,6 +857,7 @@ private struct ConversationScroller: View {
                 handleTopOffset(top, proxy: proxy)
             }
             .onPreferenceChange(ConversationBottomPreferenceKey.self) { bottom in
+                lastBottomOffset = bottom
                 guard !followsConversationTail,
                       scrollViewportHeight > 0,
                       bottom <= scrollViewportHeight + 72 else {
@@ -868,6 +872,15 @@ private struct ConversationScroller: View {
                 scheduleAutomaticScroll(proxy)
             }
             .onChange(of: model.messagesRevision) {
+                // While the reader is back in history, rows arriving at the end
+                // must not push the oldest rendered rows out of the window: that
+                // moved the content under the viewport. Grow the window instead.
+                if !followsConversationTail {
+                    let total = ConversationMessageWindow.project(model.messages, limit: .max).totalCount
+                    if total > availableMessageCount {
+                        renderedMessageLimit += total - availableMessageCount
+                    }
+                }
                 refreshRenderedMessages()
                 scheduleAutomaticScroll(proxy)
             }
@@ -894,6 +907,10 @@ private struct ConversationScroller: View {
         }
         lastTopSample = (top, now)
         guard !followsConversationTail, !isLoadingEarlier, scrollViewportHeight > 0 else { return }
+        // Only a reader who has left the live end by more than a screen wants
+        // older rows; near the end, a short loaded window must never trigger a
+        // load that re-anchors the viewport up into history.
+        guard lastBottomOffset - scrollViewportHeight > scrollViewportHeight else { return }
         let hasEarlier = hiddenMessageCount > 0 || model.activeDesktopMirrorHasOlderMessages
         guard hasEarlier else { return }
         let lead = 1 + min(3, max(0, scrollVelocity) / 1_000)
@@ -961,6 +978,13 @@ private struct ConversationScroller: View {
             guard !Task.isCancelled, followsConversationTail else { return }
             var transaction = Transaction()
             transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                proxy.scrollTo(bottomID, anchor: .bottom)
+            }
+            // Lazy rows are measured as they render, so the first scroll can
+            // land short of the end; settle once more after they have.
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled, followsConversationTail else { return }
             withTransaction(transaction) {
                 proxy.scrollTo(bottomID, anchor: .bottom)
             }
