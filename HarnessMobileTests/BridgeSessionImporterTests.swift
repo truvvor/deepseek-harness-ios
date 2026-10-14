@@ -994,21 +994,19 @@ final class BridgeSessionImporterTests: XCTestCase {
         let report = try converted(try fixtureData())
         let base = UInt64(report.events.count)
 
+        // The desktop asks through the `ask_user_question` tool: the request is
+        // its `tool/call`, the arguments are a JSON string in the upstream shape.
         let asked = report.events + [
             try SessionEvent(
-                type: SessionEventVocabulary.questionRequested,
+                type: SessionEventVocabulary.toolCall,
                 seq: base,
                 time: 1_735_689_602_000,
                 data: .object([
-                    "requestId": .string("req-7"),
-                    "questions": .array([
-                        .object([
-                            "question": .string("Deploy to production?"),
-                            "header": .string("Deploy"),
-                            "multiSelect": .bool(false),
-                            "options": .array([.object(["label": .string("Yes")]), .string("No")])
-                        ])
-                    ])
+                    "turn": .number(2),
+                    "step": .number(1),
+                    "callId": .string("call_q7"),
+                    "name": .string("ask_user_question"),
+                    "arguments": .string(#"{"questions":[{"id":"color","question":"Which color?","header":"Color","multi_select":false,"options":[{"label":"Blue","description":"cool"},{"label":"Red"}]}]}"#)
                 ])
             )
         ]
@@ -1021,19 +1019,30 @@ final class BridgeSessionImporterTests: XCTestCase {
         )
         let pending = try await harness.sessionStore.session(id: first.localSessionID).bridgeMirror?.pendingQuestion
         let question = try XCTUnwrap(pending)
-        XCTAssertEqual(question.requestID, "req-7")
+        XCTAssertEqual(question.requestID, "call_q7")
         XCTAssertEqual(question.questions.count, 1)
-        XCTAssertEqual(question.questions.first?.question, "Deploy to production?")
-        XCTAssertEqual(question.questions.first?.header, "Deploy")
+        XCTAssertEqual(question.questions.first?.id, "color")
+        XCTAssertEqual(question.questions.first?.question, "Which color?")
+        XCTAssertEqual(question.questions.first?.header, "Color")
         XCTAssertEqual(question.questions.first?.multiSelect, false)
-        XCTAssertEqual(question.questions.first?.options, ["Yes", "No"])
+        XCTAssertEqual(question.questions.first?.options, ["Blue", "Red"])
 
+        // The answer lands as the tool result whose `message.toolCallId` matches.
         let resolved = asked + [
             try SessionEvent(
-                type: SessionEventVocabulary.questionResolved,
+                type: SessionEventVocabulary.toolResult,
                 seq: base + 1,
                 time: 1_735_689_603_000,
-                data: .object(["requestId": .string("req-7")])
+                data: .object([
+                    "turn": .number(2),
+                    "step": .number(1),
+                    "message": .object([
+                        "id": .string("77777777-7777-4777-8777-777777777777"),
+                        "role": .string("tool"),
+                        "toolCallId": .string("call_q7"),
+                        "content": .array([.object(["type": .string("text"), "text": .string("Blue")])])
+                    ])
+                ])
             )
         ]
         _ = try await harness.importer.importConverted(
@@ -1045,6 +1054,75 @@ final class BridgeSessionImporterTests: XCTestCase {
         )
         let after = try await harness.sessionStore.session(id: first.localSessionID)
         XCTAssertNil(after.bridgeMirror?.pendingQuestion)
+        XCTAssertTrue(after.isDesktopMirror)
+    }
+
+    func testQuestionLeftOpenWhenANewTurnStartsIsDroppedAsStale() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+        let base = UInt64(report.events.count)
+        let events = report.events + [
+            try SessionEvent(
+                type: SessionEventVocabulary.toolCall,
+                seq: base,
+                time: 1_735_689_602_000,
+                data: .object([
+                    "turn": .number(2),
+                    "step": .number(1),
+                    "callId": .string("call_stale"),
+                    "name": .string("ask_user_question"),
+                    "arguments": .string(#"{"questions":[{"id":"q","question":"Still there?"}]}"#)
+                ])
+            ),
+            // The desktop was restarted: the next prompt opens a new turn
+            // without ever writing the tool result.
+            try SessionEvent(
+                type: SessionEventVocabulary.turnStart,
+                seq: base + 1,
+                time: 1_735_689_604_000,
+                data: .object(["turn": .number(3)])
+            )
+        ]
+        let outcome = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: events,
+            lastBridgeSequence: Int64(events.count - 1)
+        )
+        let session = try await harness.sessionStore.session(id: outcome.localSessionID)
+        XCTAssertNil(session.bridgeMirror?.pendingQuestion)
+    }
+
+    func testClearingThePendingQuestionKeepsTheRestOfTheMirror() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+        let events = report.events + [
+            try SessionEvent(
+                type: SessionEventVocabulary.questionRequested,
+                seq: UInt64(report.events.count),
+                time: 1_735_689_602_000,
+                data: .object(["requestId": .string("req-1"), "question": .string("Deploy?")])
+            )
+        ]
+        let outcome = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: events,
+            lastBridgeSequence: Int64(events.count - 1)
+        )
+        let before = try await harness.sessionStore.session(id: outcome.localSessionID)
+        XCTAssertEqual(before.bridgeMirror?.pendingQuestion?.requestID, "req-1")
+
+        try await harness.importer.clearPendingQuestion(localSessionID: outcome.localSessionID)
+
+        let after = try await harness.sessionStore.session(id: outcome.localSessionID)
+        XCTAssertNil(after.bridgeMirror?.pendingQuestion)
+        XCTAssertEqual(after.bridgeMirror?.bridgeSessionID, bridgeSessionID)
+        XCTAssertEqual(after.messages.count, before.messages.count)
         XCTAssertTrue(after.isDesktopMirror)
     }
 

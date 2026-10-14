@@ -163,6 +163,36 @@ final class BridgeSessionSyncTests: XCTestCase {
         XCTAssertEqual(refreshed.count, 2)
     }
 
+    func testAQuestionToolCallAndTheBridgeQuestionFrameBothRaiseQuestionAsked() async throws {
+        let root = makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let refresher = CountingRefresher()
+        let live = LiveLog()
+        let sync = try makeSync(refresher: refresher, root: root) { _, update in live.append(update) }
+        let clock = ManualClock()
+
+        _ = try await sync.consume(
+            try frames([
+                #"{"type":"event","sessionId":"s","seq":10,"time":1,"eventType":"turn/start"}"#,
+                #"{"type":"event","sessionId":"s","seq":11,"time":1,"eventType":"tool/call","toolName":"ask_user_question","callId":"call_q"}"#,
+                #"{"type":"question","sessionId":"s","requestId":"call_q"}"#,
+                #"{"type":"question-resolved","sessionId":"s","requestId":"call_q"}"#,
+                #"{"type":"closed","sessionId":"s"}"#
+            ]),
+            bridgeSessionID: Self.bridgeSessionID,
+            importedThrough: 9,
+            localSessionID: UUID(),
+            now: { clock.now() }
+        )
+
+        XCTAssertEqual(live.updates, [.turnStarted, .questionAsked, .questionAsked])
+        // Question frames refresh at once so the card appears and disappears
+        // without waiting for the rate limit (a refresh still in flight folds
+        // the next one into it, so the exact count depends on timing).
+        let refreshed = await refresher.refreshedSessionIDs
+        XCTAssertGreaterThanOrEqual(refreshed.count, 2)
+    }
+
     func testSnapshotAheadOfTheMirrorCatchesUpButACurrentSnapshotDoesNot() async throws {
         let root = makeRoot()
         defer { try? FileManager.default.removeItem(at: root) }

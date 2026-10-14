@@ -25,6 +25,19 @@ enum BridgeClientError: Error, LocalizedError, Sendable, Equatable {
     /// shape, for example `session/agent-busy` or `session/writer-held`.
     case rejected(status: Int, code: String?, message: String?)
 
+    /// The bridge no longer holds the question (`question/not-found`,
+    /// `question/already-resolved`, or a bare 404 on the answer route).
+    var isStaleQuestion: Bool {
+        switch self {
+        case .notFound:
+            return true
+        case let .rejected(_, code, _):
+            return code == "question/not-found" || code == "question/already-resolved"
+        default:
+            return false
+        }
+    }
+
     var errorDescription: String? {
         switch self {
         case .disabled:
@@ -62,6 +75,14 @@ enum BridgeClientError: Error, LocalizedError, Sendable, Equatable {
                 return "Another client currently owns this desktop session."
             case "session/not-found":
                 return "The desktop session is not open on the desktop host."
+            case "question/not-found":
+                return "The desktop is no longer waiting on this question."
+            case "question/already-resolved":
+                return "This question was already answered, on the desktop or from another device."
+            case "question/bad-answer":
+                return "The desktop rejected the answer: \(message ?? "pick one of the offered options")."
+            case "compaction/failed":
+                return "The desktop could not compact this session: \(message ?? "unknown error")."
             default:
                 let detail = message ?? code ?? "HTTP \(status)"
                 return "The desktop bridge rejected the request: \(detail)"

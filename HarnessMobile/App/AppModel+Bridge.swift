@@ -385,10 +385,10 @@ extension AppModel {
                 requestID: question.requestID,
                 answer: answer
             )
-        } catch BridgeClientError.notFound {
+        } catch let error as BridgeClientError where error.isStaleQuestion {
             presentCommandOutput(
                 title: "Desktop Question",
-                text: "This bridge cannot deliver answers yet. Update dsh-api-bridge to a revision that serves POST /bridge/v1/sessions/{id}/questions/{requestId}/answer, or answer on the desktop.",
+                text: error.errorDescription ?? "The desktop is no longer waiting on this question.",
                 isError: true
             )
         } catch {

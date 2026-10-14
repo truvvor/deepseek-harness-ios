@@ -504,6 +504,14 @@ actor BridgeSessionImporter {
                       resolved == pendingQuestion?.requestID {
                 pendingQuestion = nil
                 tailChanged = true
+            } else if pendingQuestion != nil,
+                      event.type == SessionEventVocabulary.turnStart
+                        || event.type == SessionEventVocabulary.turnEnd {
+                // The question's turn is over without its result (the desktop
+                // was restarted or the turn was cancelled): it can no longer
+                // be answered.
+                pendingQuestion = nil
+                tailChanged = true
             }
         }
         // A mirror written before the transcript store existed holds its whole
@@ -552,6 +560,26 @@ actor BridgeSessionImporter {
            title != session.title {
             _ = try await sessionStore.renameSession(id: sessionID, title: title, source: .user)
         }
+    }
+
+    /// Drops a question the bridge no longer knows (answered on the desktop
+    /// before the log caught up, or left over from a desktop restart).
+    func clearPendingQuestion(localSessionID: UUID) async throws {
+        let session = try await sessionStore.session(id: localSessionID)
+        guard let mirror = session.bridgeMirror, mirror.pendingQuestion != nil else { return }
+        _ = try await sessionStore.checkpointSession(
+            id: localSessionID,
+            checkpoint: ConversationCheckpoint(
+                messages: session.messages,
+                workState: ConversationWorkState(),
+                bridgeMirror: BridgeSessionMirror(
+                    bridgeSessionID: mirror.bridgeSessionID,
+                    importedAt: mirror.importedAt,
+                    transcriptMessageCount: mirror.transcriptMessageCount,
+                    pendingQuestion: nil
+                )
+            )
+        )
     }
 
     private func rollbackLocalSession(_ sessionID: UUID) async {

@@ -279,7 +279,13 @@ actor BridgeMirrorCoordinator {
         guard let mapping = try await mappings.mapping(localSessionID: localSessionID) else {
             throw BridgeFollowError.mirrorNotFound(localSessionID)
         }
-        try await client.answerQuestion(sessionID: mapping.bridgeSessionID, requestID: requestID, answer: answer)
+        do {
+            try await client.answerQuestion(sessionID: mapping.bridgeSessionID, requestID: requestID, answer: answer)
+        } catch let error as BridgeClientError where error.isStaleQuestion {
+            // The desktop no longer waits on this question: drop the card.
+            try? await activeImporter().clearPendingQuestion(localSessionID: localSessionID)
+            throw error
+        }
         if let sync, await !sync.followedSessionIDs.contains(localSessionID) {
             try? await sync.startFollowing(localSessionID: localSessionID)
         }

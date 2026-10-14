@@ -60,15 +60,45 @@ struct BridgeDesktopQuestion: Codable, Sendable, Equatable, Identifiable {
 
     var id: String { requestID }
 
-    /// Parses a `question/requested` event. Accepts the app's own shape and the
-    /// looser desktop variants: `requestId` or `id`, options as strings or as
-    /// `{label}` objects.
+    /// The desktop asks through the `ask_user_question` tool, so the question
+    /// is a `tool/call` event and its request id is the `callId`; the answer
+    /// lands as the matching `tool/result`. `question/requested` (the app's
+    /// own event) is accepted too, with `requestId` or `id`.
+    static let questionToolNames: Set<String> = ["ask_user_question", "AskUserQuestion"]
+
     static func parse(_ event: SessionEvent) -> BridgeDesktopQuestion? {
-        guard event.type == SessionEventVocabulary.questionRequested,
-              let object = event.data.objectValue,
-              let requestID = object["requestId"]?.stringValue ?? object["id"]?.stringValue else {
+        guard let object = event.data.objectValue else { return nil }
+        switch event.type {
+        case SessionEventVocabulary.toolCall:
+            guard let name = object["name"]?.stringValue, questionToolNames.contains(name),
+                  let callID = object["callId"]?.stringValue ?? object["callID"]?.stringValue,
+                  let rawArguments = object["arguments"] else { return nil }
+            let arguments: [String: JSONValue]
+            if let text = rawArguments.stringValue {
+                guard let data = text.data(using: .utf8),
+                      let decoded = try? JSONDecoder().decode(JSONValue.self, from: data),
+                      let decodedObject = decoded.objectValue else { return nil }
+                arguments = decodedObject
+            } else if let decodedObject = rawArguments.objectValue {
+                arguments = decodedObject
+            } else {
+                return nil
+            }
+            return parse(requestID: callID, object: arguments, time: event.time)
+        case SessionEventVocabulary.questionRequested:
+            guard let requestID = object["requestId"]?.stringValue ?? object["id"]?.stringValue else {
+                return nil
+            }
+            return parse(requestID: requestID, object: object, time: event.time)
+        default:
             return nil
         }
+    }
+
+    /// Reads the upstream `AskUserQuestion` request shape: `questions[]` with
+    /// `question` (or `text`), `header`, `multi_select` (or `multiSelect`) and
+    /// `options` as strings or `{label, description}` objects.
+    static func parse(requestID: String, object: [String: JSONValue], time: Int64) -> BridgeDesktopQuestion? {
         var rawItems: [JSONValue] = []
         if case let .array(values)? = object["questions"] { rawItems = values }
         var items: [BridgeDesktopQuestionItem] = []
@@ -81,12 +111,15 @@ struct BridgeDesktopQuestion: Codable, Sendable, Equatable, Identifiable {
             let options = rawOptions.compactMap { option -> String? in
                 option.stringValue ?? option.objectValue?["label"]?.stringValue
             }
+            let multiSelect = item["multi_select"]?.booleanValue
+                ?? item["multiSelect"]?.booleanValue
+                ?? false
             items.append(
                 BridgeDesktopQuestionItem(
                     id: item["id"]?.stringValue ?? "q\(index)",
                     question: text,
                     header: item["header"]?.stringValue,
-                    multiSelect: item["multiSelect"]?.booleanValue ?? false,
+                    multiSelect: multiSelect,
                     options: options
                 )
             )
@@ -95,14 +128,27 @@ struct BridgeDesktopQuestion: Codable, Sendable, Equatable, Identifiable {
             items = [BridgeDesktopQuestionItem(id: requestID, question: text, header: nil, multiSelect: false, options: [])]
         }
         guard !items.isEmpty else { return nil }
-        return BridgeDesktopQuestion(requestID: requestID, questions: items, askedAt: event.time)
+        return BridgeDesktopQuestion(requestID: requestID, questions: items, askedAt: time)
     }
 
-    /// The request id a `question/resolved` event closes, if it is one.
+    /// The request id an event closes: the `tool/result` of the question's
+    /// tool call (`message.toolCallId`, `message.callId`, `meta.callId`) or a
+    /// `question/resolved` event.
     static func resolvedRequestID(_ event: SessionEvent) -> String? {
-        guard event.type == SessionEventVocabulary.questionResolved,
-              let object = event.data.objectValue else { return nil }
-        return object["requestId"]?.stringValue ?? object["id"]?.stringValue
+        guard let object = event.data.objectValue else { return nil }
+        switch event.type {
+        case SessionEventVocabulary.toolResult:
+            let message = object["message"]?.objectValue
+            return message?["toolCallId"]?.stringValue
+                ?? message?["callId"]?.stringValue
+                ?? message?["source"]?.objectValue?["callId"]?.stringValue
+                ?? object["meta"]?.objectValue?["callId"]?.stringValue
+                ?? object["callId"]?.stringValue
+        case SessionEventVocabulary.questionResolved:
+            return object["requestId"]?.stringValue ?? object["id"]?.stringValue
+        default:
+            return nil
+        }
     }
 }
 
@@ -308,11 +354,15 @@ struct BridgeStreamFrame: Decodable, Sendable, Equatable {
     let usage: JSONValue?
     let messages: [BridgeMessagePage.Message]?
     let message: String?
+    /// Bridge 0.2: `tool/call` event frames name the tool and its call id.
+    let toolName: String?
+    let callId: String?
 
     private enum CodingKeys: String, CodingKey {
         case type
         case sessionID = "sessionId"
         case throughSeq, seq, time, eventType, role, content, reason, text, usage, messages, message
+        case toolName, callId
     }
 
     var kind: Kind {
@@ -323,6 +373,8 @@ struct BridgeStreamFrame: Decodable, Sendable, Equatable {
         case "reasoning": return .reasoning
         case "usage": return .usage
         case "turn/end": return .turnEnd
+        case "question": return .question
+        case "question-resolved": return .questionResolved
         case "closed": return .closed
         case "error": return .error
         default: return .unknown(type)
@@ -336,6 +388,10 @@ struct BridgeStreamFrame: Decodable, Sendable, Equatable {
         case reasoning
         case usage
         case turnEnd
+        /// Bridge 0.2: the desktop agent asked a question (`ask_user_question`).
+        case question
+        /// Bridge 0.2: a question was answered (from either side).
+        case questionResolved
         case closed
         case error
         case unknown(String)

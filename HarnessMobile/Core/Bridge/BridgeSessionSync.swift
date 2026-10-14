@@ -236,7 +236,14 @@ actor BridgeSessionSync {
                 if eventType == SessionEventVocabulary.turnStart {
                     await live(.turnStarted)
                 }
-                if Self.messageEventTypes.contains(eventType) {
+                let isQuestionCall = eventType == SessionEventVocabulary.toolCall
+                    && BridgeDesktopQuestion.questionToolNames.contains(frame.toolName ?? "")
+                if isQuestionCall {
+                    // The desktop agent is waiting on the person: refresh now so
+                    // the question card appears.
+                    await live(.questionAsked)
+                    shouldRefresh = true
+                } else if Self.messageEventTypes.contains(eventType) {
                     // A chat message (or a question) landed on the desktop:
                     // show it now.
                     await live(eventType == SessionEventVocabulary.questionRequested ? .questionAsked : .messageCommitted)
@@ -254,6 +261,15 @@ actor BridgeSessionSync {
                 if let text = frame.text ?? frame.content, !text.isEmpty {
                     await live(.reasoning(text))
                 }
+            case .question:
+                // Bridge 0.2 announces the open question as its own frame; the
+                // export carries the tool call that the card is built from.
+                pass.sawEvents = true
+                await live(.questionAsked)
+                shouldRefresh = true
+            case .questionResolved:
+                pass.sawEvents = true
+                shouldRefresh = true
             case .turnEnd:
                 await live(.turnEnded)
                 shouldRefresh = pending
