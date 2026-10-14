@@ -201,6 +201,7 @@ $(SRCROOT)/HarnessMobile/Features/Chat/ToolEventView.swift
 $(SRCROOT)/HarnessMobile/Features/Chat/SessionModelPickerView.swift
 $(SRCROOT)/HarnessMobile/Features/Chat/HarnessSchedulePanel.swift
 $(SRCROOT)/HarnessMobile/Features/Chat/UserQuestionSheet.swift
+$(SRCROOT)/HarnessMobile/Features/Chat/DesktopFilesView.swift
 $(SRCROOT)/HarnessMobile/Features/Console/ConsoleView.swift
 $(SRCROOT)/HarnessMobile/Features/Plugins/CommunityPluginMarketView.swift
 $(SRCROOT)/HarnessMobile/Features/Plugins/NativeClientContributionsView.swift

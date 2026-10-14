@@ -279,6 +279,69 @@ struct BridgePromptResult: Decodable, Sendable, Equatable {
     }
 }
 
+/// One entry of `GET /bridge/v1/sessions/{id}/files?path=`: a file or
+/// directory inside the desktop session's workspace.
+struct BridgeFileEntry: Decodable, Sendable, Equatable, Identifiable {
+    let name: String
+    let type: String
+    let size: Int64?
+    let modifiedAt: Int64?
+
+    var id: String { name }
+    var isDirectory: Bool { type == "dir" || type == "directory" }
+    var isSymlink: Bool { type == "symlink" }
+
+    init(name: String, type: String, size: Int64? = nil, modifiedAt: Int64? = nil) {
+        self.name = name
+        self.type = type
+        self.size = size
+        self.modifiedAt = modifiedAt
+    }
+}
+
+/// A directory listing of the desktop workspace. `path` is relative to the
+/// workspace root ("" for the root itself); `root` is the desktop's absolute
+/// path, shown for orientation only.
+struct BridgeDirectoryListing: Decodable, Sendable, Equatable {
+    let root: String?
+    let path: String
+    let entries: [BridgeFileEntry]
+
+    init(root: String?, path: String, entries: [BridgeFileEntry]) {
+        self.root = root
+        self.path = path
+        self.entries = entries
+    }
+
+    private enum CodingKeys: String, CodingKey { case root, path, entries }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        root = try container.decodeIfPresent(String.self, forKey: .root)
+        path = try container.decodeIfPresent(String.self, forKey: .path) ?? ""
+        entries = try container.decodeIfPresent([BridgeFileEntry].self, forKey: .entries) ?? []
+    }
+}
+
+/// Bytes of one workspace file read through `GET …/files/raw?path=`.
+struct BridgeFileContent: Sendable, Equatable {
+    let path: String
+    let data: Data
+    let mimeType: String?
+    /// The bridge cut the file at the requested limit.
+    let truncated: Bool
+    /// Full size on the desktop when the bridge reports it.
+    let totalBytes: Int64?
+
+    var isImage: Bool { mimeType?.hasPrefix("image/") == true }
+
+    /// UTF-8 text when the bytes decode as such and hold no NUL byte.
+    var text: String? {
+        guard !data.contains(0), let text = String(data: data, encoding: .utf8) else { return nil }
+        return text
+    }
+}
+
 /// `{ "error": { "message", "code", ... } }` returned by bridge routes.
 struct BridgeErrorEnvelope: Decodable, Sendable {
     struct Detail: Decodable, Sendable {

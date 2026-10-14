@@ -19,6 +19,7 @@ struct ChatView: View {
     @State private var userMessageEditText = ""
     @State private var isSettingsPresented = false
     @State private var isJobsPresented = false
+    @State private var isDesktopFilesPresented = false
     @State private var isSessionOptionsPresented = false
     @State private var isSchedulePanelPresented = false
     @State private var isExportFormatPresented = false
@@ -169,6 +170,9 @@ struct ChatView: View {
         }
         .sheet(isPresented: $isJobsPresented) {
             JobsPanelView()
+        }
+        .sheet(isPresented: $isDesktopFilesPresented) {
+            DesktopFilesView()
         }
         .sheet(isPresented: $isSchedulePanelPresented) {
             HarnessSchedulePanel(
@@ -353,6 +357,14 @@ struct ChatView: View {
                 .accessibilityIdentifier("Scheduled Reminders")
 
                 if model.activeSessionIsDesktopMirror {
+                    Button {
+                        isSessionOptionsPresented = false
+                        isDesktopFilesPresented = true
+                    } label: {
+                        Label("Desktop Files", systemImage: "folder")
+                    }
+                    .accessibilityIdentifier("Desktop Files")
+
                     Button {
                         isSessionOptionsPresented = false
                         Task { await model.compactDesktopMirror() }

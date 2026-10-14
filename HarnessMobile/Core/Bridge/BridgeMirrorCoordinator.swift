@@ -292,6 +292,24 @@ actor BridgeMirrorCoordinator {
         try? await refresh(importer: try activeImporter(), bridgeSessionID: mapping.bridgeSessionID)
     }
 
+    /// Lists a workspace directory of the mirrored desktop session.
+    func listFiles(localSessionID: UUID, path: String) async throws -> BridgeDirectoryListing {
+        let client = try activeClient()
+        guard let mapping = try await mappings.mapping(localSessionID: localSessionID) else {
+            throw BridgeFollowError.mirrorNotFound(localSessionID)
+        }
+        return try await client.listFiles(sessionID: mapping.bridgeSessionID, path: path)
+    }
+
+    /// Reads one workspace file of the mirrored desktop session.
+    func readFile(localSessionID: UUID, path: String) async throws -> BridgeFileContent {
+        let client = try activeClient()
+        guard let mapping = try await mappings.mapping(localSessionID: localSessionID) else {
+            throw BridgeFollowError.mirrorNotFound(localSessionID)
+        }
+        return try await client.readFile(sessionID: mapping.bridgeSessionID, path: path)
+    }
+
     /// Asks the desktop to stop the running turn of the mirrored session.
     func cancelPrompt(localSessionID: UUID) async throws {
         let client = try activeClient()

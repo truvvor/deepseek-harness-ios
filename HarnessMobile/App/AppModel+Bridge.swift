@@ -344,6 +344,30 @@ extension AppModel {
         return true
     }
 
+    /// Lists a directory of the open mirror's desktop workspace.
+    func desktopMirrorFiles(path: String) async throws -> BridgeDirectoryListing {
+        guard let sessionID = activeSessionID, activeSessionIsDesktopMirror else {
+            throw DesktopMirrorReadOnlyError()
+        }
+        guard let coordinator = desktopBridgeCoordinator else {
+            throw BridgeMirrorAvailability.notConfigured
+        }
+        if let availability = await coordinator.availability { throw availability }
+        return try await coordinator.listFiles(localSessionID: sessionID, path: path)
+    }
+
+    /// Reads one file of the open mirror's desktop workspace.
+    func desktopMirrorFile(path: String) async throws -> BridgeFileContent {
+        guard let sessionID = activeSessionID, activeSessionIsDesktopMirror else {
+            throw DesktopMirrorReadOnlyError()
+        }
+        guard let coordinator = desktopBridgeCoordinator else {
+            throw BridgeMirrorAvailability.notConfigured
+        }
+        if let availability = await coordinator.availability { throw availability }
+        return try await coordinator.readFile(localSessionID: sessionID, path: path)
+    }
+
     /// Runs the desktop's own context compaction for the open mirror.
     func compactDesktopMirror() async {
         guard let sessionID = activeSessionID, activeSessionIsDesktopMirror,

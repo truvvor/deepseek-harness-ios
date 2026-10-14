@@ -81,6 +81,12 @@ enum BridgeClientError: Error, LocalizedError, Sendable, Equatable {
                 return "This question was already answered, on the desktop or from another device."
             case "question/bad-answer":
                 return "The desktop rejected the answer: \(message ?? "pick one of the offered options")."
+            case "file/not-found":
+                return "That file or folder no longer exists in the desktop workspace."
+            case "file/outside-root":
+                return "The desktop only shares files inside the session workspace."
+            case "file/too-large":
+                return "This file is too large to read from the phone."
             case "compaction/failed":
                 return "The desktop could not compact this session: \(message ?? "unknown error")."
             default:
@@ -247,6 +253,48 @@ actor BridgeClient {
             sessionPath(sessionID, "questions/\(requestID)/answer"),
             body: body,
             timeout: configuration.requestTimeoutSeconds
+        )
+    }
+
+    /// Largest file body the phone asks the bridge for; longer files come back
+    /// cut with `x-dsh-truncated: 1`.
+    static let maximumFileReadBytes = 4 * 1_024 * 1_024
+
+    /// Lists a directory of the desktop session's workspace (read-only).
+    func listFiles(sessionID: String, path: String) async throws -> BridgeDirectoryListing {
+        try await get(sessionPath(sessionID, "files"), query: [URLQueryItem(name: "path", value: path)])
+    }
+
+    /// Reads one workspace file as raw bytes, at most `limit` of them.
+    func readFile(
+        sessionID: String,
+        path: String,
+        limit: Int = BridgeClient.maximumFileReadBytes
+    ) async throws -> BridgeFileContent {
+        let url = try makeURL(
+            sessionPath(sessionID, "files/raw"),
+            query: [URLQueryItem(name: "path", value: path), URLQueryItem(name: "limit", value: String(limit))]
+        )
+        guard let token = await tokenProvider() else {
+            throw BridgeClientError.missingToken
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("*/*", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = configuration.requestTimeoutSeconds
+        let (data, response) = try await performWithResponse(request)
+        let truncatedHeader = response.value(forHTTPHeaderField: "x-dsh-truncated") ?? ""
+        let total = response.value(forHTTPHeaderField: "x-dsh-total-bytes").flatMap { Int64($0) }
+        let truncated = truncatedHeader == "1" || truncatedHeader.lowercased() == "true"
+            || (total.map { $0 > Int64(data.count) } ?? false)
+        return BridgeFileContent(
+            path: path,
+            data: data,
+            mimeType: response.value(forHTTPHeaderField: "Content-Type")?
+                .split(separator: ";").first.map { $0.trimmingCharacters(in: .whitespaces) },
+            truncated: truncated,
+            totalBytes: total
         )
     }
 

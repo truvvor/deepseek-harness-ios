@@ -165,6 +165,81 @@ final class BridgeClientPromptTests: XCTestCase {
         XCTAssertEqual(answers[0]["custom"] as? String, "after lunch")
     }
 
+    func testListFilesQueriesThePathAndDecodesEntries() async throws {
+        let captured = CapturedRequest()
+        BridgePromptURLProtocolStub.handler = { request in
+            captured.store(request)
+            return Self.response(request, status: 200, json: #"""
+            {"root":"C:\\work\\project","path":"src","entries":[
+              {"name":"main.swift","type":"file","size":1204,"modifiedAt":1760450000000},
+              {"name":"lib","type":"dir"}]}
+            """#)
+        }
+
+        let listing = try await makeClient().listFiles(sessionID: desktopSessionID, path: "src")
+
+        let request = try XCTUnwrap(captured.request)
+        XCTAssertEqual(request.httpMethod, "GET")
+        XCTAssertEqual(request.url?.path, "/bridge/v1/sessions/\(desktopSessionID)/files")
+        XCTAssertEqual(request.url?.query, "path=src")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer \(Self.fixtureToken)")
+        XCTAssertEqual(listing.path, "src")
+        XCTAssertEqual(listing.root, #"C:\work\project"#)
+        XCTAssertEqual(listing.entries.count, 2)
+        XCTAssertEqual(listing.entries.first?.name, "main.swift")
+        XCTAssertEqual(listing.entries.first?.size, 1204)
+        XCTAssertEqual(listing.entries.first?.isDirectory, false)
+        XCTAssertEqual(listing.entries.last?.isDirectory, true)
+    }
+
+    func testReadFileReturnsRawBytesWithTypeAndTruncationFromHeaders() async throws {
+        let captured = CapturedRequest()
+        BridgePromptURLProtocolStub.handler = { request in
+            captured.store(request)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: "HTTP/1.1",
+                headerFields: [
+                    "Content-Type": "text/plain; charset=utf-8",
+                    "x-dsh-truncated": "1",
+                    "x-dsh-total-bytes": "9000"
+                ]
+            )!
+            return (response, Data("hello".utf8))
+        }
+
+        let content = try await makeClient().readFile(sessionID: desktopSessionID, path: "notes/a.txt", limit: 5)
+
+        let request = try XCTUnwrap(captured.request)
+        XCTAssertEqual(request.url?.path, "/bridge/v1/sessions/\(desktopSessionID)/files/raw")
+        XCTAssertEqual(request.url?.query, "path=notes/a.txt&limit=5")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "*/*")
+        XCTAssertEqual(content.text, "hello")
+        XCTAssertEqual(content.mimeType, "text/plain")
+        XCTAssertTrue(content.truncated)
+        XCTAssertEqual(content.totalBytes, 9000)
+        XCTAssertFalse(content.isImage)
+    }
+
+    func testReadFileOfABinaryYieldsNoText() async throws {
+        BridgePromptURLProtocolStub.handler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["Content-Type": "image/png"]
+            )!
+            return (response, Data([0x89, 0x50, 0x4E, 0x47, 0x00, 0x0A]))
+        }
+
+        let content = try await makeClient().readFile(sessionID: desktopSessionID, path: "a.png")
+
+        XCTAssertNil(content.text)
+        XCTAssertTrue(content.isImage)
+        XCTAssertFalse(content.truncated)
+    }
+
     func testCancelOfASessionThatIsNotLiveReportsNotOpenOnTheDesktop() async throws {
         BridgePromptURLProtocolStub.handler = { request in
             Self.response(request, status: 404, json: #"""
