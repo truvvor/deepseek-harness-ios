@@ -262,6 +262,30 @@ actor BridgeMirrorCoordinator {
         return result
     }
 
+    /// Runs the desktop's own context compaction for the mirrored session.
+    func compact(localSessionID: UUID) async throws {
+        let client = try activeClient()
+        guard let mapping = try await mappings.mapping(localSessionID: localSessionID) else {
+            throw BridgeFollowError.mirrorNotFound(localSessionID)
+        }
+        try await client.compact(sessionID: mapping.bridgeSessionID)
+        try? await refresh(importer: try activeImporter(), bridgeSessionID: mapping.bridgeSessionID)
+    }
+
+    /// Answers the desktop agent's pending question, then refreshes so the
+    /// resolution (and the turn that continues) reaches the mirror.
+    func answerQuestion(localSessionID: UUID, requestID: String, answer: AskUserQuestionAnswer) async throws {
+        let client = try activeClient()
+        guard let mapping = try await mappings.mapping(localSessionID: localSessionID) else {
+            throw BridgeFollowError.mirrorNotFound(localSessionID)
+        }
+        try await client.answerQuestion(sessionID: mapping.bridgeSessionID, requestID: requestID, answer: answer)
+        if let sync, await !sync.followedSessionIDs.contains(localSessionID) {
+            try? await sync.startFollowing(localSessionID: localSessionID)
+        }
+        try? await refresh(importer: try activeImporter(), bridgeSessionID: mapping.bridgeSessionID)
+    }
+
     /// Asks the desktop to stop the running turn of the mirrored session.
     func cancelPrompt(localSessionID: UUID) async throws {
         let client = try activeClient()

@@ -208,6 +208,27 @@ actor BridgeClient {
         }
     }
 
+    /// Asks the desktop to compact the session's context (its own compaction,
+    /// recorded in its log as `compaction/*` events).
+    func compact(sessionID: String) async throws {
+        _ = try await post(
+            sessionPath(sessionID, "compact"),
+            body: nil,
+            timeout: Self.promptTimeoutSeconds
+        )
+    }
+
+    /// Answers a question the desktop agent is waiting on. The body is the
+    /// upstream `AskUserQuestion` answer wire shape.
+    func answerQuestion(sessionID: String, requestID: String, answer: AskUserQuestionAnswer) async throws {
+        let body = try JSONEncoder().encode(answer)
+        _ = try await post(
+            sessionPath(sessionID, "questions/\(requestID)/answer"),
+            body: body,
+            timeout: configuration.requestTimeoutSeconds
+        )
+    }
+
     /// Asks the desktop to cancel the running turn of `sessionID`.
     func cancel(sessionID: String) async throws {
         _ = try await post(

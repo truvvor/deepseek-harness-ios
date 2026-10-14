@@ -273,6 +273,8 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     var desktopMirrorLive: [UUID: DesktopMirrorLiveState] = [:]
     var desktopMirrorLiveRevision: UInt64 = 0
     @ObservationIgnored var desktopMirrorLiveBuffer: [UUID: DesktopMirrorLiveState] = [:]
+    /// Desktop questions already announced with a local notification.
+    @ObservationIgnored var notifiedDesktopQuestionIDs: Set<String> = []
     @ObservationIgnored var desktopMirrorLiveFlushTask: Task<Void, Never>?
     @ObservationIgnored var desktopMirrorLastCatchUp: Date?
     @ObservationIgnored var desktopMirrorCatchUpInFlight = false
@@ -613,14 +615,14 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     @ObservationIgnored private let backgroundKeepAliveCoordinator = BackgroundKeepAliveCoordinator()
     @ObservationIgnored private let backgroundRunJournal: BackgroundRunJournal
     @ObservationIgnored private var appIsBackgrounded = false
-    @ObservationIgnored private var appIsActive = true
+    @ObservationIgnored var appIsActive = true
     @ObservationIgnored private var finiteBackgroundLeaseTokens: [RunIdentity: SessionRunBackgroundLeaseToken] = [:]
 #if os(iOS) && canImport(BackgroundTasks)
     @ObservationIgnored private let scheduleBackgroundController = ScheduleBackgroundController()
     @ObservationIgnored private var scheduleMutationObserver: NSObjectProtocol?
     @ObservationIgnored private var scheduleBackgroundTasksRegistered = false
 #endif
-    @ObservationIgnored private let completionNotifier = BackgroundCompletionNotifier()
+    @ObservationIgnored let completionNotifier = BackgroundCompletionNotifier()
     var activeRunID: UUID? { selectedRunPresentation?.identity.runID }
     @ObservationIgnored private var pendingLegacyConfiguration: AgentConfiguration?
     /// In-memory routing revisions distinguish requests made before and after
@@ -7451,7 +7453,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         }
     }
 
-    private func presentCommandOutput(
+    func presentCommandOutput(
         title: String,
         text: String,
         isError: Bool

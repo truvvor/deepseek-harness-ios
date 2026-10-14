@@ -163,6 +163,8 @@ P3：带 npm 依赖的真实 cordis 插件安装成功。
 后果：
 `BridgeClient` 增加 `prompt`/`cancel` 两条写路由；`BridgeMirrorCoordinator.sendPrompt` 在回合期间重启镜像跟随以实时显示中间事件；`AppModel.submit` 在镜像会话中转发到桌面，`isChatBusy`/`cancelActiveTurn` 只驱动聊天界面。桥接在客户端断开时会中止桌面回合，因此应用在回合期间申请有限的后台执行时间；超出后台宽限期仍会中止，需要桥接侧支持断开后继续才能消除。
 
+补充（2026-10-14）：同一边界下增加两条桌面控制路由——`POST …/compact`（桌面自行压缩上下文）与 `POST …/questions/{requestId}/answer`（回答桌面 Agent 的提问，请求体为上游 `AskUserQuestionAnswer`）。压缩与提问的真源仍是桌面日志；手机只显示 `question/requested` 之后、`question/resolved` 之前的未决问题并转发答案。
+
 验证：
 `HarnessMobileTests/BridgeClientPromptTests.swift` 覆盖请求路径、方法、令牌头、请求体、409/404/401 映射。真实桌面桥接下的回合、取消、前后台切换尚未在真机验收，状态保持 `VERIFY`。
 

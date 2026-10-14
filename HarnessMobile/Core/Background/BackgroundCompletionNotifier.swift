@@ -56,6 +56,30 @@ struct BackgroundCompletionNotifier: Sendable {
         try await UNUserNotificationCenter.current().add(request)
     }
 
+    /// Local notification for a question the desktop agent asked in a mirrored
+    /// session, so the person hears about it without the chat open.
+    func deliverDesktopQuestion(
+        requestID: String,
+        sessionTitle: String,
+        question: String,
+        privacyModeEnabled: Bool
+    ) async throws {
+        guard await authorizationStatus() == .authorized else {
+            throw BackgroundCompletionNotificationError.notAuthorized
+        }
+        let content = UNMutableNotificationContent()
+        content.title = "Desktop agent is asking"
+        content.subtitle = sessionTitle
+        content.body = privacyModeEnabled ? "Open the session to answer." : String(question.prefix(180))
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: "desktop-question.\(requestID)",
+            content: content,
+            trigger: nil
+        )
+        try await UNUserNotificationCenter.current().add(request)
+    }
+
     private static func authorization(
         from status: UNAuthorizationStatus
     ) -> BackgroundNotificationAuthorization {

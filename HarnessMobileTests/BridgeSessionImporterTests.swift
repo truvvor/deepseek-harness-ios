@@ -986,6 +986,68 @@ final class BridgeSessionImporterTests: XCTestCase {
         XCTAssertEqual(after.title, "After")
     }
 
+    // MARK: - Desktop questions
+
+    func testPendingDesktopQuestionIsRecordedOnRequestAndClearedOnResolve() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+        let base = UInt64(report.events.count)
+
+        let asked = report.events + [
+            try SessionEvent(
+                type: SessionEventVocabulary.questionRequested,
+                seq: base,
+                time: 1_735_689_602_000,
+                data: .object([
+                    "requestId": .string("req-7"),
+                    "questions": .array([
+                        .object([
+                            "question": .string("Deploy to production?"),
+                            "header": .string("Deploy"),
+                            "multiSelect": .bool(false),
+                            "options": .array([.object(["label": .string("Yes")]), .string("No")])
+                        ])
+                    ])
+                ])
+            )
+        ]
+        let first = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: asked,
+            lastBridgeSequence: Int64(asked.count - 1)
+        )
+        let pending = try await harness.sessionStore.session(id: first.localSessionID).bridgeMirror?.pendingQuestion
+        let question = try XCTUnwrap(pending)
+        XCTAssertEqual(question.requestID, "req-7")
+        XCTAssertEqual(question.questions.count, 1)
+        XCTAssertEqual(question.questions.first?.question, "Deploy to production?")
+        XCTAssertEqual(question.questions.first?.header, "Deploy")
+        XCTAssertEqual(question.questions.first?.multiSelect, false)
+        XCTAssertEqual(question.questions.first?.options, ["Yes", "No"])
+
+        let resolved = asked + [
+            try SessionEvent(
+                type: SessionEventVocabulary.questionResolved,
+                seq: base + 1,
+                time: 1_735_689_603_000,
+                data: .object(["requestId": .string("req-7")])
+            )
+        ]
+        _ = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: resolved,
+            lastBridgeSequence: Int64(resolved.count - 1)
+        )
+        let after = try await harness.sessionStore.session(id: first.localSessionID)
+        XCTAssertNil(after.bridgeMirror?.pendingQuestion)
+        XCTAssertTrue(after.isDesktopMirror)
+    }
+
     // MARK: - Envelope chunking limits
 
     func testSingleEnvelopeCannotExceedTheSyncEventLimit() {

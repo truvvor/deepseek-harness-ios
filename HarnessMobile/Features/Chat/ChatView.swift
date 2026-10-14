@@ -352,6 +352,17 @@ struct ChatView: View {
                 }
                 .accessibilityIdentifier("Scheduled Reminders")
 
+                if model.activeSessionIsDesktopMirror {
+                    Button {
+                        isSessionOptionsPresented = false
+                        Task { await model.compactDesktopMirror() }
+                    } label: {
+                        Label("Compact Desktop Context", systemImage: "archivebox")
+                    }
+                    .disabled(model.isChatBusy)
+                    .accessibilityIdentifier("Compact Desktop Context")
+                }
+
                 Button {
                     isExportFormatPresented = true
                     isSessionOptionsPresented = false
@@ -819,6 +830,7 @@ private struct ConversationScroller: View {
                     runStartedAt: model.chatRunStartedAt,
                     pendingQuestionCount: model.pendingUserQuestion?.request.questions.count ?? 0,
                     pendingQuestionTitle: model.pendingUserQuestion?.request.questions.first?.question,
+                    desktopQuestion: model.activeDesktopMirrorQuestion,
                     metrics: model.trajectoryMetrics,
                     bottomID: bottomID,
                     onResume: model.resumePendingRun,
@@ -827,7 +839,10 @@ private struct ConversationScroller: View {
                     onRetryUserMessage: model.retryFromUserMessage,
                     onEditUserMessage: onEditUserMessage,
                     onToggleFeedback: model.toggleMessageFeedback,
-                    onUpdateFeedbackNote: model.updateMessageFeedbackNote
+                    onUpdateFeedbackNote: model.updateMessageFeedbackNote,
+                    onAnswerDesktopQuestion: { answer in
+                        Task { await model.answerDesktopMirrorQuestion(answer) }
+                    }
                 )
                 .padding(.horizontal)
                 .padding(.top, 12)
@@ -1007,6 +1022,7 @@ private struct ConversationTimeline: View {
     let runStartedAt: Date?
     let pendingQuestionCount: Int
     let pendingQuestionTitle: String?
+    let desktopQuestion: BridgeDesktopQuestion?
     let metrics: SessionTrajectoryMetrics?
     let bottomID: String
     let onResume: () -> Void
@@ -1016,6 +1032,7 @@ private struct ConversationTimeline: View {
     let onEditUserMessage: (AgentMessage) -> Void
     let onToggleFeedback: (UUID, MessageFeedbackRating) -> Void
     let onUpdateFeedbackNote: (UUID, String) -> Void
+    let onAnswerDesktopQuestion: (AskUserQuestionAnswer) -> Void
 
     var body: some View {
         LazyVStack(spacing: 14) {
@@ -1134,6 +1151,11 @@ private struct ConversationTimeline: View {
                 )
             }
 
+            if let desktopQuestion {
+                DesktopQuestionCard(question: desktopQuestion, onAnswer: onAnswerDesktopQuestion)
+                    .id("desktop-question-\(desktopQuestion.requestID)")
+            }
+
             if isRunning {
                 HarnessRunStatus(startedAt: runStartedAt)
             }
@@ -1164,6 +1186,139 @@ private struct ConversationTimeline: View {
         ConversationMessageActionTargets.resolve(messages).retryUserMessageIDByMessageID
     }
 
+}
+
+/// The question the desktop agent is waiting on (D-014). Answers go back
+/// through the bridge; the desktop resolves the question and continues.
+private struct DesktopQuestionCard: View {
+    let question: BridgeDesktopQuestion
+    let onAnswer: (AskUserQuestionAnswer) -> Void
+
+    @State private var selections: [String: Set<String>] = [:]
+    @State private var customText: [String: String] = [:]
+    @State private var isSending = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                HarnessIconTile(systemImage: "questionmark.bubble", tint: .orange, size: 28)
+                Text("The desktop agent is asking")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+            }
+
+            ForEach(question.questions) { item in
+                VStack(alignment: .leading, spacing: 8) {
+                    if let header = item.header, !header.isEmpty {
+                        Text(header)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+                    }
+                    Text(item.question)
+                        .font(.body)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+
+                    ForEach(item.options, id: \.self) { option in
+                        Button {
+                            toggle(option, for: item)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(
+                                    systemName: isSelected(option, for: item)
+                                        ? (item.multiSelect ? "checkmark.square.fill" : "largecircle.fill.circle")
+                                        : (item.multiSelect ? "square" : "circle")
+                                )
+                                .foregroundStyle(isSelected(option, for: item) ? Color.accentColor : .secondary)
+                                Text(option)
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 0)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(isSelected(option, for: item) ? .isSelected : [])
+                    }
+
+                    TextField(
+                        item.options.isEmpty ? "Your answer" : "Other (optional)",
+                        text: Binding(
+                            get: { customText[item.id] ?? "" },
+                            set: { customText[item.id] = $0 }
+                        ),
+                        axis: .vertical
+                    )
+                    .lineLimit(1 ... 4)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("desktop-question-answer-\(item.id)")
+                }
+            }
+
+            HStack {
+                Text("Answering here resumes the desktop turn.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button {
+                    isSending = true
+                    onAnswer(answer)
+                } label: {
+                    if isSending {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label("Send", systemImage: "paperplane.fill")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isSending || !hasAnswer)
+                .accessibilityIdentifier("desktop-question-send")
+            }
+        }
+        .harnessCardSurface(padding: 14, radius: HarnessTheme.Radius.medium)
+        .onChange(of: question.requestID) { _, _ in
+            selections = [:]
+            customText = [:]
+            isSending = false
+        }
+    }
+
+    private var hasAnswer: Bool {
+        question.questions.contains { item in
+            !(selections[item.id] ?? []).isEmpty
+                || !(customText[item.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+    }
+
+    private var answer: AskUserQuestionAnswer {
+        AskUserQuestionAnswer(
+            answers: question.questions.map { item in
+                let custom = (customText[item.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                return AskUserQuestionAnswerItem(
+                    id: item.id,
+                    selected: item.options.filter { (selections[item.id] ?? []).contains($0) },
+                    custom: custom.isEmpty ? nil : custom
+                )
+            }
+        )
+    }
+
+    private func isSelected(_ option: String, for item: BridgeDesktopQuestionItem) -> Bool {
+        selections[item.id]?.contains(option) ?? false
+    }
+
+    private func toggle(_ option: String, for item: BridgeDesktopQuestionItem) {
+        var current = selections[item.id] ?? []
+        if current.contains(option) {
+            current.remove(option)
+        } else if item.multiSelect {
+            current.insert(option)
+        } else {
+            current = [option]
+        }
+        selections[item.id] = current
+    }
 }
 
 private struct ContextInjectionList: View {

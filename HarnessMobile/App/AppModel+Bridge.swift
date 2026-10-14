@@ -86,6 +86,11 @@ extension AppModel {
               desktopMirrorSettings.followsSelectedMirrorAutomatically,
               !followedMirrorSessionIDs.contains(activeSessionID) else { return }
         await startFollowingDesktopMirror(activeSessionID)
+        // Desktop questions are announced with local notifications; ask once,
+        // the first time a mirror is followed.
+        if await completionNotifier.authorizationStatus() == .notDetermined {
+            _ = try? await completionNotifier.requestAuthorization()
+        }
     }
 
     /// Minimum spacing between automatic catch-ups (launch, foreground).
@@ -113,6 +118,7 @@ extension AppModel {
             if let activeSessionID, activeSessionIsDesktopMirror {
                 await reloadDesktopMirrorIfActive(activeSessionID)
             }
+            await announceDesktopQuestionsIfNeeded()
         } catch {
             // Silent by design: the user did not ask for this sync. The next
             // manual Sync reports its errors in Settings.
@@ -232,6 +238,15 @@ extension AppModel {
             // The refresh that follows appends the durable message and clears
             // the streamed copy in `reloadDesktopMirrorIfActive`.
             return
+        case .questionAsked:
+            // The refresh that follows stores the question on the session;
+            // announce it once it is there.
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(2))
+                await self?.refreshSessionSummaries()
+                await self?.announceDesktopQuestionsIfNeeded()
+            }
+            return
         case .turnEnded:
             state = DesktopMirrorLiveState()
             if desktopMirrorTurns[sessionID]?.pendingPrompts == 0 {
@@ -282,6 +297,11 @@ extension AppModel {
     func submitToDesktopMirror(_ text: String, disposition: QueuedInputDisposition) async -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
+        // `/compact` in a mirror runs the desktop's compaction, never a local one.
+        if trimmed == "/compact" {
+            await compactDesktopMirror()
+            return true
+        }
         guard !hasStagedImage, !hasStagedFile else {
             presentError(DesktopMirrorAttachmentError())
             return false
@@ -324,6 +344,77 @@ extension AppModel {
         return true
     }
 
+    /// Runs the desktop's own context compaction for the open mirror.
+    func compactDesktopMirror() async {
+        guard let sessionID = activeSessionID, activeSessionIsDesktopMirror,
+              let coordinator = desktopBridgeCoordinator else { return }
+        do {
+            try await coordinator.compact(localSessionID: sessionID)
+            presentCommandOutput(
+                title: "Desktop Compaction",
+                text: "The desktop is compacting this session's context. The compaction events arrive in the mirror as it runs.",
+                isError: false
+            )
+        } catch BridgeClientError.notFound {
+            presentCommandOutput(
+                title: "Desktop Compaction",
+                text: "This bridge has no compaction route. Update dsh-api-bridge to a revision that serves POST /bridge/v1/sessions/{id}/compact.",
+                isError: true
+            )
+        } catch {
+            presentError(error)
+        }
+        await reloadDesktopMirrorIfActive(sessionID)
+    }
+
+    /// The question the desktop agent is waiting on in the open mirror.
+    var activeDesktopMirrorQuestion: BridgeDesktopQuestion? {
+        guard let activeSessionID, activeSessionIsDesktopMirror else { return nil }
+        return sessions.first { $0.id == activeSessionID }?.bridgeMirror?.pendingQuestion
+    }
+
+    /// Sends the person's answer to the desktop, which resolves the question
+    /// and continues its turn.
+    func answerDesktopMirrorQuestion(_ answer: AskUserQuestionAnswer) async {
+        guard let sessionID = activeSessionID,
+              let question = activeDesktopMirrorQuestion,
+              let coordinator = desktopBridgeCoordinator else { return }
+        do {
+            try await coordinator.answerQuestion(
+                localSessionID: sessionID,
+                requestID: question.requestID,
+                answer: answer
+            )
+        } catch BridgeClientError.notFound {
+            presentCommandOutput(
+                title: "Desktop Question",
+                text: "This bridge cannot deliver answers yet. Update dsh-api-bridge to a revision that serves POST /bridge/v1/sessions/{id}/questions/{requestId}/answer, or answer on the desktop.",
+                isError: true
+            )
+        } catch {
+            presentError(error)
+        }
+        await reloadDesktopMirrorIfActive(sessionID)
+    }
+
+    /// Announces desktop questions the person has not seen: a local
+    /// notification when the app is away or another session is open.
+    func announceDesktopQuestionsIfNeeded() async {
+        for session in sessions {
+            guard let question = session.bridgeMirror?.pendingQuestion,
+                  !notifiedDesktopQuestionIDs.contains(question.requestID) else { continue }
+            notifiedDesktopQuestionIDs.insert(question.requestID)
+            let isOnScreen = appIsActive && session.id == activeSessionID
+            guard !isOnScreen else { continue }
+            try? await completionNotifier.deliverDesktopQuestion(
+                requestID: question.requestID,
+                sessionTitle: session.title,
+                question: question.questions.first?.question ?? "",
+                privacyModeEnabled: backgroundPreferences.isPrivacyModeEnabled
+            )
+        }
+    }
+
     /// Stop button: cancels the desktop turn in a mirror, the local run elsewhere.
     func cancelActiveTurn() {
         guard activeSessionIsDesktopMirror, let sessionID = activeSessionID else {
@@ -350,6 +441,7 @@ extension AppModel {
     /// loaded and the scroll position does not jump.
     func reloadDesktopMirrorIfActive(_ sessionID: UUID) async {
         await refreshSessionSummaries()
+        await announceDesktopQuestionsIfNeeded()
         guard sessionID == activeSessionID, activeSessionIsDesktopMirror else { return }
         guard let session = try? await sessionStore.session(id: sessionID) else { return }
         let tail = session.messages

@@ -38,6 +38,8 @@ enum BridgeLiveUpdate: Sendable, Equatable {
     /// A durable message was written on the desktop; the refresh that follows
     /// carries it.
     case messageCommitted
+    /// The desktop agent asked the user something and is waiting.
+    case questionAsked
     case turnEnded
 }
 
@@ -74,7 +76,9 @@ actor BridgeSessionSync {
     static let messageEventTypes: Set<String> = [
         SessionEventVocabulary.userMessage,
         SessionEventVocabulary.assistantMessage,
-        SessionEventVocabulary.toolResult
+        SessionEventVocabulary.toolResult,
+        SessionEventVocabulary.questionRequested,
+        SessionEventVocabulary.questionResolved
     ]
 
     private let client: BridgeClient
@@ -233,8 +237,9 @@ actor BridgeSessionSync {
                     await live(.turnStarted)
                 }
                 if Self.messageEventTypes.contains(eventType) {
-                    // A chat message landed on the desktop: show it now.
-                    await live(.messageCommitted)
+                    // A chat message (or a question) landed on the desktop:
+                    // show it now.
+                    await live(eventType == SessionEventVocabulary.questionRequested ? .questionAsked : .messageCommitted)
                     shouldRefresh = true
                 } else if let lastRefresh {
                     shouldRefresh = now().timeIntervalSince(lastRefresh) >= Self.minimumRefreshInterval

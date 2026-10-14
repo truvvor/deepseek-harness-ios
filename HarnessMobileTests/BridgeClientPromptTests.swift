@@ -122,6 +122,49 @@ final class BridgeClientPromptTests: XCTestCase {
         XCTAssertNil(captured.body)
     }
 
+    func testCompactPostsToTheCompactRouteWithoutABody() async throws {
+        let captured = CapturedRequest()
+        BridgePromptURLProtocolStub.handler = { request in
+            captured.store(request)
+            return Self.response(request, status: 200, json: #"{"accepted":true}"#)
+        }
+
+        try await makeClient().compact(sessionID: desktopSessionID)
+
+        let request = try XCTUnwrap(captured.request)
+        XCTAssertEqual(request.httpMethod, "POST")
+        XCTAssertEqual(request.url?.path, "/bridge/v1/sessions/\(desktopSessionID)/compact")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer \(Self.fixtureToken)")
+        XCTAssertNil(captured.body)
+    }
+
+    func testAnswerQuestionPostsTheUpstreamAnswerShapeToTheRequestRoute() async throws {
+        let captured = CapturedRequest()
+        BridgePromptURLProtocolStub.handler = { request in
+            captured.store(request)
+            return Self.response(request, status: 200, json: #"{"accepted":true}"#)
+        }
+
+        try await makeClient().answerQuestion(
+            sessionID: desktopSessionID,
+            requestID: "req-42",
+            answer: AskUserQuestionAnswer(answers: [
+                AskUserQuestionAnswerItem(id: "q0", selected: ["Ship it"], custom: "after lunch")
+            ])
+        )
+
+        let request = try XCTUnwrap(captured.request)
+        XCTAssertEqual(request.httpMethod, "POST")
+        XCTAssertEqual(request.url?.path, "/bridge/v1/sessions/\(desktopSessionID)/questions/req-42/answer")
+        let body = try XCTUnwrap(captured.body)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let answers = try XCTUnwrap(object["answers"] as? [[String: Any]])
+        XCTAssertEqual(answers.count, 1)
+        XCTAssertEqual(answers[0]["id"] as? String, "q0")
+        XCTAssertEqual(answers[0]["selected"] as? [String], ["Ship it"])
+        XCTAssertEqual(answers[0]["custom"] as? String, "after lunch")
+    }
+
     func testCancelOfASessionThatIsNotLiveReportsNotOpenOnTheDesktop() async throws {
         BridgePromptURLProtocolStub.handler = { request in
             Self.response(request, status: 404, json: #"""

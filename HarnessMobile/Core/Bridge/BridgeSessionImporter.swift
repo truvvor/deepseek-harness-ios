@@ -493,6 +493,19 @@ actor BridgeSessionImporter {
         let session = try await sessionStore.session(id: sessionID)
         var total = try await transcripts.count(sessionID: sessionID)
         var tailChanged = isNew
+        // Carry the desktop's open question across refreshes: the log is
+        // append-only, so a request stays pending until its resolution lands.
+        var pendingQuestion = isNew ? nil : session.bridgeMirror?.pendingQuestion
+        for event in appended {
+            if let question = BridgeDesktopQuestion.parse(event) {
+                pendingQuestion = question
+                tailChanged = true
+            } else if let resolved = BridgeDesktopQuestion.resolvedRequestID(event),
+                      resolved == pendingQuestion?.requestID {
+                pendingQuestion = nil
+                tailChanged = true
+            }
+        }
         // A mirror written before the transcript store existed holds its whole
         // transcript in the session; seed the store from it once.
         if !isNew, total == 0, session.bridgeMirror?.transcriptMessageCount == nil, !session.messages.isEmpty {
@@ -525,7 +538,8 @@ actor BridgeSessionImporter {
                     workState: ConversationWorkState(),
                     bridgeMirror: BridgeSessionMirror(
                         bridgeSessionID: bridgeSessionID,
-                        transcriptMessageCount: total
+                        transcriptMessageCount: total,
+                        pendingQuestion: pendingQuestion
                     )
                 )
             )

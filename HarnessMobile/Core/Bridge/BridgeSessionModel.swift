@@ -23,13 +23,89 @@ struct BridgeSessionMirror: Codable, Sendable, Equatable {
     /// rest are paged in from the transcript store while scrolling. `nil` for
     /// a mirror written before the transcript store existed.
     var transcriptMessageCount: Int?
+    /// A question the desktop agent asked and nobody has answered yet
+    /// (`question/requested` without a matching `question/resolved`).
+    var pendingQuestion: BridgeDesktopQuestion?
 
-    init(bridgeSessionID: String, importedAt: Date = .now, transcriptMessageCount: Int? = nil) {
+    init(
+        bridgeSessionID: String,
+        importedAt: Date = .now,
+        transcriptMessageCount: Int? = nil,
+        pendingQuestion: BridgeDesktopQuestion? = nil
+    ) {
         self.bridgeSessionID = bridgeSessionID
         self.importedAt = importedAt
         self.transcriptMessageCount = transcriptMessageCount
+        self.pendingQuestion = pendingQuestion
     }
 }
+
+/// One item of a desktop `question/requested` event. Options are kept when
+/// the desktop log carries them; a log that only reports `optionCount`
+/// yields an item answered as free text.
+struct BridgeDesktopQuestionItem: Codable, Sendable, Equatable, Identifiable {
+    let id: String
+    let question: String
+    let header: String?
+    let multiSelect: Bool
+    let options: [String]
+}
+
+/// A question the desktop agent is waiting on (D-014: answered through the
+/// bridge, the desktop resolves it).
+struct BridgeDesktopQuestion: Codable, Sendable, Equatable, Identifiable {
+    let requestID: String
+    let questions: [BridgeDesktopQuestionItem]
+    let askedAt: Int64
+
+    var id: String { requestID }
+
+    /// Parses a `question/requested` event. Accepts the app's own shape and the
+    /// looser desktop variants: `requestId` or `id`, options as strings or as
+    /// `{label}` objects.
+    static func parse(_ event: SessionEvent) -> BridgeDesktopQuestion? {
+        guard event.type == SessionEventVocabulary.questionRequested,
+              let object = event.data.objectValue,
+              let requestID = object["requestId"]?.stringValue ?? object["id"]?.stringValue else {
+            return nil
+        }
+        var rawItems: [JSONValue] = []
+        if case let .array(values)? = object["questions"] { rawItems = values }
+        var items: [BridgeDesktopQuestionItem] = []
+        for (index, raw) in rawItems.enumerated() {
+            guard let item = raw.objectValue else { continue }
+            let text = item["question"]?.stringValue ?? item["text"]?.stringValue ?? ""
+            guard !text.isEmpty else { continue }
+            var rawOptions: [JSONValue] = []
+            if case let .array(values)? = item["options"] { rawOptions = values }
+            let options = rawOptions.compactMap { option -> String? in
+                option.stringValue ?? option.objectValue?["label"]?.stringValue
+            }
+            items.append(
+                BridgeDesktopQuestionItem(
+                    id: item["id"]?.stringValue ?? "q\(index)",
+                    question: text,
+                    header: item["header"]?.stringValue,
+                    multiSelect: item["multiSelect"]?.booleanValue ?? false,
+                    options: options
+                )
+            )
+        }
+        if items.isEmpty, let text = object["question"]?.stringValue, !text.isEmpty {
+            items = [BridgeDesktopQuestionItem(id: requestID, question: text, header: nil, multiSelect: false, options: [])]
+        }
+        guard !items.isEmpty else { return nil }
+        return BridgeDesktopQuestion(requestID: requestID, questions: items, askedAt: event.time)
+    }
+
+    /// The request id a `question/resolved` event closes, if it is one.
+    static func resolvedRequestID(_ event: SessionEvent) -> String? {
+        guard event.type == SessionEventVocabulary.questionResolved,
+              let object = event.data.objectValue else { return nil }
+        return object["requestId"]?.stringValue ?? object["id"]?.stringValue
+    }
+}
+
 
 /// Durable `localUUID ↔ bridgeSessionId` correspondence plus the incremental
 /// follow position.
