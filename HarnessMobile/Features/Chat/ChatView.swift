@@ -11,6 +11,7 @@ struct ChatView: View {
     @State private var draft = ""
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var isCameraPresented = false
+    @State private var isPhotoPickerPresented = false
     @State private var isFileImporterPresented = false
     @State private var triggerSuggestions: InputTriggerSuggestionSnapshot?
     @State private var editingQueuedInput: QueuedAgentInput?
@@ -114,15 +115,20 @@ struct ChatView: View {
                     throw CameraPickerError.noImageData
                 }
                 await model.stageImage(data)
+                // Clear so the same photo can be picked again later.
+                self.selectedPhoto = nil
             } catch is CancellationError {
                 return
             } catch {
                 model.presentError(error)
             }
         }
+        // The picker must hang off the view tree, not a menu item: a
+        // `PhotosPicker` inside `Menu` never presents on iOS 17/18.
+        .photosPicker(isPresented: $isPhotoPickerPresented, selection: $selectedPhoto, matching: .images)
         .fileImporter(
             isPresented: $isFileImporterPresented,
-            allowedContentTypes: [.pdf, .audio, .movie],
+            allowedContentTypes: [.item],
             allowsMultipleSelection: false
         ) { result in
             switch result {
@@ -425,7 +431,6 @@ struct ChatView: View {
 
                 ChatInputBar(
                     draft: $draft,
-                    selectedPhoto: $selectedPhoto,
                     isRunning: model.isChatBusy,
                     isSubmitting: model.isSubmitting,
                     submissionStatus: model.submissionStatus,
@@ -433,6 +438,9 @@ struct ChatView: View {
                     hasStagedFile: model.hasStagedFile,
                     queuedInputs: model.queuedInputs,
                     triggerGroups: triggerSuggestions?.groups ?? [],
+                    onChoosePhoto: {
+                        isPhotoPickerPresented = true
+                    },
                     onCamera: {
                         isCameraPresented = true
                     },

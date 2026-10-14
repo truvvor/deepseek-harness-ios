@@ -147,6 +147,37 @@ final class WorkspaceStoreTests: XCTestCase {
         }
     }
 
+    func testFileAttachmentAdmitsNonMediaFilesWithAGenericType() async throws {
+        let root = temporaryDirectory()
+        let sourceRoot = temporaryDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: root)
+            try? FileManager.default.removeItem(at: sourceRoot)
+        }
+        try FileManager.default.createDirectory(at: sourceRoot, withIntermediateDirectories: true)
+        let store = WorkspaceStore(root: root)
+
+        let notes = sourceRoot.appendingPathComponent("NOTES.md")
+        try Data("# notes".utf8).write(to: notes)
+        let notesRef = try await store.stageFileAttachment(from: notes)
+        XCTAssertEqual(notesRef.mimeType, "text/markdown")
+        XCTAssertEqual(notesRef.displayName, "NOTES.md")
+        XCTAssertTrue(notesRef.path.hasSuffix(".md"))
+
+        let rom = sourceRoot.appendingPathComponent("bios.rom")
+        try Data([0xFF, 0x00, 0x5A]).write(to: rom)
+        let romRef = try await store.stageFileAttachment(from: rom)
+        XCTAssertEqual(romRef.mimeType, "application/octet-stream")
+        let romBytes = try await store.readFileAttachment(romRef)
+        XCTAssertEqual(romBytes, Data([0xFF, 0x00, 0x5A]))
+
+        let bare = sourceRoot.appendingPathComponent("Makefile")
+        try Data("all:".utf8).write(to: bare)
+        let bareRef = try await store.stageFileAttachment(from: bare)
+        XCTAssertEqual(bareRef.mimeType, "application/octet-stream")
+        XCTAssertTrue(bareRef.path.hasSuffix(".bin"))
+    }
+
     func testFileAttachmentRejectsTypeSignatureMismatch() async throws {
         let root = temporaryDirectory()
         let sourceRoot = temporaryDirectory()

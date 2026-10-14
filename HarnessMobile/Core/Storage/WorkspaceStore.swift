@@ -2511,7 +2511,10 @@ private enum FileAttachmentAdmission {
             guard hasISOBMFFSignature(data) else { throw WorkspaceError.unsupportedFileType }
             mimeType = "video/quicktime"
         default:
-            throw WorkspaceError.unsupportedFileType
+            // Any other file is admitted as an opaque attachment: sources,
+            // notes, archives, firmware images. Local providers only see its
+            // metadata; a desktop mirror forwards the bytes as they are.
+            mimeType = genericMimeType(forExtension: fileExtension)
         }
         guard expectedMimeType == nil || expectedMimeType == mimeType else {
             throw WorkspaceError.unsupportedFileType
@@ -2519,9 +2522,31 @@ private enum FileAttachmentAdmission {
         return Admitted(
             data: data,
             mimeType: mimeType,
-            filenameExtension: fileExtension,
+            filenameExtension: storableExtension(fileExtension),
             displayName: sanitized
         )
+    }
+
+    /// A mime type for an extension the media signature checks do not cover.
+    static func genericMimeType(forExtension fileExtension: String) -> String {
+        switch fileExtension {
+        case "": return "application/octet-stream"
+        case "md", "markdown": return "text/markdown"
+        case "txt", "log", "cfg", "ini", "conf": return "text/plain"
+        case "json": return "application/json"
+        case "yaml", "yml": return "application/yaml"
+        case "bin", "rom", "img", "fd", "cap", "dat": return "application/octet-stream"
+        default:
+            return UTType(filenameExtension: fileExtension)?.preferredMIMEType
+                ?? "application/octet-stream"
+        }
+    }
+
+    /// The extension used for the stored copy: lower-case alphanumerics only,
+    /// `bin` when the name has none.
+    private static func storableExtension(_ fileExtension: String) -> String {
+        let cleaned = fileExtension.filter { $0.isLetter || $0.isNumber }
+        return cleaned.isEmpty ? "bin" : String(cleaned.prefix(16))
     }
 
     private static func hasMP3Signature(_ data: Data) -> Bool {

@@ -4,7 +4,6 @@ import UIKit
 
 struct ChatInputBar: View {
     @Binding var draft: String
-    @Binding var selectedPhoto: PhotosPickerItem?
 
     let isRunning: Bool
     let isSubmitting: Bool
@@ -13,6 +12,7 @@ struct ChatInputBar: View {
     let hasStagedFile: Bool
     let queuedInputs: [QueuedAgentInput]
     let triggerGroups: [InputTriggerSuggestionGroup]
+    let onChoosePhoto: () -> Void
     let onCamera: () -> Void
     let onPickFile: () -> Void
     let onShowCommands: () -> Void
@@ -106,7 +106,7 @@ struct ChatInputBar: View {
     private var inputRow: some View {
         HStack(alignment: .bottom, spacing: 6) {
             Menu {
-                PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                Button(action: onChoosePhoto) {
                     Label("Choose Photo", systemImage: "photo")
                 }
 
@@ -116,7 +116,7 @@ struct ChatInputBar: View {
                 .disabled(!UIImagePickerController.isSourceTypeAvailable(.camera))
 
                 Button(action: onPickFile) {
-                    Label("Choose PDF, Audio, or Video", systemImage: "doc")
+                    Label("Choose File", systemImage: "doc")
                 }
             } label: {
                 Image(systemName: "plus")
