@@ -187,7 +187,7 @@ private struct DesktopFileContentView: View {
                                 .frame(maxWidth: .infinity)
                         } else if let text = content.text {
                             Text(String(text.prefix(maximumRenderedCharacters)))
-                                .font(.system(.footnote, design: .monospaced))
+                                .font(.footnote.monospaced())
                                 .textSelection(.enabled)
                                 .fixedSize(horizontal: true, vertical: false)
                         } else {
