@@ -240,6 +240,85 @@ final class BridgeClientPromptTests: XCTestCase {
         XCTAssertFalse(content.truncated)
     }
 
+    func testUploadPostsRawBytesWithTheirTypeAndDecodesTheReceipt() async throws {
+        let captured = CapturedRequest()
+        BridgePromptURLProtocolStub.handler = { request in
+            captured.store(request)
+            return Self.response(request, status: 200, json: #"""
+            {"receiptId":"rcpt-1","file":{"name":"photo.jpg","mime":"image/jpeg","size":3}}
+            """#)
+        }
+
+        let receipt = try await makeClient().upload(
+            sessionID: desktopSessionID,
+            data: Data([0xFF, 0xD8, 0xFF]),
+            filename: "photo.jpg",
+            mimeType: "image/jpeg"
+        )
+
+        let request = try XCTUnwrap(captured.request)
+        XCTAssertEqual(request.httpMethod, "POST")
+        XCTAssertEqual(request.url?.path, "/bridge/v1/sessions/\(desktopSessionID)/upload")
+        XCTAssertEqual(request.url?.query, "name=photo.jpg")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "image/jpeg")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer \(Self.fixtureToken)")
+        XCTAssertEqual(captured.body, Data([0xFF, 0xD8, 0xFF]))
+        XCTAssertEqual(receipt.receiptId, "rcpt-1")
+        XCTAssertEqual(receipt.file?.mime, "image/jpeg")
+        XCTAssertEqual(receipt.file?.size, 3)
+    }
+
+    func testPromptCitesUploadReceiptsAndOmitsTheKeyWithoutAttachments() async throws {
+        let captured = CapturedRequest()
+        BridgePromptURLProtocolStub.handler = { request in
+            captured.store(request)
+            return Self.response(request, status: 200, json: #"{"completed":true}"#)
+        }
+
+        _ = try await makeClient().prompt(
+            sessionID: desktopSessionID,
+            text: "What is in the photo?",
+            attachments: [BridgePromptAttachment(receiptId: "rcpt-1")]
+        )
+        let withAttachments = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: try XCTUnwrap(captured.body)) as? [String: Any]
+        )
+        XCTAssertEqual(withAttachments["text"] as? String, "What is in the photo?")
+        XCTAssertEqual(
+            withAttachments["attachments"] as? [[String: String]],
+            [["receiptId": "rcpt-1"]]
+        )
+
+        _ = try await makeClient().prompt(sessionID: desktopSessionID, text: "text only")
+        let textOnly = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: try XCTUnwrap(captured.body)) as? [String: Any]
+        )
+        XCTAssertNil(textOnly["attachments"])
+    }
+
+    func testAttachmentBytesComeFromTheAttachmentRoute() async throws {
+        let captured = CapturedRequest()
+        BridgePromptURLProtocolStub.handler = { request in
+            captured.store(request)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["Content-Type": "image/jpeg"]
+            )!
+            return (response, Data([0xFF, 0xD8]))
+        }
+
+        let content = try await makeClient().attachment(sessionID: desktopSessionID, attachmentID: "att-9")
+
+        let request = try XCTUnwrap(captured.request)
+        XCTAssertEqual(request.httpMethod, "GET")
+        XCTAssertEqual(request.url?.path, "/bridge/v1/sessions/\(desktopSessionID)/attachments/att-9")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "*/*")
+        XCTAssertEqual(content.data, Data([0xFF, 0xD8]))
+        XCTAssertTrue(content.isImage)
+    }
+
     func testCancelOfASessionThatIsNotLiveReportsNotOpenOnTheDesktop() async throws {
         BridgePromptURLProtocolStub.handler = { request in
             Self.response(request, status: 404, json: #"""

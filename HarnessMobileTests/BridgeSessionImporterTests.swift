@@ -1126,6 +1126,59 @@ final class BridgeSessionImporterTests: XCTestCase {
         XCTAssertTrue(after.isDesktopMirror)
     }
 
+    // MARK: - Desktop attachments
+
+    func testDesktopImageAndFileBlocksProjectAsRemoteAttachments() async throws {
+        let harness = try makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.root) }
+        let report = try converted(try fixtureData())
+        let events = report.events + [
+            try SessionEvent(
+                type: SessionEventVocabulary.userMessage,
+                seq: UInt64(report.events.count),
+                time: 1_735_689_602_000,
+                data: .object([
+                    "id": .string("88888888-8888-4888-8888-888888888888"),
+                    "role": .string("user"),
+                    "content": .array([
+                        .object(["type": .string("text"), "text": .string("Look at this")]),
+                        .object([
+                            "type": .string("image"),
+                            "attachmentId": .string("att-img"),
+                            "mime": .string("image/jpeg"),
+                            "name": .string("photo.jpg"),
+                            "size": .number(2048)
+                        ]),
+                        .object([
+                            "type": .string("file"),
+                            "attachmentId": .string("att-doc"),
+                            "mime": .string("application/pdf"),
+                            "name": .string("spec.pdf")
+                        ])
+                    ])
+                ])
+            )
+        ]
+        let outcome = try await harness.importer.importConverted(
+            bridgeSessionID: bridgeSessionID,
+            listTitle: nil,
+            header: report.header,
+            events: events,
+            lastBridgeSequence: Int64(events.count - 1)
+        )
+        let session = try await harness.sessionStore.session(id: outcome.localSessionID)
+        let message = try XCTUnwrap(session.messages.last)
+        XCTAssertEqual(message.content, "Look at this")
+        XCTAssertEqual(
+            message.remoteAttachments,
+            [
+                AgentRemoteAttachment(id: "att-img", kind: .image, name: "photo.jpg", mimeType: "image/jpeg", byteCount: 2048),
+                AgentRemoteAttachment(id: "att-doc", kind: .file, name: "spec.pdf", mimeType: "application/pdf", byteCount: nil)
+            ]
+        )
+        XCTAssertTrue(message.imageAttachments.isEmpty)
+    }
+
     // MARK: - Envelope chunking limits
 
     func testSingleEnvelopeCannotExceedTheSyncEventLimit() {

@@ -261,9 +261,45 @@ enum BridgePromptMode: String, Codable, Sendable {
     case steer
 }
 
+/// An uploaded file the desktop turn should receive, by its upload receipt.
+struct BridgePromptAttachment: Codable, Sendable, Equatable {
+    let receiptId: String
+}
+
 struct BridgePromptRequest: Encodable, Sendable {
     let text: String
     let mode: BridgePromptMode
+    let attachments: [BridgePromptAttachment]
+
+    init(text: String, mode: BridgePromptMode, attachments: [BridgePromptAttachment] = []) {
+        self.text = text
+        self.mode = mode
+        self.attachments = attachments
+    }
+
+    private enum CodingKeys: String, CodingKey { case text, mode, attachments }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(text, forKey: .text)
+        try container.encode(mode, forKey: .mode)
+        if !attachments.isEmpty {
+            try container.encode(attachments, forKey: .attachments)
+        }
+    }
+}
+
+/// `POST /bridge/v1/sessions/{id}/upload?name=` answer: the receipt a prompt
+/// cites, plus what the desktop stored.
+struct BridgeUploadReceipt: Decodable, Sendable, Equatable {
+    struct File: Decodable, Sendable, Equatable {
+        let name: String?
+        let mime: String?
+        let size: Int64?
+    }
+
+    let receiptId: String
+    let file: File?
 }
 
 /// `POST /bridge/v1/sessions/{id}/prompt` answer, sent after `turn/end`.

@@ -230,7 +230,8 @@ actor BridgeMirrorCoordinator {
     func sendPrompt(
         localSessionID: UUID,
         text: String,
-        mode: BridgePromptMode = .queue
+        mode: BridgePromptMode = .queue,
+        attachments: [BridgePromptAttachment] = []
     ) async throws -> BridgePromptResult {
         let client = try activeClient()
         let importer = try activeImporter()
@@ -240,7 +241,8 @@ actor BridgeMirrorCoordinator {
         async let response = client.prompt(
             sessionID: mapping.bridgeSessionID,
             text: text,
-            mode: mode
+            mode: mode,
+            attachments: attachments
         )
         // An idle mirror's follow loop may be sleeping in its idle backoff
         // (up to 32 s). Reconnect it once the desktop has had a moment to start
@@ -290,6 +292,34 @@ actor BridgeMirrorCoordinator {
             try? await sync.startFollowing(localSessionID: localSessionID)
         }
         try? await refresh(importer: try activeImporter(), bridgeSessionID: mapping.bridgeSessionID)
+    }
+
+    /// Uploads one attachment to the desktop for the next prompt of the mirror.
+    func uploadAttachment(
+        localSessionID: UUID,
+        data: Data,
+        filename: String,
+        mimeType: String
+    ) async throws -> BridgeUploadReceipt {
+        let client = try activeClient()
+        guard let mapping = try await mappings.mapping(localSessionID: localSessionID) else {
+            throw BridgeFollowError.mirrorNotFound(localSessionID)
+        }
+        return try await client.upload(
+            sessionID: mapping.bridgeSessionID,
+            data: data,
+            filename: filename,
+            mimeType: mimeType
+        )
+    }
+
+    /// Bytes of an attachment a mirrored message carries.
+    func attachment(localSessionID: UUID, attachmentID: String) async throws -> BridgeFileContent {
+        let client = try activeClient()
+        guard let mapping = try await mappings.mapping(localSessionID: localSessionID) else {
+            throw BridgeFollowError.mirrorNotFound(localSessionID)
+        }
+        return try await client.attachment(sessionID: mapping.bridgeSessionID, attachmentID: attachmentID)
     }
 
     /// Lists a workspace directory of the mirrored desktop session.

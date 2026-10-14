@@ -275,6 +275,8 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
     @ObservationIgnored var desktopMirrorLiveBuffer: [UUID: DesktopMirrorLiveState] = [:]
     /// Desktop questions already announced with a local notification.
     @ObservationIgnored var notifiedDesktopQuestionIDs: Set<String> = []
+    /// Attachment bytes fetched from the desktop for the open mirror, by id.
+    @ObservationIgnored var desktopAttachmentCache: [String: BridgeFileContent] = [:]
     @ObservationIgnored var desktopMirrorLiveFlushTask: Task<Void, Never>?
     @ObservationIgnored var desktopMirrorLastCatchUp: Date?
     @ObservationIgnored var desktopMirrorCatchUpInFlight = false
@@ -4047,6 +4049,17 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         } catch {
             presentError(error)
         }
+    }
+
+    /// Hands the composer's staged attachments to a desktop turn (D-014) and
+    /// clears them from the composer.
+    func takeStagedAttachmentsForDesktop() -> (image: AgentImageAttachmentRef?, file: AgentFileAttachmentRef?) {
+        let staged = (stagedImageReference, stagedFileReference)
+        stagedImageReference = nil
+        hasStagedImage = false
+        stagedFileReference = nil
+        hasStagedFile = false
+        return staged
     }
 
     func stageFileAttachment(from url: URL) async {

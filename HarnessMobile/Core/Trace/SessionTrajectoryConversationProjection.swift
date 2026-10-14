@@ -370,8 +370,43 @@ enum SessionTrajectoryConversationProjection {
             content: text,
             source: source,
             imageAttachments: attachments,
-            fileAttachments: fileAttachments
+            fileAttachments: fileAttachments,
+            remoteAttachments: remoteAttachments(in: content)
         )
+    }
+
+    /// Desktop `image` and `file` content blocks: the bytes stay on the desktop
+    /// and are fetched by `attachmentId` through the bridge.
+    static func remoteAttachments(in blocks: [JSONValue]) -> [AgentRemoteAttachment] {
+        blocks.compactMap { block -> AgentRemoteAttachment? in
+            guard let object = block.objectValue,
+                  let type = object["type"]?.stringValue else { return nil }
+            let kind: AgentRemoteAttachment.Kind
+            switch type {
+            case "image": kind = .image
+            case "file": kind = .file
+            default: return nil
+            }
+            guard let id = object["attachmentId"]?.stringValue
+                    ?? object["id"]?.stringValue
+                    ?? object["receiptId"]?.stringValue else { return nil }
+            let size: Int64? = object["size"].flatMap { value in
+                guard case let .number(number) = value, number.isFinite, number >= 0 else { return nil }
+                return Int64(number)
+            } ?? object["byteCount"].flatMap { value in
+                guard case let .number(number) = value, number.isFinite, number >= 0 else { return nil }
+                return Int64(number)
+            }
+            return AgentRemoteAttachment(
+                id: id,
+                kind: kind,
+                name: object["name"]?.stringValue ?? object["filename"]?.stringValue,
+                mimeType: object["mime"]?.stringValue
+                    ?? object["mimeType"]?.stringValue
+                    ?? object["mediaType"]?.stringValue,
+                byteCount: size
+            )
+        }
     }
 
     private static func contentBlocks(_ value: JSONValue?) -> [JSONValue]? {

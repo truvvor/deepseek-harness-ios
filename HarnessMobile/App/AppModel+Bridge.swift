@@ -302,10 +302,6 @@ extension AppModel {
             await compactDesktopMirror()
             return true
         }
-        guard !hasStagedImage, !hasStagedFile else {
-            presentError(DesktopMirrorAttachmentError())
-            return false
-        }
         guard let sessionID = activeSessionID, let coordinator = desktopBridgeCoordinator else {
             presentError(BridgeMirrorAvailability.notConfigured)
             return false
@@ -330,10 +326,23 @@ extension AppModel {
         let lease = DesktopTurnBackgroundLease()
         lease.begin()
         let mode: BridgePromptMode = disposition == .steer ? .steer : .queue
+        // Attachments leave the composer now; they are uploaded to the desktop
+        // ahead of the prompt and cited by receipt (bridge 0.2 `upload`).
+        let staged = takeStagedAttachmentsForDesktop()
         Task { @MainActor [weak self] in
             defer { lease.end() }
             do {
-                _ = try await coordinator.sendPrompt(localSessionID: sessionID, text: text, mode: mode)
+                let receipts = try await self?.uploadStagedAttachmentsToDesktop(
+                    staged,
+                    sessionID: sessionID,
+                    coordinator: coordinator
+                ) ?? []
+                _ = try await coordinator.sendPrompt(
+                    localSessionID: sessionID,
+                    text: text,
+                    mode: mode,
+                    attachments: receipts
+                )
                 self?.finishDesktopTurn(sessionID, error: nil)
             } catch {
                 self?.finishDesktopTurn(sessionID, error: error)
@@ -342,6 +351,56 @@ extension AppModel {
             await self?.refreshDesktopMirrorProjection()
         }
         return true
+    }
+
+    /// Uploads the composer's staged image and file to the desktop. Staged
+    /// images are already normalized to JPEG or PNG by admission, which is
+    /// what the bridge accepts (it refuses HEIC).
+    private func uploadStagedAttachmentsToDesktop(
+        _ staged: (image: AgentImageAttachmentRef?, file: AgentFileAttachmentRef?),
+        sessionID: UUID,
+        coordinator: BridgeMirrorCoordinator
+    ) async throws -> [BridgePromptAttachment] {
+        var receipts: [BridgePromptAttachment] = []
+        if let image = staged.image {
+            let data = try await workspaceStore.readAttachment(image)
+            let filename = "photo-\(image.id.uuidString.lowercased().prefix(8))."
+                + (image.mimeType == "image/png" ? "png" : "jpg")
+            let receipt = try await coordinator.uploadAttachment(
+                localSessionID: sessionID,
+                data: data,
+                filename: filename,
+                mimeType: image.mimeType
+            )
+            receipts.append(BridgePromptAttachment(receiptId: receipt.receiptId))
+        }
+        if let file = staged.file {
+            let data = try await workspaceStore.readFileAttachment(file)
+            let receipt = try await coordinator.uploadAttachment(
+                localSessionID: sessionID,
+                data: data,
+                filename: file.displayName,
+                mimeType: file.mimeType
+            )
+            receipts.append(BridgePromptAttachment(receiptId: receipt.receiptId))
+        }
+        return receipts
+    }
+
+    /// Bytes of an attachment shown in the open mirror, cached for the session.
+    func desktopMirrorAttachment(_ attachment: AgentRemoteAttachment) async throws -> BridgeFileContent {
+        if let cached = desktopAttachmentCache[attachment.id] { return cached }
+        guard let sessionID = activeSessionID, activeSessionIsDesktopMirror else {
+            throw DesktopMirrorReadOnlyError()
+        }
+        guard let coordinator = desktopBridgeCoordinator else {
+            throw BridgeMirrorAvailability.notConfigured
+        }
+        if let availability = await coordinator.availability { throw availability }
+        let content = try await coordinator.attachment(localSessionID: sessionID, attachmentID: attachment.id)
+        if desktopAttachmentCache.count > 40 { desktopAttachmentCache.removeAll() }
+        desktopAttachmentCache[attachment.id] = content
+        return content
     }
 
     /// Lists a directory of the open mirror's desktop workspace.
@@ -690,12 +749,5 @@ extension AppModel {
 struct DesktopMirrorReadOnlyError: Error, LocalizedError, Sendable {
     var errorDescription: String? {
         "This session lives on the desktop DeepSeek Harness. Send a new message to continue it on the desktop; editing or re-running earlier messages is not available from the iPhone."
-    }
-}
-
-/// Attachments cannot be forwarded to a desktop turn yet.
-struct DesktopMirrorAttachmentError: Error, LocalizedError, Sendable {
-    var errorDescription: String? {
-        "Images and files cannot be sent to a desktop session yet. Remove the attachment and send text only."
     }
 }

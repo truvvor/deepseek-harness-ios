@@ -88,6 +88,10 @@ struct MessageBubble: View, Equatable {
                     }
                 }
 
+                if !message.remoteAttachments.isEmpty {
+                    RemoteAttachmentStrip(attachments: message.remoteAttachments)
+                }
+
                 if !message.content.isEmpty, message.role != .tool {
                     // The durable message is the source of truth. Do not cap,
                     // elide, or append a synthetic end marker to model output.
@@ -554,5 +558,134 @@ private struct ReasoningDisclosure: View {
         }
         guard value.count > 160 else { return value }
         return String(value.prefix(160)) + "…"
+    }
+}
+
+/// Attachments of a mirrored desktop message. Images are fetched through
+/// the bridge on first display; files show as chips that share their bytes.
+private struct RemoteAttachmentStrip: View {
+    let attachments: [AgentRemoteAttachment]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(attachments) { attachment in
+                switch attachment.kind {
+                case .image:
+                    RemoteImageAttachmentView(attachment: attachment)
+                case .file:
+                    RemoteFileAttachmentChip(attachment: attachment)
+                }
+            }
+        }
+    }
+}
+
+private struct RemoteImageAttachmentView: View {
+    @Environment(AppModel.self) private var model
+    let attachment: AgentRemoteAttachment
+
+    @State private var image: UIImage?
+    @State private var failed = false
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 280, maxHeight: 280)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            } else if failed {
+                Label(attachment.name ?? "Image", systemImage: "photo.badge.exclamationmark")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ProgressView()
+                    .frame(width: 80, height: 80)
+            }
+        }
+        .accessibilityLabel(attachment.name ?? "Image attachment")
+        .task(id: attachment.id) {
+            guard image == nil else { return }
+            do {
+                let content = try await model.desktopMirrorAttachment(attachment)
+                image = UIImage(data: content.data)
+                failed = image == nil
+            } catch {
+                failed = true
+            }
+        }
+    }
+}
+
+private struct RemoteFileAttachmentChip: View {
+    @Environment(AppModel.self) private var model
+    let attachment: AgentRemoteAttachment
+
+    @State private var exportURL: URL?
+    @State private var isLoading = false
+    @State private var errorText: String?
+
+    var body: some View {
+        HStack(spacing: 8) {
+            HarnessIconTile(systemImage: "doc", tint: .secondary, size: 24)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(attachment.name ?? attachment.id)
+                    .font(.footnote.weight(.medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                if let detail {
+                    Text(detail)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+            if let exportURL {
+                ShareLink(item: exportURL) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .accessibilityLabel("Share \(attachment.name ?? "file")")
+            } else if isLoading {
+                ProgressView().controlSize(.small)
+            } else {
+                Button {
+                    Task { await download() }
+                } label: {
+                    Image(systemName: "arrow.down.circle")
+                }
+                .accessibilityLabel("Download \(attachment.name ?? "file")")
+            }
+        }
+        .padding(8)
+        .background(Color(uiColor: .tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var detail: String? {
+        if let errorText { return errorText }
+        var parts: [String] = []
+        if let mime = attachment.mimeType { parts.append(mime) }
+        if let bytes = attachment.byteCount {
+            parts.append(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private func download() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let content = try await model.desktopMirrorAttachment(attachment)
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("desktop-attachments", isDirectory: true)
+                .appendingPathComponent(attachment.id, isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let url = directory.appendingPathComponent(attachment.name ?? "attachment")
+            try content.data.write(to: url, options: .atomic)
+            exportURL = url
+            errorText = nil
+        } catch {
+            errorText = error.localizedDescription
+        }
     }
 }
