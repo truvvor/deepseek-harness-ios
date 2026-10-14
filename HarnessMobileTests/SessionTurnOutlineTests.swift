@@ -67,35 +67,35 @@ final class SessionTurnOutlineTests: XCTestCase {
     func testFoldCapturesPromptResponseAndDraftAcrossTwoTurns() {
         let state = SessionTurnOutline.fold([
             turnStart(1, seq: 10),
-            userMessage("帮我整理这份资料，重点是来源核对"),
-            assistantMessage("好的，我先读取文件清单。"),
+            userMessage("Help me organize this material, focusing on source verification"),
+            assistantMessage("OK, I'll read the file list first."),
             turnEnd(),
             turnStart(2, seq: 50),
-            userMessage("继续，把结论写成周报格式"),
-            assistantMessage("已按周报格式输出结论。"),
+            userMessage("Continue, write the conclusions as a weekly report"),
+            assistantMessage("Conclusions written in weekly report format."),
             turnEnd()
         ])
         XCTAssertEqual(state.turns.count, 2)
         XCTAssertEqual(state.turns[0].turn, 1)
         XCTAssertEqual(state.turns[0].seq, 10)
-        XCTAssertEqual(state.turns[0].prompt, "帮我整理这份资料，重点是来源核对")
-        XCTAssertEqual(state.turns[0].response, "好的，我先读取文件清单。")
-        XCTAssertEqual(state.turns[1].prompt, "继续，把结论写成周报格式")
+        XCTAssertEqual(state.turns[0].prompt, "Help me organize this material, focusing on source verification")
+        XCTAssertEqual(state.turns[0].response, "OK, I'll read the file list first.")
+        XCTAssertEqual(state.turns[1].prompt, "Continue, write the conclusions as a weekly report")
         XCTAssertEqual(state.draft, "")
     }
 
     func testOpenTurnKeepsDraftAndToolMessagesNeverFillPrompt() {
         let state = SessionTurnOutline.fold([
             turnStart(1, seq: 10),
-            userMessage("开始吧", kind: "tool"),
-            userMessage("正式目标：核对台账数字"),
-            assistantMessage("处理中…"),
+            userMessage("Let's start", kind: "tool"),
+            userMessage("Actual goal: verify the ledger figures"),
+            assistantMessage("Working…"),
         ])
         XCTAssertEqual(state.turns.count, 1)
         // Tool-sourced message does not fill the prompt preview.
-        XCTAssertEqual(state.turns[0].prompt, "正式目标：核对台账数字")
+        XCTAssertEqual(state.turns[0].prompt, "Actual goal: verify the ledger figures")
         // The open turn keeps its draft instead of committing it.
-        XCTAssertEqual(state.draft, "处理中…")
+        XCTAssertEqual(state.draft, "Working…")
         XCTAssertEqual(state.turns[0].response, "")
     }
 

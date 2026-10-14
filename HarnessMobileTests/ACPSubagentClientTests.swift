@@ -37,7 +37,7 @@ final class ACPSubagentClientTests: XCTestCase {
     func testFullLifecycleFoldsTextAndMapsStopReason() {
         let transport = MockTransport()
         let client = ACPSubagentClient(transport: transport, cwd: "/workspace")
-        client.run(prompt: "总结本次巡检")
+        client.run(prompt: "Summarize this inspection")
 
         // initialize request shape
         XCTAssertTrue(transport.sent[0].contains("initialize"))
@@ -56,7 +56,7 @@ final class ACPSubagentClientTests: XCTestCase {
         // prompt carries sessionId and a text block
         XCTAssertTrue(transport.sent[2].contains("session/prompt"))
         XCTAssertTrue(transport.sent[2].contains("s-1"))
-        XCTAssertTrue(transport.sent[2].contains("总结本次巡检"))
+        XCTAssertTrue(transport.sent[2].contains("Summarize this inspection"))
 
         // streaming updates fold into output text
         transport.agentResponds([
@@ -65,7 +65,7 @@ final class ACPSubagentClientTests: XCTestCase {
                 "sessionId": .string("s-1"),
                 "update": .object([
                     "sessionUpdate": .string("agent_message_chunk"),
-                    "content": .object(["type": .string("text"), "text": .string("今日配注 ")])
+                    "content": .object(["type": .string("text"), "text": .string("Today's load: ")])
                 ])
             ])
         ])
@@ -75,7 +75,7 @@ final class ACPSubagentClientTests: XCTestCase {
                 "sessionId": .string("s-1"),
                 "update": .object([
                     "sessionUpdate": .string("agent_message_chunk"),
-                    "content": .object(["type": .string("text"), "text": .string("42.5 吨。")])
+                    "content": .object(["type": .string("text"), "text": .string("42.5 tons.")])
                 ])
             ])
         ])
@@ -86,7 +86,7 @@ final class ACPSubagentClientTests: XCTestCase {
         ])
 
         XCTAssertEqual(client.outcome, .completed)
-        XCTAssertEqual(client.outputText, "今日配注 42.5 吨。")
+        XCTAssertEqual(client.outputText, "Today's load: 42.5 tons.")
     }
 
     func testPermissionRequestAutoAnsweredByPolicy() {

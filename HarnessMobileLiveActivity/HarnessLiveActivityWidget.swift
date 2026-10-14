@@ -135,17 +135,17 @@ private extension HarnessLiveActivityPhase {
     var shortTitle: String {
         switch self {
         case .preparing:
-            "准备中"
+            "Preparing"
         case .working:
-            "执行中"
+            "Running"
         case .usingTool:
-            "工具"
+            "Tool"
         case .completed:
-            "已完成"
+            "Completed"
         case .failed:
-            "未完成"
+            "Incomplete"
         case .interrupted:
-            "已中断"
+            "Interrupted"
         }
     }
 

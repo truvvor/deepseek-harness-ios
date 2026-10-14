@@ -66,15 +66,15 @@ enum LSPToolError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case let .unsupportedFile(path):
-            "LSP_UNAVAILABLE：没有本机语言服务器映射可处理 \(path)"
+            "LSP_UNAVAILABLE: no local language server mapping can handle \(path)"
         case let .documentTooLarge(maximumBytes):
-            "LSP_DOCUMENT_TOO_LARGE：源文件超过 \(maximumBytes) 字节。"
+            "LSP_DOCUMENT_TOO_LARGE: source file exceeds \(maximumBytes) bytes."
         case let .serverUnavailable(command):
-            "LSP_UNAVAILABLE：iSH 中未安装 \(command)。可先用 shell_execute 在手机本机安装对应语言服务器。"
+            "LSP_UNAVAILABLE: \(command) is not installed in iSH. Use shell_execute to install the language server on the device first."
         case let .protocolFailure(message):
-            "LSP_MALFORMED_RESPONSE：\(message)"
+            "LSP_MALFORMED_RESPONSE: \(message)"
         case let .serverFailure(code, message):
-            "LSP_SERVER_ERROR\(code.map { " \($0)" } ?? "")：\(message)"
+            "LSP_SERVER_ERROR\(code.map { " \($0)" } ?? ""): \(message)"
         }
     }
 }
@@ -132,7 +132,7 @@ struct OnDeviceLSPTool: LocalAgentTool {
     func summary(arguments: [String: JSONValue]) -> String {
         let operation = arguments["operation"]?.stringValue ?? "query"
         let path = arguments["file_path"]?.stringValue ?? "unknown"
-        return "LSP \(operation)：\(path)"
+        return "LSP \(operation): \(path)"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -203,7 +203,7 @@ struct OnDeviceLSPTool: LocalAgentTool {
             return try? JSONDecoder().decode(JSONValue.self, from: data)
         }.first
         guard let object = envelope?.objectValue else {
-            throw LSPToolError.protocolFailure("本机 LSP host 未返回有效 JSON。")
+            throw LSPToolError.protocolFailure("The local LSP host didn't return valid JSON.")
         }
         if object["ok"] != .bool(true) {
             let error = object["error"]?.objectValue
@@ -322,33 +322,33 @@ struct OnDeviceLSPTool: LocalAgentTool {
         case .null: values = []
         case let .array(items): values = items
         case .object: values = [value]
-        default: throw LSPToolError.protocolFailure("导航结果不是 Location、LocationLink、数组或 null。")
+        default: throw LSPToolError.protocolFailure("Navigation result is not a Location, LocationLink, array, or null.")
         }
         return try values.map { item in
             guard let object = item.objectValue else {
-                throw LSPToolError.protocolFailure("导航结果包含非对象条目。")
+                throw LSPToolError.protocolFailure("Navigation result contains non-object entries.")
             }
             if let uri = object["uri"]?.stringValue, let range = object["range"] {
                 guard uri.utf8.count <= 4_096 else {
-                    throw LSPToolError.protocolFailure("Location URI 超过 4096 字节。")
+                    throw LSPToolError.protocolFailure("Location URI exceeds 4096 bytes.")
                 }
                 return .object(["uri": .string(uri), "range": try normalizedRange(range)])
             }
             if let uri = object["targetUri"]?.stringValue,
                let range = object["targetSelectionRange"] ?? object["targetRange"] {
                 guard uri.utf8.count <= 4_096 else {
-                    throw LSPToolError.protocolFailure("LocationLink URI 超过 4096 字节。")
+                    throw LSPToolError.protocolFailure("LocationLink URI exceeds 4096 bytes.")
                 }
                 return .object(["uri": .string(uri), "range": try normalizedRange(range)])
             }
-            throw LSPToolError.protocolFailure("Location 缺少 uri/range。")
+            throw LSPToolError.protocolFailure("Location is missing uri/range.")
         }
     }
 
     private static func normalizeHover(_ value: JSONValue) throws -> JSONValue {
         if value == .null { return .null }
         guard let object = value.objectValue, let contents = object["contents"] else {
-            throw LSPToolError.protocolFailure("Hover 缺少 contents。")
+            throw LSPToolError.protocolFailure("Hover is missing contents.")
         }
         var hover: [String: JSONValue] = ["contents": .string(try hoverText(contents))]
         if let range = object["range"] { hover["range"] = try normalizedRange(range) }
@@ -360,21 +360,21 @@ struct OnDeviceLSPTool: LocalAgentTool {
         case let .string(text): return text
         case let .object(object):
             guard let text = object["value"]?.stringValue else {
-                throw LSPToolError.protocolFailure("Hover MarkupContent 无有效 value。")
+                throw LSPToolError.protocolFailure("Hover MarkupContent has no valid value.")
             }
             if let language = object["language"]?.stringValue, !language.isEmpty {
                 return "```\(language)\n\(text)\n```"
             }
             return text
         case let .array(values): return try values.map(hoverText).joined(separator: "\n\n")
-        default: throw LSPToolError.protocolFailure("Hover contents 类型无效。")
+        default: throw LSPToolError.protocolFailure("Hover contents has an invalid type.")
         }
     }
 
     private static func normalizedRange(_ value: JSONValue) throws -> JSONValue {
         guard let object = value.objectValue,
               let start = object["start"], let end = object["end"] else {
-            throw LSPToolError.protocolFailure("Range 缺少 start/end。")
+            throw LSPToolError.protocolFailure("Range is missing start/end.")
         }
         return .object(["start": try normalizedPosition(start), "end": try normalizedPosition(end)])
     }
@@ -387,7 +387,7 @@ struct OnDeviceLSPTool: LocalAgentTool {
               line >= 0, character >= 0,
               line.rounded(.towardZero) == line,
               character.rounded(.towardZero) == character else {
-            throw LSPToolError.protocolFailure("Position 不是非负整数。")
+            throw LSPToolError.protocolFailure("Position is not a non-negative integer.")
         }
         return .object(["line": .number(line), "character": .number(character)])
     }

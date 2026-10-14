@@ -51,10 +51,10 @@ final class MCPClientTests: XCTestCase {
         let call = try await registry.call(
             serverName: "fixture",
             toolName: "echo",
-            arguments: ["text": .string("你好")]
+            arguments: ["text": .string("hello")]
         )
         XCTAssertEqual(call.isError, false)
-        XCTAssertEqual(call.structuredContent, .object(["echo": .string("你好")]))
+        XCTAssertEqual(call.structuredContent, .object(["echo": .string("hello")]))
 
         let snapshots = await registry.snapshots()
         XCTAssertEqual(snapshots.count, 1)
@@ -87,7 +87,7 @@ final class MCPClientTests: XCTestCase {
             try await store.replace([fixture, fixture])
             XCTFail("Expected duplicate server names to be rejected")
         } catch {
-            XCTAssertEqual(error as? MCPClientError, .invalidConfiguration("MCP serverName 不能重复"))
+            XCTAssertEqual(error as? MCPClientError, .invalidConfiguration("MCP serverName must be unique"))
         }
 
         let diskFixture = """

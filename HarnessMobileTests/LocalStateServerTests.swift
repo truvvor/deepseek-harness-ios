@@ -114,6 +114,7 @@ final class LocalStateServerTests: XCTestCase {
             revision: 0,
             archivedAt: nil,
             forkedFromSessionID: nil,
+            bridgeMirror: nil,
             queuedInputCount: 1,
             isResumable: true
         )
@@ -762,7 +763,7 @@ final class LocalStateServerTests: XCTestCase {
             id: "acme-created",
             providerKind: "acme",
             eventName: "created",
-            prompt: "处理 {event} {delivery} {payload}",
+            prompt: "Handle {event} {delivery} {payload}",
             maximumAttempts: 3,
             wakeActiveSession: true
         )
@@ -774,12 +775,12 @@ final class LocalStateServerTests: XCTestCase {
         let matching = await registry.matching(event)
         XCTAssertEqual(matching, [rule])
         let rendered = rule.renderedPrompt(for: event)
-        XCTAssertTrue(rendered.hasPrefix("处理 created acme-1 "))
+        XCTAssertTrue(rendered.hasPrefix("Handle created acme-1 "))
         XCTAssertTrue(rendered.contains("\"action\""))
         XCTAssertTrue(rendered.contains("created"))
         let fallback = try LocalWebhookRule(id: "acme-fallback", providerKind: "acme", eventName: "*")
         let fallbackPrompt = fallback.renderedPrompt(for: event)
-        XCTAssertTrue(fallbackPrompt.hasPrefix("处理 acme webhook：created\n\n"))
+        XCTAssertTrue(fallbackPrompt.hasPrefix("Handle acme webhook: created\n\n"))
         XCTAssertTrue(fallbackPrompt.contains("\"action\""))
         let reloaded = LocalWebhookRuleRegistry(storageURL: url)
         let listed = await reloaded.list()

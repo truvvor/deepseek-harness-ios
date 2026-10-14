@@ -9,7 +9,7 @@ final class ShareViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
-        statusLabel.text = "正在安全接收共享内容…"
+        statusLabel.text = "Securely receiving shared content…"
         statusLabel.font = .preferredFont(forTextStyle: .body)
         statusLabel.textAlignment = .center
         statusLabel.numberOfLines = 0
@@ -31,7 +31,7 @@ final class ShareViewController: UIViewController {
             let extensionItems = extensionContext?.inputItems.compactMap { $0 as? NSExtensionItem } ?? []
             let drafts = await ShareItemCollector.collect(from: extensionItems)
             _ = try await ShareHandoffStore().enqueue(drafts)
-            statusLabel.text = "已保存。打开 Harness 后会进入当前输入框。"
+            statusLabel.text = "Saved. It will appear in the current input field when you open Harness."
             extensionContext?.completeRequest(returningItems: [])
         } catch {
             statusLabel.text = error.localizedDescription

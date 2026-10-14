@@ -2544,7 +2544,7 @@ actor AgentRuntime {
               request.name != "workflow" else {
             return CodeModeChildDispatchResult(
                 value: nil,
-                error: "Code Mode 不允许递归调用 run_code/code_execute/workflow"
+                error: "Code Mode does not allow recursive calls to run_code/code_execute/workflow"
             )
         }
         let call = AgentToolCall(
@@ -2565,7 +2565,7 @@ actor AgentRuntime {
                 tool = registry.tool(named: request.name)
             }
             guard let tool else {
-                return CodeModeChildDispatchResult(value: nil, error: "未知本机工具：\(request.name)")
+                return CodeModeChildDispatchResult(value: nil, error: "Unknown local tool: \(request.name)")
             }
             finalizerTool = tool
             try tool.validate(arguments: request.arguments)
@@ -2605,7 +2605,7 @@ actor AgentRuntime {
             }
             let decision = Self.monotonicDecision(platform: platformDecision, plugin: checkpointDecision)
             if case let .deny(reason) = decision {
-                throw LocalToolError.pluginDenied(reason ?? "当前权限模式拒绝工具：\(request.name)")
+                throw LocalToolError.pluginDenied(reason ?? "The current permission mode denies tool: \(request.name)")
             }
             child.status = decision == .ask ? .awaitingApproval : .pending
             await parentAccumulator.upsertChild(child)
@@ -2645,7 +2645,7 @@ actor AgentRuntime {
                 try Task.checkCancellation()
                 guard approvalOutcome == "allowed-once" else {
                     child.status = .denied
-                    child.errorMessage = "用户拒绝了 Code Mode 子工具调用。"
+                    child.errorMessage = "The user denied the Code Mode child tool call."
                     child.finishedAt = .now
                     await parentAccumulator.upsertChild(child)
                     await eventHandler(.toolEventChanged(await parentAccumulator.snapshot()))
@@ -3064,7 +3064,7 @@ actor AgentRuntime {
             event
         }
         event.status = .interrupted
-        event.errorMessage = "工具调用已中断。"
+        event.errorMessage = "Tool call interrupted."
         event.finishedAt = .now
         await eventHandler(.toolEventChanged(event))
         let result = LocalToolFinalizer.apply(
@@ -3169,7 +3169,7 @@ actor AgentRuntime {
         var event = event
         event.status = .interrupted
         event.result = "Error: tool call aborted before dispatch"
-        event.errorMessage = "工具调用在执行前被中断。"
+        event.errorMessage = "Tool call was interrupted before execution."
         event.finishedAt = .now
         await eventHandler(.toolEventChanged(event))
         let result = CordisToolExecutionResult(
@@ -3658,7 +3658,7 @@ actor AgentRuntime {
         case .ask:
             return .ask
         case .deny:
-            return .deny(reason: "当前平台权限模式拒绝了这次工具调用。")
+            return .deny(reason: "The current platform permission mode denied this tool call.")
         }
     }
 
@@ -3728,7 +3728,7 @@ actor AgentRuntime {
         guard let source = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let scheme = source.scheme,
               let host = source.host else {
-            return url.host ?? "模型服务"
+            return url.host ?? "model service"
         }
         var origin = URLComponents()
         origin.scheme = scheme.lowercased()
@@ -4589,51 +4589,51 @@ enum AgentRuntimeError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .invalidStartingTurn:
-            return "Agent Turn 编号必须从 1 开始。"
+            return "Agent Turn numbers must start at 1."
         case .invalidToolCallStream:
-            return "模型返回了不完整或冲突的工具调用。"
+            return "The model returned incomplete or conflicting tool calls."
         case .invalidFinishSequence:
-            return "模型响应缺少唯一的完成原因。"
+            return "The model response is missing a single finish reason."
         case let .unsafeFinishReason(reason):
-            return "模型以 \(reason.rawValue) 结束；为避免执行截断内容，本轮未提交。"
+            return "The model finished with \(reason.rawValue); this turn was not committed to avoid executing truncated content."
         case .duplicateQueuedInput:
-            return "排队输入已进入会话，拒绝重复注入。"
+            return "The queued input is already in the session; duplicate injection refused."
         case .injectedInstructionTooLarge:
-            return "注入的本机指令超过 256 KiB 上限。"
+            return "Injected local instructions exceed the 256 KiB limit."
         case .conflictingNormalizedUserContent:
-            return "多个上下文提供器返回了冲突的用户消息规范化结果。"
+            return "Multiple context providers returned conflicting user message normalizations."
         case let .pluginRejected(checkpoint, reason):
-            return "Cordis 检查点 \(checkpoint) 拒绝继续执行：\(reason)"
+            return "Cordis checkpoint \(checkpoint) refused to continue: \(reason)"
         case let .pluginRewroteDurableHistory(checkpoint):
-            return "Cordis 检查点 \(checkpoint) 试图改写已持久化历史；只能追加可记录的上下文消息。"
+            return "Cordis checkpoint \(checkpoint) tried to rewrite persisted history; only recordable context messages may be appended."
         case let .pluginProducedInvalidContext(checkpoint):
-            return "Cordis 检查点 \(checkpoint) 返回了不可持久化的上下文消息。"
+            return "Cordis checkpoint \(checkpoint) returned a context message that cannot be persisted."
         case .credentialRouteChangedWithoutResolver:
-            return "模型路由已切换，但运行时没有可用于新服务商的凭据解析器。"
+            return "The model route changed, but the runtime has no credential resolver for the new provider."
         case let .sessionEventPersistenceFailed(message):
-            return "会话轨迹写入失败：\(message)"
+            return "Failed to write session trajectory: \(message)"
         case let .modelVisibleInvariantFailed(failure):
             return failure.localizedDescription
         case let .compactionDidNotShrink(summaryTokens, shadowedTokens):
-            return "上下文压缩摘要没有缩短被替换内容（摘要 \(summaryTokens) tokens，原文 \(shadowedTokens) tokens）。"
+            return "The compaction summary did not shorten the replaced content (summary \(summaryTokens) tokens, original \(shadowedTokens) tokens)."
         case .compactionDidNotReduceRequest:
-            return "上下文压缩没有降低请求 token 压力。"
+            return "Context compaction did not reduce request token pressure."
         case .compactionSurfaceChanged:
-            return "上下文压缩期间会话表面发生变化，已放弃陈旧替换。"
+            return "The session changed during context compaction; the stale replacement was discarded."
         case .compactionSummaryEmpty:
-            return "上下文压缩模型没有返回有效摘要。"
+            return "The compaction model returned no valid summary."
         case .compactionSummaryTruncated:
-            return "上下文压缩摘要达到输出上限，未提交不完整检查点。"
+            return "The compaction summary hit the output limit; the incomplete checkpoint was not committed."
         case .compactionProducedToolCall:
-            return "上下文压缩模型返回了工具调用；为避免执行摘要请求中的工具，已拒绝。"
+            return "The compaction model returned tool calls; refused to avoid executing tools from a summary request."
         case let .compactionSummaryStreamFailedAfterPartialOutput(description):
-            return "上下文压缩模型已输出部分摘要后失败，未回退或提交不完整检查点：\(description)"
+            return "The compaction model failed after emitting a partial summary; no fallback or incomplete checkpoint was committed: \(description)"
         case let .imageInputUnsupported(model):
-            return "当前会话包含图片输入（可能来自历史消息），但当前模型 \(model) 未声明图片输入能力。这不是模型输出图片错误；请切换到支持图片输入的模型，或新建纯文本会话后重试。"
+            return "The current session contains image input (possibly from earlier messages), but the current model \(model) does not declare image input support. This is not a model image output error; switch to a model that supports image input, or start a new text-only session and try again."
         case .imageAttachmentUnavailable:
-            return "图片附件无法从本机工作区读取。请重新选择图片后再试。"
+            return "The image attachment could not be read from the local workspace. Select the image again and retry."
         case let .hookBlocked(point, reason):
-            return "\(point.rawValue) hook 拒绝了本次操作：\(reason)"
+            return "\(point.rawValue) hook denied this operation: \(reason)"
         }
     }
 }

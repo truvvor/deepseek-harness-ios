@@ -27,11 +27,11 @@ actor NativeAgentPluginStore {
         guard fileManager.fileExists(atPath: fileURL.path) else { return [] }
         let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
         guard data.count <= 2 * 1_024 * 1_024 else {
-            throw NativeAgentPluginError.invalidCompiledPlugin("插件注册表过大。")
+            throw NativeAgentPluginError.invalidCompiledPlugin("The plugin registry is too large.")
         }
         let document = try JSONDecoder().decode(Document.self, from: data)
         guard document.schemaVersion == 1 else {
-            throw NativeAgentPluginError.invalidCompiledPlugin("插件注册表版本不兼容。")
+            throw NativeAgentPluginError.invalidCompiledPlugin("Incompatible plugin registry version.")
         }
         // A single stale compiled plugin must not hide every other plugin.
         // Keep valid entries and let the AppModel disable entries that fail
@@ -83,7 +83,7 @@ actor NativeAgentPluginStore {
             throw NativeAgentPluginError.notFound(id)
         }
         guard var settings = plugins[index].settings else {
-            throw NativeAgentPluginError.invalidCompiledPlugin("这个插件没有可编辑设置。")
+            throw NativeAgentPluginError.invalidCompiledPlugin("This plugin has no editable settings.")
         }
         try NativeAgentJSONSchemaValidator.validate(value: values, schema: settings.schema)
         try ISHPluginHostCredentialFirewall.validate(values)
@@ -119,7 +119,7 @@ actor NativeAgentPluginStore {
         )
         let data = try JSONEncoder().encode(Document(schemaVersion: 1, plugins: plugins))
         guard data.count <= 2 * 1_024 * 1_024 else {
-            throw NativeAgentPluginError.invalidCompiledPlugin("插件注册表过大。")
+            throw NativeAgentPluginError.invalidCompiledPlugin("The plugin registry is too large.")
         }
 #if os(iOS)
         try data.write(to: fileURL, options: [.atomic, .completeFileProtection])

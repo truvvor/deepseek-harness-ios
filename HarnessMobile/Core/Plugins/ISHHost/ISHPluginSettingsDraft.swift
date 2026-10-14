@@ -7,9 +7,9 @@ enum ISHPluginSettingsDraftError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidUserLayer:
-            return "插件设置的用户层不是对象，无法安全编辑。"
+            return "The user layer of the plugin settings is not an object and cannot be edited safely."
         case .schemaChanged:
-            return "插件更新后配置 schema 已变化，请重新载入后再编辑。"
+            return "The config schema changed after the plugin update. Reload before editing."
         }
     }
 }
@@ -131,34 +131,34 @@ struct ISHPluginSettingsDraft: Sendable, Equatable {
         guard !leaf.disabled else { return nil }
         let field = leaf.field
         guard let value = effectiveValue(for: field) else {
-            return field.required ? "\(leaf.label) 缺少必填值。" : nil
+            return field.required ? "\(leaf.label) is missing a required value." : nil
         }
 
         switch field.kind {
         case .boolean:
-            guard case .bool = value else { return "\(leaf.label) 必须是开关值。" }
+            guard case .bool = value else { return "\(leaf.label) must be a toggle value." }
         case let .number(minimum, maximum, step):
             guard case let .number(number) = value, number.isFinite else {
-                return "\(leaf.label) 必须是有限数字。"
+                return "\(leaf.label) must be a finite number."
             }
             if let minimum, number < minimum {
-                return "\(leaf.label) 不能小于 \(minimum.formatted())."
+                return "\(leaf.label) cannot be less than \(minimum.formatted())."
             }
             if let maximum, number > maximum {
-                return "\(leaf.label) 不能大于 \(maximum.formatted())."
+                return "\(leaf.label) cannot be greater than \(maximum.formatted())."
             }
             if let step, step > 0 {
                 let origin = minimum ?? 0
                 let quotient = (number - origin) / step
                 if abs(quotient - quotient.rounded()) > 1e-8 {
-                    return "\(leaf.label) 必须按步长 \(step.formatted()) 取值。"
+                    return "\(leaf.label) must be a multiple of step \(step.formatted())."
                 }
             }
         case .string:
-            guard case .string = value else { return "\(leaf.label) 必须是文本。" }
+            guard case .string = value else { return "\(leaf.label) must be text." }
         case let .selection(options):
             guard options.contains(where: { $0.value == value }) else {
-                return "\(leaf.label) 不是 schema 允许的选项。"
+                return "\(leaf.label) is not an option allowed by the schema."
             }
         case .object:
             return nil

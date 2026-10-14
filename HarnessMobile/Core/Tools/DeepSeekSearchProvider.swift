@@ -144,13 +144,13 @@ struct DeepSeekSearchProvider: WebSearchProvider {
     var errorDescription: String? {
         switch self {
         case .missingCredential:
-            "DeepSeek 搜索需要 DeepSeek 凭据；当前配置缺失。可在设置中补齐或改用其他搜索后端。"
+            "DeepSeek search requires DeepSeek credentials, which are not configured. Add them in Settings or switch to another search backend."
         case let .transport(detail):
             detail
         case let .endpoint(status, detail):
-            "DeepSeek 搜索端点返回 \(status)。\(detail) 用户可在设置中检查 DeepSeek 凭据或改用其他搜索后端。"
+            "DeepSeek search endpoint returned \(status). \(detail) The user can check DeepSeek credentials in Settings or switch to another search backend."
         case .noResultBlocks:
-            "DeepSeek 未返回 web_search_tool_result 块；请求可能未触发原生网页搜索。"
+            "DeepSeek did not return a web_search_tool_result block; the request may not have triggered native web search."
         }
     }
 }

@@ -14,7 +14,7 @@ enum ISHHostedToolError: Error, Sendable, Equatable, LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .executionFailed(message):
-            return "iSH 插件工具执行失败：\(message)"
+            return "iSH plugin tool failed: \(message)"
         }
     }
 }
@@ -58,7 +58,7 @@ struct ISHHostedCordisTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "在本机 iSH 插件沙箱中执行 \(definition.name)"
+        "Run \(definition.name) in the local iSH plugin sandbox"
     }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {

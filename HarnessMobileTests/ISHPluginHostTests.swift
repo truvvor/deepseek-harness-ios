@@ -110,14 +110,14 @@ final class ISHPluginHostTests: XCTestCase {
         let offline = NSError(
             domain: NSURLErrorDomain,
             code: URLError.notConnectedToInternet.rawValue,
-            userInfo: [NSLocalizedDescriptionKey: "目录暂时不可用"]
+            userInfo: [NSLocalizedDescriptionKey: "Directory temporarily unavailable"]
         )
         XCTAssertEqual(
             ISHPluginMarketplaceErrorPolicy.message(
                 for: offline,
                 taskIsCancelled: false
             ),
-            "目录暂时不可用"
+            "Directory temporarily unavailable"
         )
         XCTAssertNil(
             ISHPluginMarketplaceErrorPolicy.message(
@@ -136,7 +136,7 @@ final class ISHPluginHostTests: XCTestCase {
                 for: remote,
                 taskIsCancelled: false
             ),
-            "插件目录暂时无法连接，已自动刷新 iSH DNS；请确认 iSH 网络已开启后重试。"
+            "Can't reach the plugin directory right now. iSH DNS was refreshed automatically; make sure iSH networking is on and try again."
         )
 
         let incompletePackage = ISHPluginHostError.remote(
@@ -149,7 +149,7 @@ final class ISHPluginHostTests: XCTestCase {
                 for: incompletePackage,
                 taskIsCancelled: false
             ),
-            "插件包不完整，缺少发布时声明的构建文件：Runtime package dsh-toolkit declares missing entrypoint ./lib/index.js."
+            "The plugin package is incomplete and is missing build files declared at publish time: Runtime package dsh-toolkit declares missing entrypoint ./lib/index.js."
         )
 
         let dependencyFailure = ISHPluginHostError.remote(
@@ -162,7 +162,7 @@ final class ISHPluginHostTests: XCTestCase {
                 for: dependencyFailure,
                 taskIsCancelled: false
             ),
-            "插件依赖安装失败：npm exited with code 1"
+            "Plugin dependency installation failed: npm exited with code 1"
         )
     }
 
@@ -790,7 +790,7 @@ final class ISHPluginHostTests: XCTestCase {
     func testCredentialFirewallAllowsDocumentationMentionsButRejectsBearerToken() {
         XCTAssertNoThrow(
             try ISHPluginHostCredentialFirewall.validate(
-                .string("Replace the word Bearer 令牌 with a redacted placeholder.")
+                .string("Replace the word Bearer token with a redacted placeholder.")
             )
         )
         XCTAssertThrowsError(

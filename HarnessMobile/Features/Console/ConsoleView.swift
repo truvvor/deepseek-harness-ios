@@ -5,7 +5,7 @@ struct ConsoleView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("控制台页面", selection: $selection) {
+            Picker("Console Page", selection: $selection) {
                 ForEach(ConsoleSection.allCases) { section in
                     Label(section.title, systemImage: section.systemImage)
                         .tag(section)
@@ -15,7 +15,7 @@ struct ConsoleView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(HarnessTheme.surface)
-            .accessibilityHint("在任务和轨迹之间切换")
+            .accessibilityHint("Switches between tasks and trajectory")
 
             Divider()
 
@@ -43,15 +43,15 @@ private enum ConsoleSection: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .tasks: "任务"
-        case .trajectory: "轨迹"
+        case .tasks: "Tasks"
+        case .trajectory: "Trajectory"
         }
     }
 
     var navigationTitle: String {
         switch self {
-        case .tasks: "任务状态"
-        case .trajectory: "轨迹"
+        case .tasks: "Task Status"
+        case .trajectory: "Trajectory"
         }
     }
 

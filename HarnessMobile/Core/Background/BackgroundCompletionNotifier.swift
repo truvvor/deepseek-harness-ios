@@ -38,7 +38,7 @@ struct BackgroundCompletionNotifier: Sendable {
         }
 
         let content = UNMutableNotificationContent()
-        content.title = succeeded ? "后台任务已完成" : "后台任务未完成"
+        content.title = succeeded ? "Background Task Completed" : "Background Task Not Completed"
         content.body = Self.body(
             succeeded: succeeded,
             taskTitle: taskTitle,
@@ -50,6 +50,30 @@ struct BackgroundCompletionNotifier: Sendable {
 
         let request = UNNotificationRequest(
             identifier: "background-completion.\(runID.uuidString.lowercased())",
+            content: content,
+            trigger: nil
+        )
+        try await UNUserNotificationCenter.current().add(request)
+    }
+
+    /// Local notification for a question the desktop agent asked in a mirrored
+    /// session, so the person hears about it without the chat open.
+    func deliverDesktopQuestion(
+        requestID: String,
+        sessionTitle: String,
+        question: String,
+        privacyModeEnabled: Bool
+    ) async throws {
+        guard await authorizationStatus() == .authorized else {
+            throw BackgroundCompletionNotificationError.notAuthorized
+        }
+        let content = UNMutableNotificationContent()
+        content.title = "Desktop agent is asking"
+        content.subtitle = sessionTitle
+        content.body = privacyModeEnabled ? "Open the session to answer." : String(question.prefix(180))
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: "desktop-question.\(requestID)",
             content: content,
             trigger: nil
         )
@@ -79,10 +103,10 @@ struct BackgroundCompletionNotifier: Sendable {
         guard !privacyModeEnabled,
               let taskTitle,
               !taskTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return "打开 App 查看任务状态。"
+            return "Open the app to view task status."
         }
         return succeeded
-            ? "“\(taskTitle)”已完成。"
-            : "“\(taskTitle)”已停止，请打开 App 查看。"
+            ? "\"\(taskTitle)\" completed."
+            : "\"\(taskTitle)\" stopped. Open the app to view details."
     }
 }

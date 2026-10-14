@@ -310,7 +310,7 @@ final class WorkflowToolTests: XCTestCase {
         }
         let snapshot = await events.snapshot()
         XCTAssertTrue(snapshot.contains(.runEnd(
-            runID: snapshot.compactMap { event in
+            runID: snapshot.compactMap { event -> String? in
                 guard case let .runStart(runID, _) = event else { return nil }
                 return runID
             }.first ?? "",

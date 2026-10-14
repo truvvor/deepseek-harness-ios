@@ -161,14 +161,14 @@ enum HarnessSyncEnvelopeError: Error, LocalizedError, Sendable, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .unsupportedSchema: "同步 envelope 版本不受支持。"
-        case .tooManyEvents: "同步 event suffix 超过数量上限。"
-        case .nonContiguousSuffix: "同步 event suffix 必须连续且不可重排。"
-        case .invalidMetadata: "同步 metadata 超出边界。"
-        case .secretField: "同步内容包含禁止传输的凭据字段。"
-        case .invalidAsset: "同步 asset 引用越界或无效。"
-        case .invalidTombstone: "同步 tombstone 无效。"
-        case .duplicateTombstone: "同步 tombstone 不得重复。"
+        case .unsupportedSchema: "Sync envelope version is not supported."
+        case .tooManyEvents: "Sync event suffix exceeds the count limit."
+        case .nonContiguousSuffix: "Sync event suffix must be contiguous and cannot be reordered."
+        case .invalidMetadata: "Sync metadata is out of bounds."
+        case .secretField: "Sync content contains credential fields that must not be transmitted."
+        case .invalidAsset: "Sync asset reference is out of bounds or invalid."
+        case .invalidTombstone: "Sync tombstone is invalid."
+        case .duplicateTombstone: "Sync tombstones must not be duplicated."
         }
     }
 }

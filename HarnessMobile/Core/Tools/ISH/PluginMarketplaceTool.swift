@@ -129,7 +129,7 @@ struct PluginMarketplaceTool: LocalAgentTool {
 
     init(executor: PluginMarketplaceToolExecutor? = nil) {
         self.executor = executor ?? { _ in
-            throw LocalToolError.pluginDenied("本机插件 Host 尚未接入当前运行时。")
+            throw LocalToolError.pluginDenied("The local plugin Host is not connected to the current runtime yet.")
         }
     }
 
@@ -139,20 +139,20 @@ struct PluginMarketplaceTool: LocalAgentTool {
 
     func summary(arguments: [String: JSONValue]) -> String {
         guard let request = try? request(from: arguments) else {
-            return "管理本机 Cordis 插件"
+            return "Manage local Cordis plugins"
         }
         switch request.action {
-        case .catalog: return "查询本机插件市场目录"
-        case .list: return "列出本机已安装插件"
+        case .catalog: return "Query the local plugin marketplace catalog"
+        case .list: return "List locally installed plugins"
         case .install:
-            return "为主 Agent 准备插件源码：\(request.location ?? "未知来源")"
-        case .readSource: return "读取已准备的插件源码：\(request.sourcePath ?? "未知文件")"
-        case .installNative: return "校验并安装主 Agent 编译的原生插件"
-        case .installISH: return "将已准备的插件安装到本机 iSH"
-        case .enable: return "在手机上启用插件：\(request.id ?? "未知插件")"
-        case .disable: return "在手机上停用插件：\(request.id ?? "未知插件")"
-        case .uninstall: return "在手机上卸载插件：\(request.id ?? "未知插件")"
-        case .clearCache: return "清理本机插件市场缓存"
+            return "Prepare plugin source for the main Agent: \(request.location ?? "unknown source")"
+        case .readSource: return "Read prepared plugin source: \(request.sourcePath ?? "unknown file")"
+        case .installNative: return "Verify and install the native plugin compiled by the main Agent"
+        case .installISH: return "Install the prepared plugin into the local iSH"
+        case .enable: return "Enable plugin on phone: \(request.id ?? "unknown plugin")"
+        case .disable: return "Disable plugin on phone: \(request.id ?? "unknown plugin")"
+        case .uninstall: return "Uninstall plugin on phone: \(request.id ?? "unknown plugin")"
+        case .clearCache: return "Clear the local plugin marketplace cache"
         }
     }
 

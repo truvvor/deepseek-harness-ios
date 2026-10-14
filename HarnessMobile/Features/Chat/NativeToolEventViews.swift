@@ -30,14 +30,14 @@ struct NativeToolEventRowSummary: Equatable {
             )
         case let .workspaceFiles(files):
             return NativeToolEventRowSummary(
-                text: "\(files.files.count) 个路径",
+                text: "\(files.files.count) paths",
                 suffix: nil,
                 isError: false
             )
         case let .diff(diff):
             return NativeToolEventRowSummary(
                 text: diff.path,
-                suffix: diff.changed ? "+\(diff.added) / -\(diff.removed)" : "无变化",
+                suffix: diff.changed ? "+\(diff.added) / -\(diff.removed)" : "No changes",
                 isError: false
             )
         case let .deliverable(deliverable):
@@ -49,7 +49,7 @@ struct NativeToolEventRowSummary: Equatable {
         case let .search(search):
             return NativeToolEventRowSummary(
                 text: search.query,
-                suffix: "\(search.totalCount) 项",
+                suffix: "\(search.totalCount) items",
                 isError: false
             )
         case let .web(web):
@@ -57,26 +57,26 @@ struct NativeToolEventRowSummary: Equatable {
             case .search:
                 return NativeToolEventRowSummary(
                     text: web.queries.joined(separator: " · "),
-                    suffix: "\(web.resultCount) 个来源",
+                    suffix: "\(web.resultCount) sources",
                     isError: false
                 )
             case .fetch:
                 return NativeToolEventRowSummary(
-                    text: web.url ?? "网页内容",
+                    text: web.url ?? "Web page",
                     suffix: web.statusCode.map { "HTTP \($0)" },
                     isError: (web.statusCode ?? 200) >= 400
                 )
             }
         case let .job(job):
-            let text = job.jobID ?? (job.kind == .list ? "后台任务" : "任务控制")
-            let suffix = job.kind == .list ? "\(job.entries.count) 项" : job.status
+            let text = job.jobID ?? (job.kind == .list ? "Background Jobs" : "Job Control")
+            let suffix = job.kind == .list ? "\(job.entries.count) items" : job.status
             return NativeToolEventRowSummary(
                 text: text,
                 suffix: suffix,
                 isError: job.status == "failed"
             )
         case let .workItems(workItems):
-            let head = "\(workItems.completedCount)/\(workItems.items.count) 已完成"
+            let head = "\(workItems.completedCount)/\(workItems.items.count) completed"
             guard let active = workItems.activeItems.first else {
                 return NativeToolEventRowSummary(text: head, suffix: nil, isError: false)
             }
@@ -94,8 +94,8 @@ struct NativeToolEventRowSummary: Equatable {
             )
         case let .workflow(workflow):
             let head = workflow.members.isEmpty
-                ? "准备运行"
-                : "\(workflow.completedMembers)/\(workflow.members.count) 个子 Agent"
+                ? "Preparing to run"
+                : "\(workflow.completedMembers)/\(workflow.members.count) subagents"
             let suffix = workflow.durationMilliseconds.map { duration in
                 duration < 1_000 ? "\(duration)ms" : String(format: "%.1fs", Double(duration) / 1_000)
             }
@@ -179,7 +179,7 @@ private struct SearchToolCard: View {
                     }
                 }
                 Spacer(minLength: 8)
-                Text("\(model.totalCount) 项")
+                Text("\(model.totalCount) items")
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -188,7 +188,7 @@ private struct SearchToolCard: View {
 
             Divider()
             if model.matches.isEmpty {
-                Text("没有找到匹配项")
+                Text("No matches found")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(10)
@@ -196,7 +196,7 @@ private struct SearchToolCard: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(slice.head) { match in row(match) }
                     if slice.hidden > 0 {
-                        Button(expanded ? "收起" : "展开其余 \(slice.hidden) 项") {
+                        Button(expanded ? "Collapse" : "Show \(slice.hidden) more") {
                             expanded.toggle()
                         }
                         .buttonStyle(.plain)
@@ -214,13 +214,13 @@ private struct SearchToolCard: View {
                 HStack(spacing: 6) {
                     if model.truncated {
                         Image(systemName: "ellipsis.circle")
-                        Text("结果已截断")
+                        Text("Results truncated")
                     }
                     if let filesVisited = model.filesVisited {
-                        Text("扫描 \(filesVisited) 项")
+                        Text("Scanned \(filesVisited) items")
                     }
                     if let locator = model.spillLocator {
-                        Text("完整结果：\(locator)")
+                        Text("Full results: \(locator)")
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
@@ -233,7 +233,7 @@ private struct SearchToolCard: View {
         }
         .toolSurface()
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("搜索 \(model.query)，\(model.totalCount) 项结果")
+        .accessibilityLabel("Search \(model.query), \(model.totalCount) results")
     }
 
     private var slice: ToolHeadTailSlice<NativeSearchMatchPresentation> {
@@ -277,14 +277,14 @@ private struct WebToolCard: View {
             Divider()
             if model.kind == .search {
                 if model.sources.isEmpty {
-                    Text("没有搜索结果")
+                    Text("No search results")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(10)
                 } else {
                     ForEach(sourceSlice.head) { source in sourceRow(source) }
                     if sourceSlice.hidden > 0 {
-                        Button(expanded ? "收起" : "展开其余 \(sourceSlice.hidden) 个来源") {
+                        Button(expanded ? "Collapse" : "Show \(sourceSlice.hidden) more sources") {
                             expanded.toggle()
                         }
                         .buttonStyle(.plain)
@@ -296,14 +296,14 @@ private struct WebToolCard: View {
                     ForEach(sourceSlice.tail) { source in sourceRow(source) }
                 }
             } else if let preview = model.contentPreview {
-                Text(preview.isEmpty ? "网页正文为空" : preview)
+                Text(preview.isEmpty ? "Page body is empty" : preview)
                     .font(.caption2.monospaced())
                     .foregroundStyle(preview.isEmpty ? .secondary : .primary)
                     .lineLimit(expanded ? nil : 12)
                     .textSelection(.enabled)
                     .padding(10)
                 if preview.count > 500 || model.truncated {
-                    Button(expanded ? "收起正文" : "展开正文") { expanded.toggle() }
+                    Button(expanded ? "Collapse Text" : "Expand Text") { expanded.toggle() }
                         .buttonStyle(.plain)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -314,7 +314,7 @@ private struct WebToolCard: View {
 
             if model.truncated {
                 Divider()
-                Label("内容已按手机显示上限截断", systemImage: "ellipsis.circle")
+                Label("Content truncated to the phone display limit", systemImage: "ellipsis.circle")
                     .font(.caption2)
                     .foregroundStyle(.orange)
                     .padding(.horizontal, 10)
@@ -323,14 +323,14 @@ private struct WebToolCard: View {
         }
         .toolSurface()
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(model.kind == .search ? "网页搜索，\(model.resultCount) 个来源" : "网页读取")
+        .accessibilityLabel(model.kind == .search ? "Web search, \(model.resultCount) sources" : "Web fetch")
     }
 
     private var header: some View {
         HStack(spacing: 8) {
             HarnessIconTile(systemImage: model.kind == .search ? "globe.badge.chevron.backward" : "doc.text.magnifyingglass", tint: .cyan, size: 28)
             VStack(alignment: .leading, spacing: 2) {
-                Text(model.kind == .search ? model.queries.joined(separator: " · ") : (model.url ?? "网页内容"))
+                Text(model.kind == .search ? model.queries.joined(separator: " · ") : (model.url ?? "Web page"))
                     .font(.caption.weight(.semibold))
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -346,7 +346,7 @@ private struct WebToolCard: View {
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(status >= 400 ? .red : .secondary)
             } else {
-                Text("\(model.resultCount) 个来源")
+                Text("\(model.resultCount) sources")
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -394,7 +394,7 @@ private struct JobToolCard: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 HarnessIconTile(systemImage: model.kind == .list ? "list.bullet.rectangle" : "gearshape.2", tint: statusTint, size: 28)
-                Text(model.jobID ?? "后台任务")
+                Text(model.jobID ?? "Background Jobs")
                     .font(.caption.weight(.semibold).monospaced())
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -409,14 +409,14 @@ private struct JobToolCard: View {
             Divider()
             if model.kind == .list {
                 if model.entries.isEmpty {
-                    Text("没有后台任务")
+                    Text("No background jobs")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(10)
                 } else {
                     ForEach(entrySlice.head) { entry in entryRow(entry) }
                     if entrySlice.hidden > 0 {
-                        Button(expanded ? "收起" : "展开其余 \(entrySlice.hidden) 项") {
+                        Button(expanded ? "Collapse" : "Show \(entrySlice.hidden) more") {
                             expanded.toggle()
                         }
                         .buttonStyle(.plain)
@@ -428,7 +428,7 @@ private struct JobToolCard: View {
                     ForEach(entrySlice.tail) { entry in entryRow(entry) }
                 }
             } else if model.outputPreview.isEmpty {
-                Text("暂无新输出")
+                Text("No new output")
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
                     .padding(10)
@@ -439,7 +439,7 @@ private struct JobToolCard: View {
                     .textSelection(.enabled)
                     .padding(10)
                 if model.totalLines > 10 || model.truncated {
-                    Button(expanded ? "收起输出" : "展开输出") { expanded.toggle() }
+                    Button(expanded ? "Collapse Output" : "Expand Output") { expanded.toggle() }
                         .buttonStyle(.plain)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -460,7 +460,7 @@ private struct JobToolCard: View {
         }
         .toolSurface()
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("后台任务 \(model.jobID ?? "列表")，\(statusLabel)")
+        .accessibilityLabel("Background job \(model.jobID ?? "list"), \(statusLabel)")
     }
 
     private var entrySlice: ToolHeadTailSlice<NativeJobEntryPresentation> {
@@ -468,14 +468,14 @@ private struct JobToolCard: View {
     }
 
     private var statusLabel: String {
-        if model.kind == .list { return "\(model.entries.count) 项" }
+        if model.kind == .list { return "\(model.entries.count) items" }
         switch model.status {
-        case "running": return "运行中"
-        case "stopping": return "停止中"
-        case "completed": return "已完成"
-        case "killed": return "已停止"
-        case "failed": return "失败"
-        default: return model.status ?? "未知状态"
+        case "running": return "Running"
+        case "stopping": return "Stopping"
+        case "completed": return "Completed"
+        case "killed": return "Stopped"
+        case "failed": return "Failed"
+        default: return model.status ?? "Unknown status"
         }
     }
 
@@ -540,14 +540,14 @@ private struct DiffToolCard: View {
                     .textSelection(.enabled)
                     .lineLimit(expanded ? nil : 12)
                     .padding(10)
-                Button(expanded ? "收起差异" : "展开完整差异") { expanded.toggle() }
+                Button(expanded ? "Collapse Diff" : "Expand Full Diff") { expanded.toggle() }
                     .buttonStyle(.plain)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, 7)
             } else {
-                Text("没有文件变化")
+                Text("No file changes")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(10)
@@ -555,7 +555,7 @@ private struct DiffToolCard: View {
         }
         .toolSurface()
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("文件差异 \(model.path)")
+        .accessibilityLabel("File diff \(model.path)")
     }
 }
 
@@ -584,10 +584,10 @@ private struct DeliverableToolCard: View {
                 .lineLimit(expanded ? nil : 10)
                 .padding(10)
             HStack {
-                Text("\(model.lines) 行 · \(model.path)")
+                Text("\(model.lines) lines · \(model.path)")
                 Spacer()
                 if model.truncated {
-                    Button(expanded ? "收起" : "展开预览") { expanded.toggle() }
+                    Button(expanded ? "Collapse" : "Expand Preview") { expanded.toggle() }
                         .buttonStyle(.plain)
                 }
             }
@@ -598,7 +598,7 @@ private struct DeliverableToolCard: View {
         }
         .toolSurface()
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("交付物 \(model.path)")
+        .accessibilityLabel("Deliverable \(model.path)")
     }
 }
 
@@ -628,7 +628,7 @@ private struct WorkspaceReadToolCard: View {
             Divider()
 
             if model.totalLines == 0 {
-                Text("空文件")
+                Text("Empty file")
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
                     .padding(10)
@@ -642,14 +642,14 @@ private struct WorkspaceReadToolCard: View {
         }
         .toolSurface()
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("读取文件 \(model.path)，\(lineCountLabel)")
+        .accessibilityLabel("Read file \(model.path), \(lineCountLabel)")
     }
 
     private var lineCountLabel: String {
         if model.previewTruncated || model.lines.count < model.totalLines {
-            return "预览 \(model.lines.count) / \(model.totalLines) 行"
+            return "Preview \(model.lines.count) / \(model.totalLines) lines"
         }
-        return "\(model.totalLines) 行"
+        return "\(model.totalLines) lines"
     }
 }
 
@@ -676,7 +676,7 @@ private struct WorkspaceWriteToolCard: View {
             Divider()
 
             if model.totalLines == 0 {
-                Text("写入空文件")
+                Text("Wrote empty file")
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
                     .padding(10)
@@ -697,7 +697,7 @@ private struct WorkspaceWriteToolCard: View {
         }
         .toolSurface()
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("写入文件 \(model.path)，\(model.totalLines) 行")
+        .accessibilityLabel("Write file \(model.path), \(model.totalLines) lines")
     }
 
     private var footer: String {
@@ -705,8 +705,8 @@ private struct WorkspaceWriteToolCard: View {
             fromByteCount: Int64(model.byteCount),
             countStyle: .file
         )
-        let preview = model.previewTruncated ? " · 界面预览已截断" : ""
-        return "└ 写入 \(model.totalLines) 行 · \(size)\(preview)"
+        let preview = model.previewTruncated ? " · UI preview truncated" : ""
+        return "└ Wrote \(model.totalLines) lines · \(size)\(preview)"
     }
 }
 
@@ -786,21 +786,21 @@ private struct ToolTextRows: View {
         Button {
             isExpanded.toggle()
         } label: {
-            Text(isExpanded ? "收起" : "… 其余 \(hiddenCount) 行")
+            Text(isExpanded ? "Collapse" : "… \(hiddenCount) more lines")
                 .font(.caption2.monospaced())
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 5)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(isExpanded ? "收起内容" : "展开其余 \(hiddenCount) 行")
+        .accessibilityLabel(isExpanded ? "Collapse content" : "Show \(hiddenCount) more lines")
     }
 
     @ViewBuilder
     private func rowView(_ row: ToolTextDisplayRow) -> some View {
         switch row.content {
         case let .gap(omitted):
-            Text("… 省略 \(omitted) 行界面预览")
+            Text("… \(omitted) lines omitted from UI preview")
                 .font(.caption2.monospaced())
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 10)
@@ -835,7 +835,7 @@ private struct WorkspaceFilesToolCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("\(model.files.count) 个路径")
+                Text("\(model.files.count) paths")
                     .font(.caption.weight(.semibold))
                 Spacer()
                 HarnessIconTile(systemImage: "doc.on.doc", tint: .secondary, size: 28)
@@ -846,7 +846,7 @@ private struct WorkspaceFilesToolCard: View {
             Divider()
 
             if model.files.isEmpty {
-                Text("工作区中没有文本文件")
+                Text("No text files in the workspace")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(10)
@@ -858,14 +858,14 @@ private struct WorkspaceFilesToolCard: View {
                     Button {
                         isExpanded.toggle()
                     } label: {
-                        Text(isExpanded ? "收起" : "… 其余 \(slice.hidden) 个路径")
+                        Text(isExpanded ? "Collapse" : "… \(slice.hidden) more paths")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 5)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(isExpanded ? "收起路径" : "展开其余 \(slice.hidden) 个路径")
+                    .accessibilityLabel(isExpanded ? "Collapse paths" : "Show \(slice.hidden) more paths")
                 }
                 ForEach(slice.tail) { file in
                     fileRow(file)
@@ -874,7 +874,7 @@ private struct WorkspaceFilesToolCard: View {
         }
         .toolSurface()
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("文件列表，\(model.files.count) 个路径")
+        .accessibilityLabel("File list, \(model.files.count) paths")
     }
 
     private var slice: ToolHeadTailSlice<NativeWorkspaceFilePresentation> {
@@ -906,10 +906,10 @@ private struct WorkItemsToolCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Text(model.kind == .todos ? "任务清单" : "执行计划")
+                Text(model.kind == .todos ? "To-Do List" : "Execution Plan")
                     .font(.caption.weight(.semibold))
                 Spacer(minLength: 8)
-                Text("\(model.completedCount)/\(model.items.count) 已完成")
+                Text("\(model.completedCount)/\(model.items.count) completed")
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -919,7 +919,7 @@ private struct WorkItemsToolCard: View {
             Divider()
 
             if model.items.isEmpty {
-                Text("清单为空")
+                Text("List is empty")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(10)
@@ -931,14 +931,14 @@ private struct WorkItemsToolCard: View {
                     Button {
                         isExpanded.toggle()
                     } label: {
-                        Text(isExpanded ? "收起" : "… 其余 \(slice.hidden) 项")
+                        Text(isExpanded ? "Collapse" : "… \(slice.hidden) more items")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 5)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(isExpanded ? "收起清单" : "展开其余 \(slice.hidden) 项")
+                    .accessibilityLabel(isExpanded ? "Collapse list" : "Show \(slice.hidden) more")
                 }
                 ForEach(slice.tail) { item in
                     itemRow(item)
@@ -947,7 +947,7 @@ private struct WorkItemsToolCard: View {
         }
         .toolSurface()
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(model.kind == .todos ? "任务清单" : "执行计划")，\(model.completedCount) 项已完成，共 \(model.items.count) 项")
+        .accessibilityLabel("\(model.kind == .todos ? "To-Do List" : "Execution Plan"), \(model.completedCount) of \(model.items.count) completed")
     }
 
     private var slice: ToolHeadTailSlice<NativeWorkItemPresentation> {
@@ -991,11 +991,11 @@ private struct WorkItemsToolCard: View {
 
     private func statusTitle(_ status: ConversationItemStatus) -> String {
         switch status {
-        case .pending: "待处理"
-        case .active: "进行中"
-        case .paused: "已暂停"
-        case .completed: "已完成"
-        case .blocked: "受阻"
+        case .pending: "Pending"
+        case .active: "In Progress"
+        case .paused: "Paused"
+        case .completed: "Completed"
+        case .blocked: "Blocked"
         }
     }
 }
@@ -1056,10 +1056,10 @@ private struct WorkflowToolCard: View {
                 Divider()
                 VStack(alignment: .leading, spacing: 5) {
                     HStack {
-                        Text("子 Agent")
+                        Text("Subagents")
                             .font(.caption.weight(.semibold))
                         Spacer()
-                        Text("\(model.completedMembers)/\(model.members.count) 完成")
+                        Text("\(model.completedMembers)/\(model.members.count) done")
                             .font(.caption2.monospacedDigit())
                             .foregroundStyle(.secondary)
                     }
@@ -1123,7 +1123,7 @@ private struct WorkflowToolCard: View {
         }
         .toolSurface()
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("工作流 \(model.name)，\(model.completedMembers) 个子 Agent 已完成")
+        .accessibilityLabel("Workflow \(model.name), \(model.completedMembers) subagents completed")
     }
 
     private func durationLabel(_ milliseconds: Int) -> String {
@@ -1150,10 +1150,10 @@ private struct WorkflowToolCard: View {
 
     private func memberStatus(_ status: NativeWorkflowMemberStatus) -> String {
         switch status {
-        case .running: "运行中"
-        case .completed: "完成"
-        case .failed: "失败"
-        case .cancelled: "已取消"
+        case .running: "Running"
+        case .completed: "Completed"
+        case .failed: "Failed"
+        case .cancelled: "Cancelled"
         }
     }
 }
@@ -1179,7 +1179,7 @@ private struct TerminalToolCard: View {
                         .font(.caption.monospaced())
                     }
                     if model.commandPreviewTruncated || model.commandLines.count > 3 {
-                        Text("命令预览 \(min(3, model.commandLines.count)) / \(model.commandTotalLines) 行")
+                        Text("Command preview \(min(3, model.commandLines.count)) / \(model.commandTotalLines) lines")
                             .font(.caption2.monospaced())
                             .foregroundStyle(.white.opacity(0.55))
                     }
@@ -1205,7 +1205,7 @@ private struct TerminalToolCard: View {
             } else if !model.isRunning {
                 Divider()
                     .overlay(.white.opacity(0.12))
-                Text("无输出")
+                Text("No output")
                     .font(.caption.monospaced())
                     .foregroundStyle(.white.opacity(0.55))
                     .padding(10)
@@ -1227,7 +1227,7 @@ private struct TerminalToolCard: View {
                 .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("iSH 终端，\(terminalStatusTitle)")
+        .accessibilityLabel("iSH terminal, \(terminalStatusTitle)")
     }
 
     @ViewBuilder
@@ -1236,7 +1236,7 @@ private struct TerminalToolCard: View {
             ProgressView()
                 .controlSize(.mini)
                 .tint(.blue)
-                .accessibilityLabel("运行中")
+                .accessibilityLabel("Running")
         } else {
             Image(systemName: statusIcon)
                 .font(.caption)
@@ -1246,16 +1246,16 @@ private struct TerminalToolCard: View {
     }
 
     private var statusLabel: String? {
-        if model.isRunning { return "运行中" }
-        if model.status == .interrupted { return "已取消" }
-        if let exitCode = model.exitCode, exitCode != 0 { return "退出码 \(exitCode)" }
+        if model.isRunning { return "Running" }
+        if model.status == .interrupted { return "Cancelled" }
+        if let exitCode = model.exitCode, exitCode != 0 { return "Exit code \(exitCode)" }
         return nil
     }
 
     private var terminalStatusTitle: String {
-        if model.isRunning { return "运行中" }
-        if model.status == .interrupted { return "已取消" }
-        return model.failedExit ? "失败" : "已完成"
+        if model.isRunning { return "Running" }
+        if model.status == .interrupted { return "Cancelled" }
+        return model.failedExit ? "Failed" : "Completed"
     }
 
     private var statusIcon: String {
@@ -1279,7 +1279,7 @@ private struct TerminalToolCard: View {
             parts.append("PID \(processID)")
         }
         if let timeout = model.timeoutSeconds {
-            parts.append("超时 \(timeout) s")
+            parts.append("Timeout \(timeout) s")
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
@@ -1300,20 +1300,20 @@ private struct TerminalOutputRows: View {
                     Button {
                         isExpanded.toggle()
                     } label: {
-                        Text(isExpanded ? "收起" : "… 其余 \(slice.hidden) 行")
+                        Text(isExpanded ? "Collapse" : "… \(slice.hidden) more lines")
                             .font(.caption2.monospaced())
                             .foregroundStyle(.white.opacity(0.55))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 5)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(isExpanded ? "收起输出" : "展开其余 \(slice.hidden) 行输出")
+                    .accessibilityLabel(isExpanded ? "Collapse Output" : "Show \(slice.hidden) more output lines")
                 }
                 ForEach(slice.tail) { line in
                     terminalLine(line)
                 }
                 if model.outputPreviewTruncated {
-                    Text("界面预览 \(model.outputLines.count) / \(model.totalOutputLines) 行")
+                    Text("UI preview \(model.outputLines.count) / \(model.totalOutputLines) lines")
                         .font(.caption2.monospaced())
                         .foregroundStyle(.yellow.opacity(0.8))
                         .padding(.horizontal, 10)

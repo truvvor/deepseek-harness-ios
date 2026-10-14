@@ -23,8 +23,8 @@ struct HarnessSchedulePanel: View {
 
     private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.dateFormat = "M月d日 HH:mm"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "MMM d HH:mm"
         return formatter
     }()
 
@@ -33,15 +33,15 @@ struct HarnessSchedulePanel: View {
             Group {
                 if let loadError {
                     ContentUnavailableView(
-                        "无法读取定时提醒",
+                        "Unable to Load Scheduled Reminders",
                         systemImage: "exclamationmark.triangle",
                         description: Text(loadError)
                     )
                 } else if schedules.isEmpty {
                     ContentUnavailableView(
-                        "暂无定时提醒",
+                        "No Scheduled Reminders",
                         systemImage: "clock.badge.checkmark",
-                        description: Text("模型可通过 schedule 工具为本会话创建定时提醒。")
+                        description: Text("The model can create scheduled reminders for this session with the schedule tool.")
                     )
                 } else {
                     List {
@@ -52,11 +52,11 @@ struct HarnessSchedulePanel: View {
                     }
                 }
             }
-            .navigationTitle("定时提醒")
+            .navigationTitle("Scheduled Reminders")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("完成", action: dismiss)
+                    Button("Done", action: dismiss)
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
@@ -64,7 +64,7 @@ struct HarnessSchedulePanel: View {
                     } label: {
                         Image(systemName: "arrow.clockwise")
                     }
-                    .accessibilityLabel("刷新提醒")
+                    .accessibilityLabel("Refresh Reminders")
                 }
             }
         }
@@ -77,7 +77,7 @@ struct HarnessSchedulePanel: View {
     }
 
     private var pendingSection: some View {
-        Section("待执行") {
+        Section("Pending") {
             ForEach(pending, id: \.id) { schedule in
                 ScheduleRow(schedule: schedule, store: store) { id in
                     await cancel(scheduleID: id)
@@ -88,7 +88,7 @@ struct HarnessSchedulePanel: View {
 
     @ViewBuilder
     private var finishedSection: some View {
-        Section("已完成或已取消") {
+        Section("Completed or Cancelled") {
             ForEach(finished, id: \.id) { schedule in
                 ScheduleRow(schedule: schedule, store: nil) { _ in }
             }
@@ -126,7 +126,7 @@ struct HarnessSchedulePanel: View {
             _ = try await store.delete(id: scheduleID, ownerSession: sessionID)
             refresh()
         } catch {
-            loadError = "取消失败：\(error.localizedDescription)"
+            loadError = "Cancel failed: \(error.localizedDescription)"
         }
     }
 }
@@ -143,7 +143,7 @@ private struct ScheduleRow: View {
                 .foregroundStyle(tint)
                 .padding(.top, 2)
             VStack(alignment: .leading, spacing: 3) {
-                Text(schedule.label.isEmpty ? "未命名提醒" : schedule.label)
+                Text(schedule.label.isEmpty ? "Untitled Reminder" : schedule.label)
                     .font(.body.weight(.medium))
                 Text(HarnessSchedulePanel.relativeTime(schedule.runAt))
                     .font(.caption)
@@ -155,14 +155,14 @@ private struct ScheduleRow: View {
                         .lineLimit(2)
                 }
                 if let lastError = schedule.lastError, schedule.status == .pending {
-                    Text("上次执行失败：\(lastError)")
+                    Text("Last run failed: \(lastError)")
                         .font(.caption2)
                         .foregroundStyle(.red)
                 }
             }
             Spacer()
             if schedule.status == .pending, let store {
-                Button("取消", role: .destructive) {
+                Button("Cancel", role: .destructive) {
                     Task { await onCancel(schedule.id) }
                 }
                 .font(.caption)
@@ -186,10 +186,10 @@ private struct ScheduleRow: View {
 
     private var statusLabel: String {
         switch schedule.status {
-        case .pending: "待执行"
-        case .claimed: "执行中"
-        case .completed: "已完成"
-        case .cancelled: "已取消"
+        case .pending: "Pending"
+        case .claimed: "Running"
+        case .completed: "Completed"
+        case .cancelled: "Cancelled"
         }
     }
 }

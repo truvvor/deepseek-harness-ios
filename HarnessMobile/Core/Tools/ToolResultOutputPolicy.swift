@@ -23,8 +23,8 @@ struct ToolResultOutputPolicyError: LocalizedError, Sendable, Equatable {
     let spillFailure: String
 
     var errorDescription: String? {
-        let kind = originalWasError ? "工具原始错误" : "工具结果"
-        return "\(kind)过长且无法保存完整内容：\(spillFailure) 原始内容开头：\(originalPreview)"
+        let kind = originalWasError ? "Original tool error" : "Tool result"
+        return "\(kind) is too long and the full content could not be saved: \(spillFailure) Start of original content: \(originalPreview)"
     }
 }
 

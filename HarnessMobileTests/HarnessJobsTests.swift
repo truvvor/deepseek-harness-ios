@@ -382,7 +382,7 @@ final class HarnessJobsTests: XCTestCase {
             ).first { $0.definition.name == "subagent_fork" }
         )
 
-        XCTAssertTrue(fork.definition.description.contains("最近一个已完成回合"))
+        XCTAssertTrue(fork.definition.description.contains("most recent completed turn"))
         let result = try await fork.execute(arguments: [
             "prompt": .string("fork this completed context"),
             "label": .string("fork")

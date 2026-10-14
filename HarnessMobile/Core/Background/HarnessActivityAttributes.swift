@@ -54,7 +54,7 @@ struct HarnessLiveActivityState: Codable, Hashable, Sendable {
 
         if privacyModeEnabled {
             return HarnessLiveActivityState(
-                sessionTitle: "Harness 任务",
+                sessionTitle: "Harness Task",
                 phase: phase,
                 detail: phase.privateDetail,
                 toolName: nil,
@@ -67,7 +67,7 @@ struct HarnessLiveActivityState: Codable, Hashable, Sendable {
         }
 
         return HarnessLiveActivityState(
-            sessionTitle: normalized(sessionTitle, fallback: "Harness 任务", limit: 80),
+            sessionTitle: normalized(sessionTitle, fallback: "Harness Task", limit: 80),
             phase: phase,
             detail: normalized(detail, fallback: phase.privateDetail, limit: 160),
             toolName: normalizedOptional(toolName, limit: 48),
@@ -132,17 +132,17 @@ private extension HarnessLiveActivityPhase {
     var privateDetail: String {
         switch self {
         case .preparing:
-            "正在准备本机任务"
+            "Preparing local task"
         case .working:
-            "任务正在本机执行"
+            "Task running locally"
         case .usingTool:
-            "正在执行已批准的本机工具"
+            "Running an approved local tool"
         case .completed:
-            "任务已完成"
+            "Task completed"
         case .failed:
-            "任务未完成"
+            "Task not completed"
         case .interrupted:
-            "任务已被系统中断"
+            "Task interrupted by the system"
         }
     }
 }

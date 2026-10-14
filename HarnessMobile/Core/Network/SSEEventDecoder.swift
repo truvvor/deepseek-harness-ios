@@ -139,11 +139,11 @@ enum SSEEventDecoderError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case let .lineTooLarge(limit):
-            return "模型流式数据行超过 \(limit) 字节上限。"
+            return "A model stream data line exceeds the \(limit)-byte limit."
         case let .eventTooLarge(limit):
-            return "模型流式事件超过 \(limit) 字节上限。"
+            return "A model stream event exceeds the \(limit)-byte limit."
         case .invalidUTF8:
-            return "模型流式事件不是有效的 UTF-8。"
+            return "A model stream event is not valid UTF-8."
         }
     }
 }

@@ -55,16 +55,16 @@ actor MCPConfigurationStore {
         guard fileManager.fileExists(atPath: fileURL.path) else { return [] }
         let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
         guard data.count <= maximumFileBytes else {
-            throw MCPClientError.invalidConfiguration("MCP 配置文件超过大小上限")
+            throw MCPClientError.invalidConfiguration("MCP config file exceeds the size limit")
         }
         let object = try JSONSerialization.jsonObject(with: data)
         guard let document = object as? [String: Any],
               document["schemaVersion"] as? Int == 1,
               let entries = document["servers"] as? [Any] else {
-            throw MCPClientError.invalidConfiguration("MCP 配置文件格式或版本无效")
+            throw MCPClientError.invalidConfiguration("Invalid MCP config file format or version")
         }
         guard entries.count <= maximumServerCount else {
-            throw MCPClientError.invalidConfiguration("MCP 服务数量超过上限")
+            throw MCPClientError.invalidConfiguration("Too many MCP servers")
         }
 
         var names = Set<String>()
@@ -103,19 +103,19 @@ actor MCPConfigurationStore {
 
     func replace(_ servers: [MCPConfiguredServer]) throws {
         guard servers.count <= maximumServerCount else {
-            throw MCPClientError.invalidConfiguration("MCP 服务数量超过上限")
+            throw MCPClientError.invalidConfiguration("Too many MCP servers")
         }
         var names = Set<String>()
         for server in servers {
             try server.validate()
             guard names.insert(server.server.serverName).inserted else {
-                throw MCPClientError.invalidConfiguration("MCP serverName 不能重复")
+                throw MCPClientError.invalidConfiguration("MCP serverName must be unique")
             }
         }
         let ordered = servers.sorted { $0.server.serverName < $1.server.serverName }
         let data = try JSONEncoder().encode(Document(schemaVersion: 1, servers: ordered))
         guard data.count <= maximumFileBytes else {
-            throw MCPClientError.invalidConfiguration("MCP 配置文件超过大小上限")
+            throw MCPClientError.invalidConfiguration("MCP config file exceeds the size limit")
         }
         try fileManager.createDirectory(
             at: fileURL.deletingLastPathComponent(),
@@ -225,7 +225,7 @@ actor MCPClientRegistry {
         var result: [(String, MCPToolDefinition)] = []
         for name in names {
             guard let entry = entries[name] else {
-                throw MCPClientError.invalidState("MCP 服务未连接：\(name)")
+                throw MCPClientError.invalidState("MCP server not connected: \(name)")
             }
             for definition in await entry.client.discoveredTools() {
                 result.append((name, definition))
@@ -236,7 +236,7 @@ actor MCPClientRegistry {
 
     func call(serverName: String, toolName: String, arguments: [String: JSONValue]) async throws -> MCPToolCallResult {
         guard let entry = entries[serverName] else {
-            throw MCPClientError.invalidState("MCP 服务未连接：\(serverName)")
+            throw MCPClientError.invalidState("MCP server not connected: \(serverName)")
         }
         return try await entry.client.callTool(rawName: toolName, arguments: arguments)
     }
@@ -389,7 +389,7 @@ private actor MCPToolGenerationPublisher {
             MCPToolNames.publicName(serverName: serverName, rawName: $0.name)
         }
         guard Set(publicNames).count == publicNames.count else {
-            throw MCPClientError.invalidConfiguration("MCP 服务返回了冲突的公开工具名")
+            throw MCPClientError.invalidConfiguration("MCP server returned conflicting public tool names")
         }
         let directTools = definitions.map {
             MCPDiscoveredLocalTool(
@@ -429,7 +429,7 @@ private struct MCPDiscoveredLocalTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "调用 MCP 工具 \(serverName)/\(discoveredDefinition.name)"
+        "Call MCP tool \(serverName)/\(discoveredDefinition.name)"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {

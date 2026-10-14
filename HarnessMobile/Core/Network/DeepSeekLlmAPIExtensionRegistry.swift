@@ -23,11 +23,11 @@ final class DeepSeekLlmAPIExtensionRegistry: @unchecked Sendable {
         var errorDescription: String? {
             switch self {
             case let .malformedField(name):
-                "DeepSeek 请求扩展字段名不合法：\(name)。"
+                "Invalid DeepSeek request extension field name: \(name)."
             case let .duplicateField(name):
-                "DeepSeek 请求扩展字段已被认领：\(name)。"
+                "DeepSeek request extension field is already claimed: \(name)."
             case .capacityReached:
-                "DeepSeek 请求扩展字段数量已达上限。"
+                "DeepSeek request extension field limit reached."
             }
         }
     }

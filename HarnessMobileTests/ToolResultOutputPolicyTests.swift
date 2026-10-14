@@ -159,7 +159,7 @@ final class ToolResultOutputPolicyTests: XCTestCase {
         } catch let error as ToolResultOutputPolicyError {
             XCTAssertTrue(error.originalWasError)
             XCTAssertTrue(error.originalPreview.hasPrefix("ORIGINAL_ERROR"))
-            XCTAssertTrue(error.localizedDescription.contains("无法保存完整内容"))
+            XCTAssertTrue(error.localizedDescription.contains("the full content could not be saved"))
         } catch {
             XCTFail("Expected ToolResultOutputPolicyError, got \(error)")
         }

@@ -139,19 +139,31 @@
       },
       "experimental": false,
       "id": "sync-contract",
-      "lastVerified": "2026-08-27",
+      "lastVerified": "2026-09-05",
       "simulator": true,
       "sourcePaths": [
+        "HarnessMobile/Core/Bridge/BridgeClient.swift",
+        "HarnessMobile/Core/Bridge/BridgeMirrorCoordinator.swift",
+        "HarnessMobile/Core/Bridge/BridgeSessionEventConverter.swift",
+        "HarnessMobile/Core/Bridge/BridgeSessionImporter.swift",
+        "HarnessMobile/Core/Bridge/BridgeSessionMirrorStore.swift",
+        "HarnessMobile/Core/Bridge/BridgeSessionModel.swift",
+        "HarnessMobile/Core/Bridge/BridgeSessionSync.swift",
+        "HarnessMobile/Core/Bridge/BridgeSettings.swift",
         "HarnessMobile/Core/Sync/HarnessSyncEnvelope.swift",
         "HarnessMobile/Core/Trace/SessionTrajectoryRepository.swift"
       ],
-      "state": "PARTIAL",
+      "state": "VERIFY",
       "surfaces": [
         "production",
         "boundary",
         "persistence"
       ],
       "testPaths": [
+        "HarnessMobileTests/BridgeClientDecodingTests.swift",
+        "HarnessMobileTests/BridgeSessionEventConverterTests.swift",
+        "HarnessMobileTests/BridgeSessionImporterTests.swift",
+        "HarnessMobileTests/BridgeSessionSyncTests.swift",
         "HarnessMobileTests/HarnessSyncEnvelopeTests.swift",
         "HarnessMobileTests/SessionTrajectoryRepositoryTests.swift"
       ],
@@ -197,7 +209,7 @@
       "unit": true
     }
   ],
-  "generatedAt": "2026-08-28",
+  "generatedAt": "2026-09-05",
   "repository": "deepseek-harness-ios",
   "schemaVersion": 1
 }

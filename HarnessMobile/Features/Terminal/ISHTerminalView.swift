@@ -217,9 +217,9 @@ private enum ISHTerminalMode: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .commands:
-            return "命令"
+            return "Command"
         case .terminal:
-            return "终端"
+            return "Terminal"
         }
     }
 }
@@ -231,7 +231,7 @@ struct ISHTerminalView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("iSH 模式", selection: $mode) {
+            Picker("iSH Mode", selection: $mode) {
                 ForEach(ISHTerminalMode.allCases) { mode in
                     Text(mode.title).tag(mode)
                 }
@@ -276,9 +276,9 @@ private struct ISHCommandConsoleView: View {
 
                     if terminal.records.isEmpty {
                         ContentUnavailableView(
-                            "iSH 命令沙箱",
+                            "iSH Command Sandbox",
                             systemImage: "terminal",
-                            description: Text("ARM64 Alpine 在手机本机运行；工作目录是 /workspace。")
+                            description: Text("ARM64 Alpine runs locally on the phone; the working directory is /workspace.")
                         )
                     } else {
                         ForEach(terminal.records) { record in
@@ -304,7 +304,7 @@ private struct ISHCommandConsoleView: View {
                 Button {
                     terminal.clearCompleted()
                 } label: {
-                    Label("清除已完成记录", systemImage: "trash")
+                    Label("Clear Completed", systemImage: "trash")
                         .frame(minWidth: 44, minHeight: 44)
                 }
                 .disabled(terminal.records.allSatisfy { record in
@@ -320,9 +320,9 @@ private struct ISHCommandConsoleView: View {
 
     private var commandBar: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            TextField("输入 Alpine 命令", text: $command, axis: .vertical)
+            TextField("Enter an Alpine command", text: $command, axis: .vertical)
                 .accessibilityIdentifier("ish-command-field")
-                .accessibilityLabel("Alpine 命令")
+                .accessibilityLabel("Alpine command")
                 .focused($isCommandFocused)
                 .lineLimit(1...5)
                 .textInputAutocapitalization(.never)
@@ -343,7 +343,7 @@ private struct ISHCommandConsoleView: View {
                         .frame(width: 44, height: 44)
                         .background(.red, in: Circle())
                 }
-                .accessibilityLabel("停止命令")
+                .accessibilityLabel("Stop command")
                 .accessibilityIdentifier("ish-stop-command")
             } else {
                 Button(action: runCommand) {
@@ -353,7 +353,7 @@ private struct ISHCommandConsoleView: View {
                         .background(Color.accentColor, in: Circle())
                 }
                 .disabled(!canRun)
-                .accessibilityLabel("执行命令")
+                .accessibilityLabel("Run command")
                 .accessibilityIdentifier("ish-run-command")
             }
         }
@@ -391,9 +391,9 @@ private struct ISHSandboxStatusView: View {
                 switch state {
                 case .idle, .preparing:
                     ProgressView()
-                    Text("正在准备 Alpine")
+                    Text("Preparing Alpine")
                 case .ready:
-                    Label("ARM64 Alpine 已就绪", systemImage: "checkmark.circle.fill")
+                    Label("ARM64 Alpine Ready", systemImage: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                         .accessibilityIdentifier("ish-ready-status")
                 case let .failed(message):
@@ -404,13 +404,13 @@ private struct ISHSandboxStatusView: View {
             }
 
             HStack(spacing: 8) {
-                Label("Linux 网络", systemImage: "network")
+                Label("Linux Network", systemImage: "network")
 
                 Spacer()
 
-                Toggle("Linux 网络", isOn: $isGuestNetworkEnabled)
+                Toggle("Linux Network", isOn: $isGuestNetworkEnabled)
                     .labelsHidden()
-                    .accessibilityLabel("Linux 网络")
+                    .accessibilityLabel("Linux Network")
                     .accessibilityIdentifier("ish-network-toggle")
                     .disabled(state != .ready)
             }
@@ -459,16 +459,16 @@ private struct ISHConsoleRecordView: View {
         case .running:
             ProgressView()
                 .controlSize(.small)
-                .accessibilityLabel("运行中")
+                .accessibilityLabel("Running")
         case let .completed(code):
             Text("exit \(code)")
                 .foregroundStyle(code == 0 ? .green : .orange)
         case .failed:
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.red)
-                .accessibilityLabel("执行失败")
+                .accessibilityLabel("Failed")
         case .cancelled:
-            Text("已停止")
+            Text("Stopped")
                 .foregroundStyle(.secondary)
         }
     }

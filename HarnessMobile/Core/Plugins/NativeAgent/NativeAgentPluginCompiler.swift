@@ -121,7 +121,7 @@ struct NativeAgentPluginCompiler: Sendable {
             await onEvent(.adaptabilityAccepted(name: draft.name))
         } else {
             let reason = draft.reason?.trimmingCharacters(in: .whitespacesAndNewlines)
-                ?? "源码依赖无法映射到当前原生能力。"
+                ?? "The source dependency cannot be mapped to a currently available native capability."
             await onEvent(.adaptabilityRejected(reason: reason))
         }
         await onEvent(.validationStarted)
@@ -151,7 +151,7 @@ struct NativeAgentPluginCompiler: Sendable {
         let source = try source.validated()
         guard draft.adaptable else {
             let reason = draft.reason?.trimmingCharacters(in: .whitespacesAndNewlines)
-                ?? "源码依赖无法映射到当前原生能力。"
+                ?? "The source dependency cannot be mapped to a currently available native capability."
             throw NativeAgentPluginError.sourceNotAdaptable(reason)
         }
         let plugin = NativeAgentCompiledPlugin(

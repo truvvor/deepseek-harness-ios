@@ -1510,21 +1510,21 @@ actor SlashCommandRegistry {
 
 enum SlashCommandBuiltins {
     static let definitions: [SlashCommandDefinition] = [
-        make(name: "help", description: "查看可用的斜杠命令", hint: "[query]") { invocation in
+        make(name: "help", description: "Show available slash commands", hint: "[query]") { invocation in
             let query = try bounded(invocation.parsed.trimmedInput, command: "help", maximumBytes: 256)
             return .success(action: .help(query: query.isEmpty ? nil : query))
         },
-        make(name: "new", description: "新建一个会话", hint: "[title]") { invocation in
+        make(name: "new", description: "Start a new session", hint: "[title]") { invocation in
             let title = try bounded(invocation.parsed.trimmedInput, command: "new", maximumBytes: 4 * 1_024)
             return .success(action: .newSession(title: title.isEmpty ? nil : title))
         },
-        make(name: "clear", description: "清空当前会话消息") { invocation in
+        make(name: "clear", description: "Clear messages in the current session") { invocation in
             try requireNoArguments(invocation, usage: "/clear (no arguments)")
             return .success(action: .clear)
         },
         make(
             name: "goal",
-            description: "设置当前会话目标",
+            description: "Set the current session goal",
             hint: "[message]",
             imagePolicy: .accepted
         ) { invocation in
@@ -1561,7 +1561,7 @@ enum SlashCommandBuiltins {
         },
         make(
             name: "plan",
-            description: "进入或退出计划模式",
+            description: "Enter or exit Plan mode",
             hint: "[off|on|message]",
             imagePolicy: .accepted
         ) { invocation in
@@ -1585,7 +1585,7 @@ enum SlashCommandBuiltins {
         },
         make(
             name: "feedback",
-            description: "评价最近回复或补充备注",
+            description: "Rate the latest reply or add a note",
             hint: "[message-id] [like|dislike|note|clear] [text]"
         ) { invocation in
             let input = try bounded(
@@ -1652,7 +1652,7 @@ enum SlashCommandBuiltins {
         },
         make(
             name: "agent",
-            description: "切换 Agent 预设",
+            description: "Switch Agent preset",
             hint: "[preset]",
             completion: .agent
         ) { invocation in
@@ -1664,18 +1664,18 @@ enum SlashCommandBuiltins {
         },
         make(
             name: "model",
-            description: "选择服务商与模型",
+            description: "Choose provider and model",
             hint: "[provider/]model [--reasoning <mode>]",
             completion: .model
         ) { invocation in
             let input = try bounded(invocation.parsed.trimmedInput, command: "model", maximumBytes: 512)
             return .success(action: .model(selection: try parseModelSelection(input)))
         },
-        make(name: "compact", description: "压缩较早的会话历史") { invocation in
+        make(name: "compact", description: "Compact earlier session history") { invocation in
             try requireNoArguments(invocation, usage: "/compact (no arguments)")
             return .success(action: .compact)
         },
-        make(name: "status", description: "查看当前会话状态") { invocation in
+        make(name: "status", description: "Show current session status") { invocation in
             try requireNoArguments(invocation, usage: "/status (no arguments)")
             return .success(action: .status)
         }

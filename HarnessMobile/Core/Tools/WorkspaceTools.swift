@@ -18,7 +18,7 @@ struct WorkspaceListTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "列出手机工作区和挂载目录中的文件"
+        "List files in the phone workspace and mounted folders"
     }
 
     func execute(arguments: [String: JSONValue]) async throws -> String {
@@ -55,7 +55,7 @@ struct WorkspaceReadTextTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "读取并发送文件：\(arguments["path"]?.stringValue ?? "未知路径")"
+        "Read and send file: \(arguments["path"]?.stringValue ?? "unknown path")"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -128,9 +128,9 @@ struct WorkspaceWriteTextTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        let path = arguments["path"]?.stringValue ?? "未知路径"
+        let path = arguments["path"]?.stringValue ?? "unknown path"
         let bytes = arguments["text"]?.stringValue?.utf8.count ?? 0
-        return "创建或覆盖本地文件：\(path)（\(bytes) 字节）"
+        return "Create or overwrite local file: \(path) (\(bytes) bytes)"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {

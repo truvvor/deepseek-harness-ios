@@ -131,15 +131,20 @@ struct ConversationCheckpoint: Sendable, Equatable {
     var messages: [AgentMessage]
     var workState: ConversationWorkState
     var controlState: ConversationControlState
+    /// Non-nil to keep (or set) the read-only desktop-mirror provenance of the
+    /// session this checkpoint is written to.
+    var bridgeMirror: BridgeSessionMirror?
 
     init(
         messages: [AgentMessage],
         workState: ConversationWorkState = ConversationWorkState(),
-        controlState: ConversationControlState = ConversationControlState()
+        controlState: ConversationControlState = ConversationControlState(),
+        bridgeMirror: BridgeSessionMirror? = nil
     ) {
         self.messages = messages
         self.workState = workState
         self.controlState = controlState
+        self.bridgeMirror = bridgeMirror
     }
 }
 
@@ -161,6 +166,11 @@ struct ConversationSession: Codable, Sendable, Equatable, Identifiable {
     var titleSource: ConversationSessionTitleSource?
     var archivedAt: Date?
     let forkedFromSessionID: UUID?
+    /// Set for a session mirrored from the DeepSeek Harness desktop bridge. Such
+    /// a session is read-only on this device and never starts the local agent
+    /// loop. Optional so snapshot version 4 stays readable in both directions:
+    /// a snapshot written before mirrors existed decodes with `nil`.
+    var bridgeMirror: BridgeSessionMirror?
 
     init(
         id: UUID,
@@ -173,7 +183,8 @@ struct ConversationSession: Codable, Sendable, Equatable, Identifiable {
         revision: Int,
         titleSource: ConversationSessionTitleSource? = nil,
         archivedAt: Date? = nil,
-        forkedFromSessionID: UUID? = nil
+        forkedFromSessionID: UUID? = nil,
+        bridgeMirror: BridgeSessionMirror? = nil
     ) {
         self.id = id
         self.title = title
@@ -186,11 +197,16 @@ struct ConversationSession: Codable, Sendable, Equatable, Identifiable {
         self.titleSource = titleSource
         self.archivedAt = archivedAt
         self.forkedFromSessionID = forkedFromSessionID
+        self.bridgeMirror = bridgeMirror
     }
 
     var isArchived: Bool { archivedAt != nil }
 
+    /// A mirror is written by the desktop host, not by this device.
+    var isDesktopMirror: Bool { bridgeMirror != nil }
+
     var isResumable: Bool {
+        guard !isDesktopMirror else { return false }
         guard let last = messages.last else { return false }
         return last.role == .user || last.role == .tool
     }
@@ -199,12 +215,14 @@ struct ConversationSession: Codable, Sendable, Equatable, Identifiable {
         ConversationSessionSummary(
             id: id,
             title: title,
-            messageCount: messages.lazy.filter(\.isChatVisible).count,
+            messageCount: bridgeMirror?.transcriptMessageCount
+                ?? messages.lazy.filter(\.isChatVisible).count,
             createdAt: createdAt,
             updatedAt: updatedAt,
             revision: revision,
             archivedAt: archivedAt,
             forkedFromSessionID: forkedFromSessionID,
+            bridgeMirror: bridgeMirror,
             queuedInputCount: controlState.queuedInputs.count,
             isResumable: isResumable
         )
@@ -220,10 +238,14 @@ struct ConversationSessionSummary: Sendable, Equatable, Identifiable {
     let revision: Int
     let archivedAt: Date?
     let forkedFromSessionID: UUID?
+    /// Present when this session is a read-only mirror of a desktop session.
+    let bridgeMirror: BridgeSessionMirror?
     let queuedInputCount: Int
     let isResumable: Bool
 
     var isArchived: Bool { archivedAt != nil }
+
+    var isDesktopMirror: Bool { bridgeMirror != nil }
 }
 
 struct ConversationSessionSearchResult: Sendable, Equatable, Identifiable {
@@ -485,8 +507,9 @@ actor SessionStore {
     @discardableResult
     func createSession(
         id: UUID = UUID(),
-        title: String = "新会话",
+        title: String = "New Session",
         titleSource: ConversationSessionTitleSource? = nil,
+        bridgeMirror: BridgeSessionMirror? = nil,
         workState: ConversationWorkState = ConversationWorkState(),
         controlState: ConversationControlState = ConversationControlState(),
         makeActive: Bool = true
@@ -494,7 +517,7 @@ actor SessionStore {
         var snapshot = try readSnapshot()
         let now = Date.now
         let normalizedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let resolvedTitle = normalizedTitle.isEmpty ? "新会话" : normalizedTitle
+        let resolvedTitle = normalizedTitle.isEmpty ? "New Session" : normalizedTitle
         let session = ConversationSession(
             id: id,
             title: resolvedTitle,
@@ -504,7 +527,8 @@ actor SessionStore {
             createdAt: now,
             updatedAt: now,
             revision: 0,
-            titleSource: titleSource ?? (resolvedTitle == "新会话" ? .fallback : .user)
+            titleSource: titleSource ?? (resolvedTitle == "New Session" ? .fallback : .user),
+            bridgeMirror: bridgeMirror
         )
         snapshot.sessions.append(session)
         if makeActive || snapshot.activeSessionID == nil {
@@ -708,7 +732,7 @@ actor SessionStore {
         }
         let session = ConversationSession(
             id: UUID(),
-            title: "当前会话",
+            title: "Current Session",
             messages: ConversationCompactor.repairIncompleteToolTurn(checkpoint.messages),
             workState: checkpoint.workState,
             controlState: controlState,
@@ -735,9 +759,16 @@ actor SessionStore {
         if !checkpoint.messages.isEmpty {
             controlState.lockAgentPreset()
         }
-        snapshot.sessions[index].messages = ConversationCompactor.repairIncompleteToolTurn(
-            checkpoint.messages
-        )
+        if let bridgeMirror = checkpoint.bridgeMirror {
+            snapshot.sessions[index].bridgeMirror = bridgeMirror
+        }
+        // A desktop mirror is a transcript of another host's log, never a model
+        // request: an unanswered tool call (a replaced draft, a turn still
+        // running on the desktop) is legitimate there. Trimming at the first
+        // such call would cut off everything after it.
+        snapshot.sessions[index].messages = snapshot.sessions[index].isDesktopMirror
+            ? checkpoint.messages
+            : ConversationCompactor.repairIncompleteToolTurn(checkpoint.messages)
         snapshot.sessions[index].workState = checkpoint.workState
         snapshot.sessions[index].controlState = controlState
         snapshot.sessions[index].updatedAt = now
@@ -761,7 +792,7 @@ actor SessionStore {
             let repaired = ConversationCompactor.repairIncompleteToolTurn(legacy.messages)
             let session = ConversationSession(
                 id: UUID(),
-                title: "迁移的会话",
+                title: "Migrated Session",
                 messages: repaired,
                 workState: ConversationWorkState(),
                 controlState: ConversationControlState(),
@@ -841,9 +872,9 @@ actor SessionStore {
         }
 
         for index in snapshot.sessions.indices {
-            let repaired = ConversationCompactor.repairIncompleteToolTurn(
-                snapshot.sessions[index].messages
-            )
+            let repaired = snapshot.sessions[index].isDesktopMirror
+                ? snapshot.sessions[index].messages
+                : ConversationCompactor.repairIncompleteToolTurn(snapshot.sessions[index].messages)
             if repaired != snapshot.sessions[index].messages {
                 snapshot.sessions[index].messages = repaired
                 snapshot.sessions[index].updatedAt = .now
@@ -851,7 +882,10 @@ actor SessionStore {
                 changed = true
             }
             if !snapshot.sessions[index].messages.isEmpty,
-               !snapshot.sessions[index].controlState.isAgentPresetLocked {
+               !snapshot.sessions[index].controlState.isAgentPresetLocked,
+               // A desktop mirror is read-only here, so locking its preset would
+               // report a local agent-loop state the session can never enter.
+               !snapshot.sessions[index].isDesktopMirror {
                 snapshot.sessions[index].controlState.lockAgentPreset()
                 snapshot.sessions[index].updatedAt = .now
                 snapshot.sessions[index].revision += 1
@@ -883,7 +917,7 @@ actor SessionStore {
     }
 
     private static func forkTitle(for sourceTitle: String) -> String {
-        let suffix = " 副本"
+        let suffix = " Copy"
         let available = max(1, 80 - suffix.count)
         return String(sourceTitle.prefix(available)) + suffix
     }
@@ -1022,15 +1056,15 @@ enum SessionStoreError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case let .unsupportedVersion(version):
-            return "不支持的会话版本：\(version)。"
+            return "Unsupported session version: \(version)."
         case let .sessionNotFound(id):
-            return "找不到会话：\(id.uuidString)。"
+            return "Session not found: \(id.uuidString)."
         case let .sessionArchived(id):
-            return "会话已归档，请先恢复：\(id.uuidString)。"
+            return "Session is archived; restore it first: \(id.uuidString)."
         case .corruptSnapshot:
-            return "会话快照已损坏。"
+            return "The session snapshot is corrupted."
         case .emptyTitle:
-            return "会话标题不能为空。"
+            return "Session title cannot be empty."
         }
     }
 }
@@ -1199,13 +1233,13 @@ enum AppIntentInboxError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidRequest:
-            "App Intent 请求无效。"
+            "Invalid App Intent request."
         case .queueFull:
-            "App Intent 请求队列已满。"
+            "The App Intent request queue is full."
         case let .unsupportedVersion(version):
-            "不支持的 App Intent 收件箱版本：\(version)。"
+            "Unsupported App Intent inbox version: \(version)."
         case .unreadableStore:
-            "App Intent 收件箱无法读取。"
+            "The App Intent inbox cannot be read."
         }
     }
 }

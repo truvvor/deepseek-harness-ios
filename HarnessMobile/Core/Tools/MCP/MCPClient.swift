@@ -139,13 +139,13 @@ actor MCPStdioClient {
         switch state {
         case .running:
             guard let initializeResult else {
-                throw MCPClientError.invalidState("客户端正在启动")
+                throw MCPClientError.invalidState("Client is starting")
             }
             return initializeResult
         case .idle, .stopped:
             break
         case .stopping:
-            throw MCPClientError.invalidState("客户端正在停止")
+            throw MCPClientError.invalidState("Client is stopping")
         }
 
         state = .running
@@ -232,7 +232,7 @@ actor MCPStdioClient {
         arguments: [String: JSONValue]
     ) async throws -> MCPToolCallResult {
         guard state == .running, initializeResult != nil else {
-            throw MCPClientError.invalidState("客户端尚未完成 initialize")
+            throw MCPClientError.invalidState("Client has not completed initialize")
         }
         guard let tool = toolsByRawName[rawName] else {
             throw MCPClientError.toolNotFound(rawName)
@@ -328,10 +328,10 @@ actor MCPStdioClient {
             for tool in page.tools {
                 guard !tool.name.isEmpty, tool.name.utf8.count <= 512,
                       !tool.name.contains("\0"), !tool.name.contains("\n"), !tool.name.contains("\r") else {
-                    throw MCPClientError.invalidJSONRPC("tools/list 含有非法工具名称")
+                    throw MCPClientError.invalidJSONRPC("tools/list contains an invalid tool name")
                 }
                 guard names.insert(tool.name).inserted else {
-                    throw MCPClientError.invalidJSONRPC("tools/list 重复工具 (tool.name)")
+                    throw MCPClientError.invalidJSONRPC("tools/list duplicate tool (tool.name)")
                 }
                 discovered.append(tool)
                 guard discovered.count <= configuration.limits.maximumToolCount else {
@@ -349,7 +349,7 @@ actor MCPStdioClient {
                 )
             }
             guard seenCursors.insert(next).inserted else {
-                throw MCPClientError.invalidJSONRPC("tools/list cursor 循环")
+                throw MCPClientError.invalidJSONRPC("tools/list cursor loop")
             }
             cursor = next
         }
@@ -363,7 +363,7 @@ actor MCPStdioClient {
         timeout: Duration
     ) async throws -> JSONValue {
         guard state == .running else {
-            throw MCPClientError.invalidState("stdio 通道未运行")
+            throw MCPClientError.invalidState("stdio channel is not running")
         }
         let requestID = String(nextRequestNumber)
         nextRequestNumber += 1
@@ -495,12 +495,12 @@ actor MCPStdioClient {
             throw MCPClientError.malformedJSON
         }
         guard envelope.jsonrpc == "2.0" else {
-            throw MCPClientError.invalidJSONRPC("jsonrpc 必须是 2.0")
+            throw MCPClientError.invalidJSONRPC("jsonrpc must be 2.0")
         }
 
         if let method = envelope.method {
             guard envelope.id == nil else {
-                throw MCPClientError.invalidJSONRPC("不支持服务端请求")
+                throw MCPClientError.invalidJSONRPC("Server-initiated requests are not supported")
             }
             _ = method
             _ = envelope.params
@@ -508,14 +508,14 @@ actor MCPStdioClient {
         }
 
         guard let id = envelope.id else {
-            throw MCPClientError.invalidJSONRPC("响应缺少 id")
+            throw MCPClientError.invalidJSONRPC("Response is missing id")
         }
         let key = id.stringValue
         guard let request = pending[key] else {
-            throw MCPClientError.invalidJSONRPC("响应 id 不匹配")
+            throw MCPClientError.invalidJSONRPC("Response id mismatch")
         }
         guard (envelope.result == nil) != (envelope.error == nil) else {
-            throw MCPClientError.invalidJSONRPC("响应必须恰好包含 result 或 error")
+            throw MCPClientError.invalidJSONRPC("Response must contain exactly one of result or error")
         }
 
         if let remote = envelope.error {
@@ -532,7 +532,7 @@ actor MCPStdioClient {
         }
 
         guard let result = envelope.result else {
-            throw MCPClientError.invalidJSONRPC("响应 result 缺失")
+            throw MCPClientError.invalidJSONRPC("Response result is missing")
         }
         let resultBytes = try encodedBytes(result)
         guard resultBytes.count <= configuration.limits.maximumResultPayloadBytes else {
@@ -654,7 +654,7 @@ actor MCPStdioClient {
         do {
             return try decoder.decode(type, from: encodedBytes(value))
         } catch {
-            throw MCPClientError.invalidJSONRPC("结果结构不符合预期")
+            throw MCPClientError.invalidJSONRPC("Unexpected result structure")
         }
     }
 

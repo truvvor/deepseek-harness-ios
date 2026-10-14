@@ -13,26 +13,26 @@ final class WorkStateToolsTests: XCTestCase {
         let todos = WorkStateReplaceTodosTool(coordinator: coordinator)
 
         _ = try await goal.execute(arguments: [
-            "title": .string("整理资料"),
+            "title": .string("Organize materials"),
             "status": .string("active")
         ])
         _ = try await plan.execute(arguments: [
             "steps": .array([
-                .object(["title": .string("读取"), "status": .string("completed")]),
-                .object(["title": .string("总结"), "status": .string("active")])
+                .object(["title": .string("Read"), "status": .string("completed")]),
+                .object(["title": .string("Summarize"), "status": .string("active")])
             ])
         ])
         _ = try await todos.execute(arguments: [
             "items": .array([
-                .object(["title": .string("核对来源"), "status": .string("pending")])
+                .object(["title": .string("Verify sources"), "status": .string("pending")])
             ])
         ])
 
         let state = await coordinator.snapshot()
-        XCTAssertEqual(state.goal?.title, "整理资料")
+        XCTAssertEqual(state.goal?.title, "Organize materials")
         XCTAssertEqual(state.goal?.status, .active)
         XCTAssertEqual(state.plan.map(\.status), [.completed, .active])
-        XCTAssertEqual(state.todos.map(\.title), ["核对来源"])
+        XCTAssertEqual(state.todos.map(\.title), ["Verify sources"])
     }
 
     /// Mirrors upstream `dsh-goal-round-driver`: goal rounds are opt-in, count
@@ -40,7 +40,7 @@ final class WorkStateToolsTests: XCTestCase {
     /// silently. Editing a goal must not reset that accounting.
     func testGoalRoundsCountAgainstCapAndBlockWhenSpent() async throws {
         let coordinator = WorkStateCoordinator()
-        _ = try await coordinator.applyGoalAction(.create(title: "整理资料"))
+        _ = try await coordinator.applyGoalAction(.create(title: "Organize materials"))
         // Continuation is off by default: no auto round.
         let beforeEnabling = await coordinator.startGoalRound()
         XCTAssertFalse(beforeEnabling)
@@ -58,7 +58,7 @@ final class WorkStateToolsTests: XCTestCase {
         XCTAssertNotNil(spent?.blocker)
 
         // Editing the goal keeps the accounting.
-        _ = try await coordinator.applyGoalAction(.edit(title: "整理资料（修订）"))
+        _ = try await coordinator.applyGoalAction(.edit(title: "Organize materials (revised)"))
         let edited = await coordinator.snapshot().goal
         XCTAssertEqual(edited?.usedRounds, 2)
         XCTAssertTrue(edited?.isContinuationEnabled == true)
@@ -79,14 +79,14 @@ final class WorkStateToolsTests: XCTestCase {
         XCTAssertNil(empty.goal)
 
         _ = try await setGoal.execute(arguments: [
-            "title": .string("整理资料"),
+            "title": .string("Organize materials"),
             "status": .string("active")
         ])
         let populated = try JSONDecoder().decode(
             ConversationWorkState.self,
             from: Data(try await get.execute(arguments: [:]).utf8)
         )
-        XCTAssertEqual(populated.goal?.title, "整理资料")
+        XCTAssertEqual(populated.goal?.title, "Organize materials")
         XCTAssertEqual(populated.goal?.status, .active)
         XCTAssertEqual(get.definition.name, "work_state_get")
         XCTAssertFalse(get.risk.requiresApproval)
@@ -98,7 +98,7 @@ final class WorkStateToolsTests: XCTestCase {
 
         do {
             _ = try await goal.execute(arguments: [
-                "title": .string("目标"),
+                "title": .string("Goal"),
                 "status": .string("invented"),
                 "remote": .bool(true)
             ])
@@ -118,7 +118,7 @@ final class WorkStateToolsTests: XCTestCase {
             _ = try await tool.execute(arguments: [
                 "items": .array([
                     .object([
-                        "title": .string("测试"),
+                        "title": .string("Test"),
                         "status": .string("in_progress")
                     ])
                 ])
@@ -130,21 +130,21 @@ final class WorkStateToolsTests: XCTestCase {
             XCTAssertTrue(message.contains("in_progress"))
             XCTAssertTrue(message.contains("pending"))
             XCTAssertTrue(message.contains("active"))
-            XCTAssertFalse(message.contains("不是有效的 JSON 对象"))
+            XCTAssertFalse(message.contains("not a valid JSON object"))
         }
     }
 
     func testGoalLifecyclePreservesIdentityAcrossEditAndStatusTransitions() async throws {
-        let original = ConversationGoal(title: "完成手机端移植", status: .active)
+        let original = ConversationGoal(title: "Finish the mobile port", status: .active)
         let coordinator = WorkStateCoordinator(
             state: ConversationWorkState(goal: original)
         )
 
         var state = try await coordinator.applyGoalAction(
-            .edit(title: "  完成手机端 Harness 移植  ")
+            .edit(title: "  Finish the mobile Harness port  ")
         )
         XCTAssertEqual(state.goal?.id, original.id)
-        XCTAssertEqual(state.goal?.title, "完成手机端 Harness 移植")
+        XCTAssertEqual(state.goal?.title, "Finish the mobile Harness port")
 
         state = try await coordinator.applyGoalAction(.pause)
         XCTAssertEqual(state.goal?.status, .paused)
@@ -163,7 +163,7 @@ final class WorkStateToolsTests: XCTestCase {
     }
 
     func testGoalLifecycleRejectsInvalidTransitionsWithoutChangingState() async throws {
-        let original = ConversationGoal(title: "保持状态", status: .active)
+        let original = ConversationGoal(title: "Keep state", status: .active)
         let coordinator = WorkStateCoordinator(
             state: ConversationWorkState(goal: original)
         )
@@ -194,24 +194,24 @@ final class WorkStateToolsTests: XCTestCase {
         let tool = WorkStateSetGoalTool(coordinator: coordinator)
 
         _ = try await tool.execute(arguments: [
-            "title": .string("第一版目标"),
+            "title": .string("First version goal"),
             "status": .string("active")
         ])
         let first = (await coordinator.snapshot()).goal
 
         _ = try await tool.execute(arguments: [
-            "title": .string("修订后的目标"),
+            "title": .string("Revised goal"),
             "status": .string("paused")
         ])
         let revised = (await coordinator.snapshot()).goal
         XCTAssertEqual(revised?.id, first?.id)
 
         _ = try await tool.execute(arguments: [
-            "title": .string("修订后的目标"),
+            "title": .string("Revised goal"),
             "status": .string("completed")
         ])
         _ = try await tool.execute(arguments: [
-            "title": .string("下一项目标"),
+            "title": .string("Next goal"),
             "status": .string("active")
         ])
         let replacement = (await coordinator.snapshot()).goal
@@ -222,12 +222,12 @@ final class WorkStateToolsTests: XCTestCase {
     /// `goal-round-driver/src/prompt.ts` so a transcript explains the turn.
     func testGoalRoundPromptCarriesObjectiveAndRoundBudget() {
         let prompt = WorkStateToolSupport.goalRoundPrompt(
-            objective: "整理资料",
+            objective: "Organize materials",
             round: 2,
             maximum: 8
         )
         XCTAssertTrue(prompt.contains("<goal_round>"))
-        XCTAssertTrue(prompt.contains("Objective: 整理资料"))
+        XCTAssertTrue(prompt.contains("Objective: Organize materials"))
         XCTAssertTrue(prompt.contains("Round: 2/8"))
         XCTAssertTrue(prompt.contains("</goal_round>"))
     }

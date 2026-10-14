@@ -73,7 +73,7 @@ final class ExaSearchProviderTests: XCTestCase {
             _ = try await provider.search(query: "swift", maximumResults: 3)
             XCTFail("expected 429")
         } catch let error as ExaSearchError {
-            XCTAssertEqual(error, .endpoint(status: 429, detail: "端点 https://exa.test 返回 429：{\"error\":\"rate limited\"}"))
+            XCTAssertEqual(error, .endpoint(status: 429, detail: "Endpoint https://exa.test returned 429: {\"error\":\"rate limited\"}"))
         }
     }
 }

@@ -9,13 +9,13 @@ enum HarnessReferenceError: Error, Sendable, Equatable, LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .invalidSessionURI(uri):
-            "无效的会话引用：\(uri)"
+            "Invalid session reference: \(uri)"
         case let .selfReference(id):
-            "当前会话不能引用自己：\(id.uuidString.lowercased())"
+            "The current session cannot reference itself: \(id.uuidString.lowercased())"
         case let .tooManySessions(maximum):
-            "一条消息最多只能引用 \(maximum) 个历史会话。"
+            "A message can reference at most \(maximum) past sessions."
         case .snapshotBudgetExceeded:
-            "历史会话快照无法放入 64 KiB 引用预算。"
+            "The past session snapshot does not fit in the 64 KiB reference budget."
         }
     }
 }
@@ -52,11 +52,11 @@ enum HarnessReferenceSource: String, Codable, CaseIterable, Sendable, Equatable,
     /// values for localized UI only.
     var title: String {
         switch self {
-        case .file: "文件"
-        case .session: "历史会话"
-        case .subagent: "子 Agent"
+        case .file: "File"
+        case .session: "Past Session"
+        case .subagent: "Sub-agent"
         case .skill: "Skill"
-        case .plugin: "插件"
+        case .plugin: "Plugin"
         }
     }
 

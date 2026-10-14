@@ -264,7 +264,7 @@ final class AppModelProviderProfileTests: XCTestCase {
 
         model.reportISHPluginMarketplaceError(MarketplaceFixtureError.offline)
 
-        XCTAssertEqual(model.ishPluginMarketplaceFailure?.message, "目录暂时不可用")
+        XCTAssertEqual(model.ishPluginMarketplaceFailure?.message, "Catalog temporarily unavailable")
         XCTAssertFalse(model.ishPluginMarketplaceFailure?.canRetry ?? true)
         XCTAssertNil(model.errorMessage)
 
@@ -294,7 +294,7 @@ final class AppModelProviderProfileTests: XCTestCase {
 
         // Use the production new-session route. It must leave the first
         // session's root registered while making the new session active.
-        await model.createConversation(title: "第二个会话")
+        await model.createConversation(title: "Second session")
         let secondID = try XCTUnwrap(model.activeSessionID)
         XCTAssertNotEqual(secondID, firstID)
         let firstLookupAfterCreate = await model.sessionRunRegistry.lookup(sessionID: firstID)
@@ -341,7 +341,7 @@ final class AppModelProviderProfileTests: XCTestCase {
 private enum MarketplaceFixtureError: LocalizedError {
     case offline
 
-    var errorDescription: String? { "目录暂时不可用" }
+    var errorDescription: String? { "Catalog temporarily unavailable" }
 }
 
 @MainActor

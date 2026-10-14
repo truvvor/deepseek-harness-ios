@@ -166,6 +166,44 @@ actor CredentialStore {
         try delete(account: validatedAccount(origin))
     }
 
+    // MARK: - Desktop bridge bearer token
+
+    /// Keychain account for the DeepSeek Harness desktop bridge bearer token.
+    ///
+    /// This is deliberately separate from the model-provider namespace:
+    /// `validatedOrigin` requires HTTPS and a root path, while the desktop bridge
+    /// is an `http` loopback/LAN endpoint with the `/bridge/v1` path. The token
+    /// still uses the same Keychain service and the same
+    /// `WhenUnlockedThisDeviceOnly` accessibility, and it is never logged, never
+    /// placed in a URL, and only ever sent as the `Authorization` header of a
+    /// bridge request.
+    static let bridgeTokenAccount = "desktop-bridge-token"
+
+    func saveBridgeToken(_ token: String) throws {
+        let normalized = try normalizedKey(token)
+        try upsert(data: Data(normalized.utf8), account: Self.bridgeTokenAccount)
+    }
+
+    func readBridgeToken() throws -> String? {
+        guard let data = try readData(account: Self.bridgeTokenAccount) else { return nil }
+        guard let token = String(data: data, encoding: .utf8), !token.isEmpty else {
+            throw CredentialStoreError.keychain(errSecDecode)
+        }
+        return token
+    }
+
+    func deleteBridgeToken() throws {
+        try delete(account: Self.bridgeTokenAccount)
+    }
+
+    func bridgeTokenConfigured() -> Bool {
+        do {
+            return try readBridgeToken() != nil
+        } catch {
+            return false
+        }
+    }
+
     @discardableResult
     func migrateLegacyAPIKey(
         from origin: String,
@@ -363,15 +401,15 @@ enum CredentialStoreError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .emptyCredential:
-            return "API Key 不能为空。"
+            return "API Key cannot be empty."
         case .invalidOrigin:
-            return "模型 API origin 无效。"
+            return "The model API origin is invalid."
         case .keyRequiredForOriginChange:
-            return "模型 API 的域名或端口已改变，请为新地址重新输入 API Key。"
+            return "The model API domain or port has changed. Re-enter the API Key for the new address."
         case .credentialOriginMismatch:
-            return "该凭据绑定的模型 API 域名或端口与当前 Provider Profile 不一致，请重新输入 API Key。"
+            return "The model API domain or port bound to this credential does not match the current Provider Profile. Re-enter the API Key."
         case let .keychain(status):
-            return "Keychain 操作失败（\(status)）。"
+            return "Keychain operation failed (\(status))."
         }
     }
 }

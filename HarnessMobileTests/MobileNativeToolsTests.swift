@@ -33,13 +33,13 @@ final class MobileNativeToolsTests: XCTestCase {
 
     func testLocationRejectsArgumentsAndPropagatesTypedDenial() async throws {
         let denied = LocationCurrentTool(
-            provider: LocationProviderFake(result: .failure(.permissionDenied("定位")))
+            provider: LocationProviderFake(result: .failure(.permissionDenied("Location")))
         )
 
         XCTAssertThrowsError(try denied.validate(arguments: ["precision": .string("exact")]))
         await XCTAssertThrowsMobileError(
             try await denied.execute(arguments: [:]),
-            expected: .permissionDenied("定位")
+            expected: .permissionDenied("Location")
         )
     }
 
@@ -65,7 +65,7 @@ final class MobileNativeToolsTests: XCTestCase {
 
     func testMotionRejectsFractionalAndOutOfRangeLookbacks() throws {
         let tool = MotionActivityTool(
-            provider: MotionProviderFake(result: .failure(.noData("运动活动")))
+            provider: MotionProviderFake(result: .failure(.noData("Motion activity")))
         )
 
         for arguments: [String: JSONValue] in [
@@ -84,12 +84,12 @@ final class MobileNativeToolsTests: XCTestCase {
 
     func testMotionPropagatesTypedPermissionDenial() async {
         let tool = MotionActivityTool(
-            provider: MotionProviderFake(result: .failure(.permissionDenied("运动与健身")))
+            provider: MotionProviderFake(result: .failure(.permissionDenied("Motion & Fitness")))
         )
 
         await XCTAssertThrowsMobileError(
             try await tool.execute(arguments: [:]),
-            expected: .permissionDenied("运动与健身")
+            expected: .permissionDenied("Motion & Fitness")
         )
     }
 
@@ -98,16 +98,16 @@ final class MobileNativeToolsTests: XCTestCase {
         let tool = NotificationScheduleTool(provider: provider)
 
         let output = try decodeObject(try await tool.execute(arguments: [
-            "title": .string("  本地提醒  "),
-            "body": .string("检查任务结果"),
+            "title": .string("  Local reminder  "),
+            "body": .string("Check the task result"),
             "delay_seconds": .number(30)
         ]))
 
         let capturedRequest = await provider.lastRequest
         let timeoutWasPositive = await provider.timeoutWasPositive
         let request = try XCTUnwrap(capturedRequest)
-        XCTAssertEqual(request.title, "本地提醒")
-        XCTAssertEqual(request.body, "检查任务结果")
+        XCTAssertEqual(request.title, "Local reminder")
+        XCTAssertEqual(request.body, "Check the task result")
         XCTAssertEqual(request.delaySeconds, 30)
         XCTAssertTrue(request.identifier.hasPrefix("harness-mobile-local-"))
         XCTAssertEqual(output["status"], .string("scheduled"))
@@ -120,25 +120,25 @@ final class MobileNativeToolsTests: XCTestCase {
             provider: NotificationSchedulerFake(result: .success(()))
         )
         let valid: [String: JSONValue] = [
-            "title": .string("提醒"),
+            "title": .string("Reminder"),
             "body": .string(""),
             "delay_seconds": .number(1)
         ]
         XCTAssertNoThrow(try tool.validate(arguments: valid))
         XCTAssertNoThrow(try tool.validate(arguments: [
-            "title": .string("提醒"),
-            "body": .string("内容"),
+            "title": .string("Reminder"),
+            "body": .string("Content"),
             "delay_seconds": .number(604_800)
         ]))
 
         let invalid: [[String: JSONValue]] = [
             ["title": .string(" "), "body": .string(""), "delay_seconds": .number(1)],
             ["title": .string(String(repeating: "a", count: 129)), "body": .string(""), "delay_seconds": .number(1)],
-            ["title": .string("提醒"), "body": .string(String(repeating: "a", count: 1_025)), "delay_seconds": .number(1)],
-            ["title": .string("提醒"), "body": .string(""), "delay_seconds": .number(0)],
-            ["title": .string("提醒"), "body": .string(""), "delay_seconds": .number(604_801)],
-            ["title": .string("提醒"), "body": .string(""), "delay_seconds": .number(1.5)],
-            ["title": .string("提醒"), "body": .string(""), "delay_seconds": .number(1), "url": .string("https://example.com")]
+            ["title": .string("Reminder"), "body": .string(String(repeating: "a", count: 1_025)), "delay_seconds": .number(1)],
+            ["title": .string("Reminder"), "body": .string(""), "delay_seconds": .number(0)],
+            ["title": .string("Reminder"), "body": .string(""), "delay_seconds": .number(604_801)],
+            ["title": .string("Reminder"), "body": .string(""), "delay_seconds": .number(1.5)],
+            ["title": .string("Reminder"), "body": .string(""), "delay_seconds": .number(1), "url": .string("https://example.com")]
         ]
         for arguments in invalid {
             XCTAssertThrowsError(try tool.validate(arguments: arguments))
@@ -147,16 +147,16 @@ final class MobileNativeToolsTests: XCTestCase {
 
     func testNotificationPropagatesTypedPermissionDenial() async {
         let tool = NotificationScheduleTool(
-            provider: NotificationSchedulerFake(result: .failure(.permissionDenied("通知")))
+            provider: NotificationSchedulerFake(result: .failure(.permissionDenied("Notifications")))
         )
 
         await XCTAssertThrowsMobileError(
             try await tool.execute(arguments: [
-                "title": .string("提醒"),
-                "body": .string("内容"),
+                "title": .string("Reminder"),
+                "body": .string("Content"),
                 "delay_seconds": .number(10)
             ]),
-            expected: .permissionDenied("通知")
+            expected: .permissionDenied("Notifications")
         )
     }
 
@@ -170,7 +170,7 @@ final class MobileNativeToolsTests: XCTestCase {
 
         XCTAssertEqual(output["authenticated"], .bool(true))
         XCTAssertEqual(output["biometricDataShared"], .bool(false))
-        XCTAssertEqual(lastReason, "验证你本人后继续执行当前本机 Agent 操作")
+        XCTAssertEqual(lastReason, "Verify it's you to continue the current on-device Agent action")
         XCTAssertTrue(timeoutWasPositive)
         XCTAssertEqual(tool.risk, .sideEffect)
     }
@@ -180,7 +180,7 @@ final class MobileNativeToolsTests: XCTestCase {
             provider: AuthenticatorFake(result: .failure(.authenticationCancelled))
         )
 
-        XCTAssertThrowsError(try tool.validate(arguments: ["reason": .string("伪造提示")]))
+        XCTAssertThrowsError(try tool.validate(arguments: ["reason": .string("Forged prompt")]))
         await XCTAssertThrowsMobileError(
             try await tool.execute(arguments: [:]),
             expected: .authenticationCancelled

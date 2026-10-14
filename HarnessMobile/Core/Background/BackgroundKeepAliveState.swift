@@ -98,8 +98,8 @@ struct BackgroundSystemProjection: Equatable, Sendable {
         isBackgrounded: false,
         liveActivitySupported: false,
         liveActivityEnabled: false,
-        notificationAuthorization: "尚未请求",
-        locationAuthorization: "尚未请求",
+        notificationAuthorization: "Not Requested",
+        locationAuthorization: "Not Requested",
         privacyModeEnabled: true
     )
 

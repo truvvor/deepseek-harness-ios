@@ -369,6 +369,26 @@ struct ModelImagePayload: Sendable, Equatable {
     }
 }
 
+/// An attachment that lives on the desktop (D-014 mirrors): the phone shows
+/// it and fetches its bytes through the bridge, it never holds a local copy.
+struct AgentRemoteAttachment: Codable, Sendable, Equatable, Hashable, Identifiable {
+    enum Kind: String, Codable, Sendable { case image, file }
+
+    let id: String
+    let kind: Kind
+    let name: String?
+    let mimeType: String?
+    let byteCount: Int64?
+
+    init(id: String, kind: Kind, name: String? = nil, mimeType: String? = nil, byteCount: Int64? = nil) {
+        self.id = id
+        self.kind = kind
+        self.name = name
+        self.mimeType = mimeType
+        self.byteCount = byteCount
+    }
+}
+
 struct AgentMessage: Identifiable, Codable, Sendable, Equatable {
     static let runtimeContextPluginID = "@deepseek-ai/dsh-system-prompt"
 
@@ -388,6 +408,8 @@ struct AgentMessage: Identifiable, Codable, Sendable, Equatable {
     var source: JSONValue?
     var imageAttachments: [AgentImageAttachmentRef]
     var fileAttachments: [AgentFileAttachmentRef]
+    /// Attachments stored on the desktop of a mirrored session.
+    var remoteAttachments: [AgentRemoteAttachment]
     let createdAt: Date
 
     private enum CodingKeys: String, CodingKey {
@@ -407,6 +429,7 @@ struct AgentMessage: Identifiable, Codable, Sendable, Equatable {
         case source
         case imageAttachments
         case fileAttachments
+        case remoteAttachments
         case createdAt
     }
 
@@ -427,6 +450,7 @@ struct AgentMessage: Identifiable, Codable, Sendable, Equatable {
         source: JSONValue? = nil,
         imageAttachments: [AgentImageAttachmentRef] = [],
         fileAttachments: [AgentFileAttachmentRef] = [],
+        remoteAttachments: [AgentRemoteAttachment] = [],
         createdAt: Date = .now
     ) {
         self.id = id
@@ -445,6 +469,7 @@ struct AgentMessage: Identifiable, Codable, Sendable, Equatable {
         self.source = source
         self.imageAttachments = imageAttachments
         self.fileAttachments = fileAttachments
+        self.remoteAttachments = remoteAttachments
         self.createdAt = createdAt
     }
 
@@ -475,6 +500,10 @@ struct AgentMessage: Identifiable, Codable, Sendable, Equatable {
             [AgentFileAttachmentRef].self,
             forKey: .fileAttachments
         ) ?? []
+        remoteAttachments = try container.decodeIfPresent(
+            [AgentRemoteAttachment].self,
+            forKey: .remoteAttachments
+        ) ?? []
         createdAt = try container.decode(Date.self, forKey: .createdAt)
     }
 
@@ -496,6 +525,9 @@ struct AgentMessage: Identifiable, Codable, Sendable, Equatable {
         try container.encodeIfPresent(source, forKey: .source)
         try container.encode(imageAttachments, forKey: .imageAttachments)
         try container.encode(fileAttachments, forKey: .fileAttachments)
+        if !remoteAttachments.isEmpty {
+            try container.encode(remoteAttachments, forKey: .remoteAttachments)
+        }
         try container.encode(createdAt, forKey: .createdAt)
     }
 
@@ -594,11 +626,11 @@ enum ConversationRerunError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .messageNotFound:
-            "找不到要重新运行的消息。"
+            "Couldn't find the message to rerun."
         case .notUserMessage:
-            "只能从用户消息重新运行。"
+            "You can only rerun from a user message."
         case .emptyReplacement:
-            "编辑后的消息不能为空。"
+            "The edited message cannot be empty."
         }
     }
 }

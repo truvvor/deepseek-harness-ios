@@ -63,14 +63,14 @@ final class SessionTitleSettingsTests: XCTestCase {
         configuration.reasoningMode = .off
         let title = try await SessionTitleGenerator.generate(
             client: SessionTitleScriptClient(events: [
-                .text("  \"移动端 Harness 调试\"  \nignored"),
+                .text("  \"Mobile Harness debugging\"  \nignored"),
                 .finish(.stop)
             ]),
             configuration: configuration,
             apiKey: "test-only",
             messages: selected
         )
-        XCTAssertEqual(title, "移动端 Harness 调试")
+        XCTAssertEqual(title, "Mobile Harness debugging")
     }
 
     func testSessionStorePinsManualTitleAndRecordsProviderProvenance() async throws {

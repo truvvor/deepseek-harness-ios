@@ -12,13 +12,13 @@ struct PluginManagementView: View {
                     installedCount: model.pluginSnapshots.count,
                     activeCount: activePluginCount,
                     hostCount: model.ishPluginHostInventory.count,
-                    contributionSummary: "工具 \(model.pluginToolContributions.count) · 提示词 \(model.pluginPromptContributions.count) · 客户端 \(model.ishNativeClientPlugins.count)"
+                    contributionSummary: "Tools \(model.pluginToolContributions.count) · Prompts \(model.pluginPromptContributions.count) · Clients \(model.ishNativeClientPlugins.count)"
                 )
                 .accessibilityIdentifier("plugin-runtime-summary")
             } header: {
-                Label("Cordis 运行时", systemImage: "cpu")
+                Label("Cordis Runtime", systemImage: "cpu")
             } footer: {
-                Text("原生插件可热启停和回滚；社区 JavaScript 插件由手机内 iSH Host 承载。")
+                Text("Native plugins can be hot-started, stopped, and rolled back. Community JavaScript plugins run in the on-device iSH Host.")
             }
 
             ISHPluginHostSection()
@@ -51,7 +51,7 @@ struct PluginManagementView: View {
                                     Button {
                                         Task { await model.stopISHPlugin(pluginID: entry.pluginId) }
                                     } label: {
-                                        Label("停止", systemImage: "stop.fill")
+                                        Label("Stop", systemImage: "stop.fill")
                                     }
                                     .tint(.orange)
                                 }
@@ -59,12 +59,12 @@ struct PluginManagementView: View {
                                 Button(role: .destructive) {
                                     Task { await model.undefineISHPlugin(pluginID: entry.pluginId) }
                                 } label: {
-                                    Label("卸载", systemImage: "trash")
+                                    Label("Uninstall", systemImage: "trash")
                                 }
                             }
                             .harnessCardListRow()
                     }
-                } header: { Label("iSH 动态插件", systemImage: "terminal") }
+                } header: { Label("iSH Dynamic Plugins", systemImage: "terminal") }
             }
 
             if filteredSnapshots.isEmpty {
@@ -81,40 +81,40 @@ struct PluginManagementView: View {
                             Button {
                                 Task { await model.restartPlugin(id: snapshot.id) }
                             } label: {
-                                Label("重启", systemImage: "arrow.clockwise")
+                                Label("Restart", systemImage: "arrow.clockwise")
                             }
                             .tint(.blue)
                         }
                         .harnessCardListRow()
                     }
-                } header: { Label("插件", systemImage: "puzzlepiece.extension") }
+                } header: { Label("Plugins", systemImage: "puzzlepiece.extension") }
             }
         }
         .listStyle(.insetGrouped)
         .environment(\.defaultMinListRowHeight, 44)
         .scrollContentBackground(.hidden)
         .background(HarnessTheme.pageBackground)
-        .navigationTitle("插件")
-        .searchable(text: $query, prompt: "搜索插件、依赖或服务")
+        .navigationTitle("Plugins")
+        .searchable(text: $query, prompt: "Search plugins, dependencies, or services")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button {
                         presentedSheet = .experimentalPrompt
                     } label: {
-                        Label("提示词插件", systemImage: "text.badge.plus")
+                        Label("Prompt Plugin", systemImage: "text.badge.plus")
                     }
                     Button {
                         presentedSheet = .ishHostPlugin
                     } label: {
-                        Label("iSH JavaScript 插件", systemImage: "terminal")
+                        Label("iSH JavaScript Plugin", systemImage: "terminal")
                     }
                 } label: {
                     Image(systemName: "plus")
                 }
-                .accessibilityLabel("添加插件")
+                .accessibilityLabel("Add Plugin")
                 .accessibilityIdentifier("add-plugin-menu")
-                .help("添加插件")
+                .help("Add Plugin")
             }
         }
         .sheet(item: $presentedSheet) { sheet in
@@ -181,17 +181,17 @@ private struct PluginRuntimeSummary: View {
         VStack(alignment: .leading, spacing: HarnessTheme.Spacing.medium) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: HarnessTheme.Spacing.small) {
-                    summaryItem("已安装", value: installedCount, icon: "puzzlepiece.extension", tint: .accentColor)
-                    summaryItem("运行中", value: activeCount, icon: "bolt.fill", tint: .green)
-                    summaryItem("Host 插件", value: hostCount, icon: "terminal.fill", tint: .orange)
+                    summaryItem("Installed", value: installedCount, icon: "puzzlepiece.extension", tint: .accentColor)
+                    summaryItem("Running", value: activeCount, icon: "bolt.fill", tint: .green)
+                    summaryItem("Host Plugins", value: hostCount, icon: "terminal.fill", tint: .orange)
                 }
 
                 VStack(alignment: .leading, spacing: HarnessTheme.Spacing.small) {
                     HStack(spacing: HarnessTheme.Spacing.small) {
-                        summaryItem("已安装", value: installedCount, icon: "puzzlepiece.extension", tint: .accentColor)
-                        summaryItem("运行中", value: activeCount, icon: "bolt.fill", tint: .green)
+                        summaryItem("Installed", value: installedCount, icon: "puzzlepiece.extension", tint: .accentColor)
+                        summaryItem("Running", value: activeCount, icon: "bolt.fill", tint: .green)
                     }
-                    summaryItem("Host 插件", value: hostCount, icon: "terminal.fill", tint: .orange)
+                    summaryItem("Host Plugins", value: hostCount, icon: "terminal.fill", tint: .orange)
                 }
             }
             Text(contributionSummary)
@@ -200,7 +200,7 @@ private struct PluginRuntimeSummary: View {
         }
         .padding(.vertical, HarnessTheme.Spacing.xSmall)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("插件运行时摘要：已安装 \(installedCount) 个，运行中 \(activeCount) 个，Host 插件 \(hostCount) 个。\(contributionSummary)")
+        .accessibilityLabel("Plugin runtime summary: \(installedCount) installed, \(activeCount) running, \(hostCount) Host plugins. \(contributionSummary)")
     }
 
     private func summaryItem(_ title: String, value: Int, icon: String, tint: Color) -> some View {
@@ -256,7 +256,7 @@ private struct ISHPluginHostSection: View {
                 Button {
                     runHostAction(.start)
                 } label: {
-                    Label("启动", systemImage: "play.fill")
+                    Label("Start", systemImage: "play.fill")
                 }
                 .disabled(isWorking || model.ishPluginHostState.isRunning)
                 .accessibilityIdentifier("ish-plugin-host-start")
@@ -264,7 +264,7 @@ private struct ISHPluginHostSection: View {
                 Button {
                     runHostAction(.refresh)
                 } label: {
-                    Label("刷新", systemImage: "arrow.clockwise")
+                    Label("Refresh", systemImage: "arrow.clockwise")
                 }
                 .disabled(isWorking || !model.ishPluginHostState.isRunning)
                 .accessibilityIdentifier("ish-plugin-host-refresh")
@@ -272,7 +272,7 @@ private struct ISHPluginHostSection: View {
                 Button(role: .destructive) {
                     runHostAction(.stop)
                 } label: {
-                    Label("停止", systemImage: "stop.fill")
+                    Label("Stop", systemImage: "stop.fill")
                 }
                 .disabled(isWorking || !model.ishPluginHostState.isRunning)
                 .accessibilityIdentifier("ish-plugin-host-stop")
@@ -294,7 +294,7 @@ private struct ISHPluginHostSection: View {
             } label: {
                 Label {
                     HStack {
-                        Text("社区插件市场")
+                        Text("Community Plugin Marketplace")
                         Spacer()
                         if !model.ishMarketplacePlugins.isEmpty {
                             Text("\(model.ishMarketplacePlugins.count)")
@@ -313,7 +313,7 @@ private struct ISHPluginHostSection: View {
             } label: {
                 Label {
                     HStack {
-                        Text("插件设置")
+                        Text("Plugin Settings")
                         Spacer()
                         if let count = model.ishPluginSettingsSnapshot?.namespaces.count,
                            count > 0 {
@@ -343,7 +343,7 @@ private struct ISHPluginHostSection: View {
         } header: {
             Text("iSH Host")
         } footer: {
-            Text("动态定义随 Host 停止释放；从社区市场安装的 Host 插件会持久保存在手机 iSH 工作区。")
+            Text("Dynamic definitions are released when the Host stops. Host plugins installed from the community marketplace persist in the on-device iSH workspace.")
         }
     }
 
@@ -389,19 +389,19 @@ private struct ISHPluginInventoryRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 if let activeRun = entry.activeRun {
-                    Text("运行中 · \(activeRun.packageId)")
+                    Text("Running · \(activeRun.packageId)")
                         .font(.caption2)
                         .foregroundStyle(.green)
                 } else if let currentPackageID = entry.currentPackageId {
-                    Text("已定义 · \(currentPackageID)")
+                    Text("Defined · \(currentPackageID)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
             }
             Spacer(minLength: 8)
             if entry.nextPackageId != nil {
-                HarnessStatusPill(title: "待切换", systemImage: "arrow.triangle.2.circlepath", tint: .orange)
-                    .accessibilityLabel("有待切换版本")
+                HarnessStatusPill(title: "Pending Switch", systemImage: "arrow.triangle.2.circlepath", tint: .orange)
+                    .accessibilityLabel("A version is pending switch")
             }
         }
         .padding(.vertical, 2)
@@ -418,23 +418,23 @@ private struct ISHPluginDetailView: View {
             if let entry {
                 Form {
                     Section {
-                        LabeledContent("插件", value: entry.pluginId)
-                        LabeledContent("会话 Agent", value: entry.agentId)
+                        LabeledContent("Plugin", value: entry.pluginId)
+                        LabeledContent("Session Agent", value: entry.agentId)
                         HStack {
-                            Text("状态")
+                            Text("Status")
                             Spacer(minLength: 8)
                             HarnessStatusPill(
-                                title: entry.activeRun == nil ? "已停止" : "运行中",
+                                title: entry.activeRun == nil ? "Stopped" : "Running",
                                 systemImage: entry.activeRun == nil ? "pause.circle" : "bolt.fill",
                                 tint: entry.activeRun == nil ? .secondary : .green
                             )
                         }
                         if let packageID = entry.currentPackageId {
-                            LabeledContent("当前版本", value: packageID)
+                            LabeledContent("Current Version", value: packageID)
                         }
                         if let packageID = entry.nextPackageId,
                            packageID != entry.currentPackageId {
-                            LabeledContent("待切换版本", value: packageID)
+                            LabeledContent("Pending Version", value: packageID)
                         }
                         if let activeRun = entry.activeRun {
                             LabeledContent("Run ID", value: activeRun.pluginRunId)
@@ -453,7 +453,7 @@ private struct ISHPluginDetailView: View {
                             Button {
                                 run(.stop)
                             } label: {
-                                Label("停止", systemImage: "stop.fill")
+                                Label("Stop", systemImage: "stop.fill")
                             }
                             .disabled(isWorking)
                         }
@@ -461,9 +461,9 @@ private struct ISHPluginDetailView: View {
                         NavigationLink {
                             PluginSettingsView()
                         } label: {
-                            Label("Host 设置命名空间", systemImage: "slider.horizontal.3")
+                            Label("Host Settings Namespace", systemImage: "slider.horizontal.3")
                         }
-                    } header: { Label("生命周期", systemImage: "arrow.clockwise") }
+                    } header: { Label("Lifecycle", systemImage: "arrow.clockwise") }
 
                     Section {
                         ForEach(entry.packages, id: \.packageId) { package in
@@ -509,23 +509,23 @@ private struct ISHPluginDetailView: View {
                             Text(latestRun.displayText)
                                 .font(.caption.monospaced())
                                 .textSelection(.enabled)
-                        } header: { Label("最近一次运行", systemImage: "clock.arrow.circlepath") }
+                        } header: { Label("Last Run", systemImage: "clock.arrow.circlepath") }
                     }
 
                     Section {
-                        Button("卸载插件", role: .destructive) {
+                        Button("Uninstall Plugin", role: .destructive) {
                             run(.undefine)
                         }
                         .disabled(isWorking)
                     } footer: {
-                        Text("卸载会移除该插件的全部内存 Package；iSH Host 重启后动态定义也会消失。")
+                        Text("Uninstalling removes all of this plugin's in-memory packages. Dynamic definitions also disappear after the iSH Host restarts.")
                     }
                 }
             } else {
                 ContentUnavailableView(
-                    "插件不可用",
+                    "Plugin Unavailable",
                     systemImage: "shippingbox",
-                    description: Text("它可能已卸载，或 iSH Host 已经重启。")
+                    description: Text("It may have been uninstalled, or the iSH Host has restarted.")
                 )
             }
         }
@@ -571,11 +571,11 @@ private struct ISHPluginDetailView: View {
         for package: ISHPluginHostPackageSummary
     ) -> some View {
         Label(
-            package.hasHostHalf ? "Host" : "无 Host",
+            package.hasHostHalf ? "Host" : "No Host",
             systemImage: package.hasHostHalf ? "terminal.fill" : "terminal"
         )
         Label(
-            package.hasClientHalf ? "Client" : "无 Client",
+            package.hasClientHalf ? "Client" : "No Client",
             systemImage: package.hasClientHalf ? "rectangle.on.rectangle" : "iphone"
         )
     }
@@ -607,9 +607,9 @@ private struct PluginInventoryRow: View {
             Spacer(minLength: 8)
 
             if !snapshot.isEnabled {
-                HarnessStatusPill(title: "已停用", systemImage: "pause.circle.fill", tint: .secondary)
+                HarnessStatusPill(title: "Disabled", systemImage: "pause.circle.fill", tint: .secondary)
             } else if !snapshot.missingDependencies.isEmpty {
-                HarnessStatusPill(title: "等待依赖", systemImage: "link.badge.plus", tint: .orange)
+                HarnessStatusPill(title: "Waiting for Dependencies", systemImage: "link.badge.plus", tint: .orange)
             }
         }
         .padding(.vertical, 2)
@@ -625,11 +625,11 @@ private struct PluginDetailView: View {
             if let snapshot {
                 Form {
                     Section {
-                        LabeledContent("状态", value: snapshot.state.title)
-                        LabeledContent("版本", value: snapshot.version)
-                        LabeledContent("代次", value: "\(snapshot.generation)")
+                        LabeledContent("Status", value: snapshot.state.title)
+                        LabeledContent("Version", value: snapshot.version)
+                        LabeledContent("Generation", value: "\(snapshot.generation)")
                         Toggle(
-                            "启用插件",
+                            "Enable Plugin",
                             isOn: Binding(
                                 get: { snapshot.isEnabled },
                                 set: { enabled in
@@ -642,19 +642,19 @@ private struct PluginDetailView: View {
                         Button {
                             Task { await model.restartPlugin(id: pluginID) }
                         } label: {
-                            Label("重启 Fiber", systemImage: "arrow.clockwise")
+                            Label("Restart Fiber", systemImage: "arrow.clockwise")
                         }
-                    } header: { Label("生命周期", systemImage: "arrow.clockwise") }
+                    } header: { Label("Lifecycle", systemImage: "arrow.clockwise") }
 
                     if !snapshot.dependencies.isEmpty {
-                        StringListSection(title: "依赖", values: snapshot.dependencies)
+                        StringListSection(title: "Dependencies", values: snapshot.dependencies)
                     }
                     if !snapshot.provides.isEmpty {
-                        StringListSection(title: "提供服务", values: snapshot.provides)
+                        StringListSection(title: "Provides", values: snapshot.provides)
                     }
                     if !snapshot.missingDependencies.isEmpty {
                         StringListSection(
-                            title: "等待重连",
+                            title: "Waiting to Reconnect",
                             values: snapshot.missingDependencies,
                             tint: .orange
                         )
@@ -669,7 +669,7 @@ private struct PluginDetailView: View {
                                     value: contribution.risk.rawValue
                                 )
                             }
-                        } header: { Label("工具", systemImage: "wrench.and.screwdriver") }
+                        } header: { Label("Tools", systemImage: "wrench.and.screwdriver") }
                     }
 
                     let prompts = model.pluginPromptContributions.filter { $0.pluginID == pluginID }
@@ -681,7 +681,7 @@ private struct PluginDetailView: View {
                                     value: contribution.kind.rawValue
                                 )
                             }
-                        } header: { Label("提示词", systemImage: "text.quote") }
+                        } header: { Label("Prompts", systemImage: "text.quote") }
                     }
 
                     if let error = snapshot.error {
@@ -690,12 +690,12 @@ private struct PluginDetailView: View {
                                 .font(.footnote.monospaced())
                                 .foregroundStyle(.red)
                                 .textSelection(.enabled)
-                        } header: { Label("故障隔离", systemImage: "exclamationmark.triangle") }
+                        } header: { Label("Fault Isolation", systemImage: "exclamationmark.triangle") }
                     }
 
                     if pluginID.rawValue.hasPrefix("memory.") || pluginID.rawValue.hasPrefix("ish.") {
                         Section {
-                            Button("卸载插件", role: .destructive) {
+                            Button("Uninstall Plugin", role: .destructive) {
                                 Task { await model.uninstallPlugin(id: pluginID) }
                             }
                         }
@@ -703,9 +703,9 @@ private struct PluginDetailView: View {
                 }
             } else {
                 ContentUnavailableView(
-                    "插件已卸载",
+                    "Plugin Uninstalled",
                     systemImage: "shippingbox",
-                    description: Text("返回插件列表查看当前运行时库存。")
+                    description: Text("Return to the plugin list to view the current runtime inventory.")
                 )
             }
         }
@@ -748,25 +748,25 @@ private struct ExperimentalPromptPluginSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("名称", text: $pluginName)
+                    TextField("Name", text: $pluginName)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                     TextEditor(text: $instruction)
                         .frame(minHeight: 160)
                 } header: {
-                    Label("内存插件", systemImage: "text.badge.plus")
+                    Label("In-Memory Plugin", systemImage: "text.badge.plus")
                 } footer: {
-                    Text("插件只存在于当前 App 进程，重启后消失；启用后会在下一步请求中加入提示词。")
+                    Text("The plugin exists only in the current app process and disappears on restart. Once enabled, its prompt is added to the next request.")
                 }
             }
-            .navigationTitle("实验插件")
+            .navigationTitle("Experimental Plugin")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("安装") {
+                    Button("Install") {
                         isInstalling = true
                         Task {
                             let installed = await model.installExperimentalPromptPlugin(
@@ -800,11 +800,11 @@ private struct ISHHostPluginSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("名称", text: $pluginName)
+                    TextField("Name", text: $pluginName)
                         .accessibilityIdentifier("ish-plugin-name")
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    TextField("用途", text: $purpose, axis: .vertical)
+                    TextField("Purpose", text: $purpose, axis: .vertical)
                         .accessibilityIdentifier("ish-plugin-purpose")
                         .lineLimit(2...4)
                     TextEditor(text: $hostCode)
@@ -816,17 +816,17 @@ private struct ISHHostPluginSheet: View {
                 } header: {
                     Label("Host-half JavaScript", systemImage: "terminal")
                 } footer: {
-                    Text("代码只在本机 iSH Cordis Host 的内存中定义和运行。")
+                    Text("Code is defined and run only in memory in the on-device iSH Cordis Host.")
                 }
             }
-            .navigationTitle("iSH 插件")
+            .navigationTitle("iSH Plugin")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("定义并运行") {
+                    Button("Define and Run") {
                         isInstalling = true
                         Task { @MainActor in
                             let installed = await model.defineAndRunISHPlugin(
@@ -874,8 +874,8 @@ private struct ISHHostPluginSheet: View {
 private extension ISHPluginHostActivationPlan {
     var title: String {
         switch mode {
-        case .run: "运行"
-        case .update: "更新"
+        case .run: "Run"
+        case .update: "Update"
         }
     }
 
@@ -897,12 +897,12 @@ private extension ISHPluginHostActivationPlan {
 private extension CordisPluginState {
     var title: String {
         switch self {
-        case .pending: "等待"
-        case .loading: "加载中"
-        case .active: "运行中"
-        case .failed: "失败"
-        case .unloading: "卸载中"
-        case .disposed: "已释放"
+        case .pending: "Pending"
+        case .loading: "Loading"
+        case .active: "Running"
+        case .failed: "Failed"
+        case .unloading: "Unloading"
+        case .disposed: "Disposed"
         }
     }
 
@@ -930,11 +930,11 @@ private extension CordisPluginState {
 private extension ISHPluginHostRuntimeState {
     var title: String {
         switch self {
-        case .stopped: "未启动"
-        case .installing: "安装依赖中"
-        case .starting: "启动中"
-        case .running: "运行中"
-        case .failed: "故障隔离"
+        case .stopped: "Not Started"
+        case .installing: "Installing Dependencies"
+        case .starting: "Starting"
+        case .running: "Running"
+        case .failed: "Fault Isolation"
         }
     }
 

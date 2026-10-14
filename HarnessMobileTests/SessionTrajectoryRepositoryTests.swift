@@ -467,6 +467,13 @@ final class SessionTrajectoryRepositoryTests: XCTestCase {
         ]
 
         let projected = SessionTrajectoryConversationProjection.messages(from: events)
+        // The readable transcript (desktop mirrors) keeps the compacted
+        // messages and shows the summary where the compaction happened. The
+        // checkpoint cites its source events, which marks it as a compaction.
+        XCTAssertEqual(
+            SessionTrajectoryConversationProjection.transcriptMessages(from: events).map(\.id),
+            [oldUser.id, oldReply.id, checkpoint.id, current.id]
+        )
         XCTAssertEqual(projected.map(\.id), [checkpoint.id, current.id])
         XCTAssertEqual(projected.map(\.content), [checkpoint.content, current.content])
         XCTAssertEqual(projected.map(\.role), [.user, .user])
@@ -476,6 +483,54 @@ final class SessionTrajectoryRepositoryTests: XCTestCase {
                 events: events
             ),
             2...2
+        )
+    }
+
+    func testTranscriptKeepsCompactedMessagesButAppliesDraftCorrections() throws {
+        let oldUser = AgentMessage.user("old request")
+        let draft = AgentMessage.assistant("draft")
+        let final = AgentMessage.assistant("final")
+        let checkpoint = AgentMessage.user("<compacted-summary>state</compacted-summary>")
+        let events = try [
+            SessionEvent(
+                type: SessionEventVocabulary.userMessage,
+                seq: 0,
+                time: 1,
+                data: sessionUserMessage(oldUser),
+                surfaceOp: .append
+            ),
+            SessionEvent(
+                type: SessionEventVocabulary.assistantMessage,
+                seq: 1,
+                time: 2,
+                data: .object(["turn": .number(1), "step": .number(1), "message": sessionAssistantMessage(draft)]),
+                surfaceOp: .append
+            ),
+            SessionEvent(
+                type: SessionEventVocabulary.assistantMessage,
+                seq: 2,
+                time: 3,
+                data: .object(["turn": .number(1), "step": .number(1), "message": sessionAssistantMessage(final)]),
+                surfaceOp: .replace(start: 1, end: 1)
+            ),
+            SessionEvent(type: "compaction/start", seq: 3, time: 4, data: .object([:])),
+            SessionEvent(
+                type: SessionEventVocabulary.userMessage,
+                seq: 4,
+                time: 5,
+                data: sessionUserMessage(checkpoint),
+                surfaceOp: .replace(start: 0, end: 2)
+            ),
+            SessionEvent(type: "compaction/end", seq: 5, time: 6, data: .object([:]))
+        ]
+
+        XCTAssertEqual(
+            SessionTrajectoryConversationProjection.transcriptMessages(from: events).map(\.id),
+            [oldUser.id, final.id, checkpoint.id]
+        )
+        XCTAssertEqual(
+            SessionTrajectoryConversationProjection.messages(from: events).map(\.id),
+            [checkpoint.id]
         )
     }
 

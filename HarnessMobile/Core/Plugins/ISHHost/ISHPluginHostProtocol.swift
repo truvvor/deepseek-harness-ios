@@ -592,26 +592,26 @@ enum ISHPluginMarketplaceErrorPolicy {
                 || normalized.contains("enotfound")
                 || normalized.contains("eai_again")
                 || normalized.contains("network is unreachable") {
-                return "插件目录暂时无法连接，已自动刷新 iSH DNS；请确认 iSH 网络已开启后重试。"
+                return "Can't reach the plugin directory right now. iSH DNS was refreshed automatically; make sure iSH networking is on and try again."
             }
             let detail = HarnessTraceRedactor.string(message, maximumUTF8Bytes: 800)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             switch reason {
             case "missing-entrypoint":
-                return "插件包不完整，缺少发布时声明的构建文件：\(detail)"
+                return "The plugin package is incomplete and is missing build files declared at publish time: \(detail)"
             case "npm-install-failed":
-                return "插件依赖安装失败：\(detail)"
+                return "Plugin dependency installation failed: \(detail)"
             case "startup-failed":
-                return "插件 Host 初始化失败：\(detail)"
+                return "Plugin Host initialization failed: \(detail)"
             case "invalid-manifest", "invalid-patch", "unsupported-patch", "missing-package":
-                return "插件兼容性校验未通过：\(detail)"
+                return "Plugin compatibility check failed: \(detail)"
             default:
-                return detail.isEmpty ? "插件操作未完成，请导出诊断日志。" : "插件操作失败：\(detail)"
+                return detail.isEmpty ? "The plugin operation didn't complete. Export diagnostic logs." : "Plugin operation failed: \(detail)"
             }
         }
 
         let message = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
-        return message.isEmpty ? "社区插件操作未完成，请稍后重试。" : message
+        return message.isEmpty ? "The community plugin operation didn't complete. Try again later." : message
     }
 
     static func shouldRefreshGuestDNSAndRetry(_ error: Error) -> Bool {
@@ -656,8 +656,8 @@ enum ISHMarketplaceInstallPreference: String, Codable, Sendable, Equatable {
 
     var label: String {
         switch self {
-        case .hostLoad: "装载到本地运行时"
-        case .nativeCompile: "原生优先"
+        case .hostLoad: "Load into Local Runtime"
+        case .nativeCompile: "Native First"
         }
     }
 }
@@ -673,10 +673,10 @@ enum ISHMarketplaceNativeInstallStrategy: String, Codable, Sendable, Equatable {
 
     var title: String {
         switch self {
-        case .nativeFirst: "原生优先"
-        case .nativeInstalled: "已原生安装"
-        case .ishFallback: "iSH 回退"
-        case .ishRequired: "仅 iSH"
+        case .nativeFirst: "Native First"
+        case .nativeInstalled: "Installed Natively"
+        case .ishFallback: "iSH Fallback"
+        case .ishRequired: "iSH Only"
         }
     }
 
