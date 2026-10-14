@@ -300,8 +300,13 @@ private actor RefreshGate {
         guard inFlight == nil else { return false }
         finished = false
         inFlight = Task { [weak self] in
-            defer { Task { await self?.markFinished() } }
-            try await operation()
+            do {
+                try await operation()
+            } catch {
+                await self?.markFinished()
+                throw error
+            }
+            await self?.markFinished()
         }
         return true
     }
