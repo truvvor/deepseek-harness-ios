@@ -200,6 +200,13 @@ actor BridgeSessionSync {
         var pass = BridgeFollowPass()
         var pending = false
         var lastRefresh: Date?
+        // Refreshes run beside the frame loop, never inside it: an export page
+        // plus the local write takes hundreds of ms, and awaiting it here held
+        // every token delta behind it. One refresh is in flight at a time;
+        // frames that arrive meanwhile leave `pending` set so the next refresh
+        // follows the current one.
+        let gate = RefreshGate()
+        let refresher = self.refresher
 
         func live(_ update: BridgeLiveUpdate) async {
             guard let localSessionID, let liveHandler else { return }
@@ -253,18 +260,70 @@ actor BridgeSessionSync {
             case .unknown, .usage:
                 break
             }
-            if shouldRefresh {
-                try await refresher.refreshMirror(bridgeSessionID: bridgeSessionID)
-                pending = false
-                pass.refreshed = true
-                lastRefresh = now()
+            // A refresh that finished since the last frame frees the slot (and
+            // surfaces its error to the supervisor).
+            if try await gate.reap(), pending, !shouldRefresh, lastRefresh != nil {
+                shouldRefresh = Self.messageEventTypes.contains(frame.eventType ?? "")
+                    || now().timeIntervalSince(lastRefresh ?? .distantPast) >= Self.minimumRefreshInterval
             }
-            if isFinal { return pass }
+            if shouldRefresh {
+                let started = await gate.begin {
+                    try await refresher.refreshMirror(bridgeSessionID: bridgeSessionID)
+                }
+                if started {
+                    pending = false
+                    pass.refreshed = true
+                    lastRefresh = now()
+                }
+            }
+            if isFinal { break }
         }
+        try await gate.drain()
         if pending {
             try await refresher.refreshMirror(bridgeSessionID: bridgeSessionID)
             pass.refreshed = true
         }
         return pass
+    }
+
+
+}
+
+/// One refresh at a time for a follow connection, run off the frame loop.
+private actor RefreshGate {
+    private var inFlight: Task<Void, Error>?
+    private var finished = false
+
+    /// Starts `operation` unless one is already running. Returns whether it
+    /// started.
+    func begin(_ operation: @escaping @Sendable () async throws -> Void) -> Bool {
+        guard inFlight == nil else { return false }
+        finished = false
+        inFlight = Task { [weak self] in
+            defer { Task { await self?.markFinished() } }
+            try await operation()
+        }
+        return true
+    }
+
+    private func markFinished() {
+        finished = true
+    }
+
+    /// True when no refresh is running. A refresh that finished is cleared
+    /// here, rethrowing its error.
+    func reap() async throws -> Bool {
+        guard let task = inFlight else { return true }
+        guard finished else { return false }
+        inFlight = nil
+        try await task.value
+        return true
+    }
+
+    /// Waits for the running refresh, rethrowing its error.
+    func drain() async throws {
+        guard let task = inFlight else { return }
+        inFlight = nil
+        try await task.value
     }
 }
