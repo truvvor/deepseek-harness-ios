@@ -23,7 +23,7 @@ struct ProviderRetryPolicyConfiguration: Codable, Sendable, Equatable {
         case always
 
         var id: String { rawValue }
-        var title: String { self == .normal ? "有界重试" : "持续重试" }
+        var title: String { self == .normal ? "Bounded Retry" : "Persistent Retry" }
     }
 
     var mode: Mode
@@ -177,13 +177,13 @@ enum ProviderRetryPolicyError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidMaxRetries:
-            return "模型重试次数不能小于 0。"
+            return "Model retry count cannot be less than 0."
         case .invalidBackoff:
-            return "模型重试等待必须为正数，且初始等待不能大于最大等待。"
+            return "Model retry delays must be positive, and the initial delay cannot exceed the maximum delay."
         case .invalidJitter:
-            return "模型重试抖动比例必须在 0 到 1 之间。"
+            return "Model retry jitter ratio must be between 0 and 1."
         case .invalidRetryableCodes:
-            return "模型重试错误码不能为空、重复或包含空值。"
+            return "Model retry error codes cannot be empty, duplicated, or contain blank values."
         }
     }
 }

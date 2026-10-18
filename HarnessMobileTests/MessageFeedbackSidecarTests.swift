@@ -59,7 +59,7 @@ final class MessageFeedbackSidecarTests: XCTestCase {
             XCTAssertEqual(error, .revisionConflict(expected: 0, actual: 1))
             XCTAssertEqual(
                 error.localizedDescription,
-                "反馈已在其他位置更新（期望 revision 0，当前为 1）。请重新读取后再修改。"
+                "Feedback was updated elsewhere (expected revision 0, current is 1). Reload before editing."
             )
         }
 

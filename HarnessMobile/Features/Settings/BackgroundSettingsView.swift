@@ -53,9 +53,9 @@ struct BackgroundSettingsView: View {
                     Text(persistenceErrorDescription)
                         .foregroundStyle(.red)
                 } header: {
-                    Text("偏好存储")
+                    Text("Preference Storage")
                 } footer: {
-                    Text("这项设置没有成功保存到本机。")
+                    Text("This setting could not be saved on this device.")
                 }
             }
         }
@@ -63,7 +63,7 @@ struct BackgroundSettingsView: View {
         .environment(\.defaultMinListRowHeight, 44)
         .scrollContentBackground(.hidden)
         .background(HarnessTheme.pageBackground)
-        .navigationTitle("后台任务")
+        .navigationTitle("Background Tasks")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             notificationAuthorization = await notifier.authorizationStatus()
@@ -122,48 +122,48 @@ private struct BackgroundSystemProjectionSection: View {
             HStack(spacing: HarnessTheme.Spacing.medium) {
                 HarnessIconTile(systemImage: "bolt.horizontal.circle", tint: .accentColor)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("活动任务")
-                    Text("\(projection.activeRunCount) 个")
+                    Text("Active Tasks")
+                    Text("\(projection.activeRunCount)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 8)
                 HarnessStatusPill(title: tierLabel, systemImage: tierIcon, tint: tierTint)
             }
-            statusRow("通知权限", value: projection.notificationAuthorization, icon: "bell.badge")
-            statusRow("定位权限", value: projection.locationAuthorization, icon: "location.fill")
+            statusRow("Notification Permission", value: projection.notificationAuthorization, icon: "bell.badge")
+            statusRow("Location Permission", value: projection.locationAuthorization, icon: "location.fill")
             statusRow(
-                "实时活动权限",
+                "Live Activity Permission",
                 value: projection.liveActivitySupported
-                    ? (projection.liveActivityEnabled ? "已启用" : "已关闭")
-                    : "不可用",
+                    ? (projection.liveActivityEnabled ? "Enabled" : "Off")
+                    : "Unavailable",
                 icon: "rectangle.topthird.inset.filled"
             )
             if !projection.degradedReasons.isEmpty {
-                statusRow("当前降级", value: degradedLabel, icon: "exclamationmark.triangle", tint: .orange)
+                statusRow("Current Degradation", value: degradedLabel, icon: "exclamationmark.triangle", tint: .orange)
             }
             if !projection.degradedDetails.isEmpty {
-                LabeledContent("故障证据", value: projection.degradedDetails.joined(separator: "、"))
+                LabeledContent("Failure Evidence", value: projection.degradedDetails.joined(separator: ", "))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             BackgroundDetailsRow(
-                title: "投影范围",
-                text: "这里显示所有并行任务的汇总状态。不会显示提示词、工具参数、工具输出或模型正文；降级只表示对应系统能力当前不可用。"
+                title: "Projection Scope",
+                text: "Shows the aggregate status of all parallel tasks. Prompts, tool arguments, tool output, and model text are never shown; degraded only means the corresponding system capability is currently unavailable."
             )
         } header: {
-            Label("当前系统投影", systemImage: "waveform.path.ecg")
+            Label("Current System Projection", systemImage: "waveform.path.ecg")
         }
     }
 
     private var tierLabel: String {
         switch projection.survivalTier {
-        case .foreground: "前台"
-        case .finiteBackgroundTask: "短时后台"
+        case .foreground: "Foreground"
+        case .finiteBackgroundTask: "Short Background"
         case .continuedProcessing: "Continued Processing"
-        case .extendedAudio: "音频延展"
-        case .extendedLocation: "定位延展"
-        case .degraded: "降级"
+        case .extendedAudio: "Audio Extension"
+        case .extendedLocation: "Location Extension"
+        case .degraded: "Degraded"
         }
     }
 
@@ -208,12 +208,12 @@ private struct BackgroundSystemProjectionSection: View {
     private var degradedLabel: String {
         projection.degradedReasons.map {
             switch $0 {
-            case .lowPowerMode: "低电量模式"
-            case .thermalPressure: "温度压力"
-            case .audioUnavailable: "音频不可用"
-            case .locationUnavailable: "定位不可用"
+            case .lowPowerMode: "Low Power Mode"
+            case .thermalPressure: "Thermal Pressure"
+            case .audioUnavailable: "Audio Unavailable"
+            case .locationUnavailable: "Location Unavailable"
             }
-        }.sorted().joined(separator: "、")
+        }.sorted().joined(separator: ", ")
     }
 }
 
@@ -225,23 +225,23 @@ private struct BackgroundLiveActivitySettingsSection: View {
     var body: some View {
         Section {
             if isSystemSupported {
-                Toggle("实时活动", isOn: $isEnabled)
+                Toggle("Live Activities", isOn: $isEnabled)
                 LabeledContent(
-                    "系统权限",
-                    value: areActivitiesEnabled ? "已允许" : "已在系统设置中关闭"
+                    "System Permission",
+                    value: areActivitiesEnabled ? "Allowed" : "Turned Off in Settings"
                 )
             } else {
-                Toggle("实时活动", isOn: .constant(false))
+                Toggle("Live Activities", isOn: .constant(false))
                     .disabled(true)
             }
             BackgroundDetailsRow(
-                title: "实时活动说明",
+                title: "About Live Activities",
                 text: isSystemSupported
-                    ? "显示当前会话、步骤、工具和真实进度。它只投影任务状态，不会让 App 获得永久后台执行能力；关闭后会立即移除当前实时活动。"
-                    : "当前设备环境不支持 ActivityKit 实时活动。"
+                    ? "Shows the current session, step, tool, and real progress. It only projects task status and does not give the app permanent background execution; turning it off removes the current Live Activity immediately."
+                    : "This device does not support ActivityKit Live Activities."
             )
         } header: {
-            Label("锁屏与灵动岛", systemImage: "rectangle.topthird.inset.filled")
+            Label("Lock Screen & Dynamic Island", systemImage: "rectangle.topthird.inset.filled")
         }
     }
 }
@@ -253,19 +253,19 @@ private struct BackgroundExecutionSettingsSection: View {
     var body: some View {
         Section {
             if isSystemSupported {
-                Toggle("增强后台处理", isOn: $isEnabled)
+                Toggle("Enhanced Background Processing", isOn: $isEnabled)
             } else {
-                Toggle("增强后台处理", isOn: .constant(false))
+                Toggle("Enhanced Background Processing", isOn: .constant(false))
                     .disabled(true)
             }
             BackgroundDetailsRow(
-                title: "工作方式与限制",
+                title: "How It Works & Limits",
                 text: isSystemSupported
-                    ? "组合使用 iOS 26 Continued Processing 与任务期间的音频/定位延展。系统后台时间配额到期时，只要延展层仍健康，就结束旧 lease、续挂新的有限 lease，并继续同一个任务和上下文；这不是模型服务商额度续期，系统仍可因资源、温度或用户操作终止 App。"
-                    : "当前系统不支持 Continued Processing。iOS 18–25 下只使用系统提供的短时后台时间，不承诺持续运行。"
+                    ? "Combines iOS 26 Continued Processing with audio/location extension while a task runs. When the system background time quota expires and the extension layer is still healthy, the old lease ends and a new finite lease is acquired, continuing the same task and context. This is not a provider quota renewal; the system can still terminate the app due to resources, temperature, or user action."
+                    : "This system does not support Continued Processing. On iOS 18–25, only the short background time provided by the system is used, with no guarantee of continued running."
             )
         } header: {
-            Label("后台执行", systemImage: "arrow.clockwise.icloud")
+            Label("Background Execution", systemImage: "arrow.clockwise.icloud")
         }
     }
 }
@@ -277,39 +277,39 @@ private struct BackgroundLocationKeepAliveSettingsSection: View {
 
     var body: some View {
         Section {
-            Toggle("后台粗略定位保活", isOn: $isEnabled)
-            LabeledContent("定位权限", value: authorizationLabel)
+            Toggle("Background Coarse Location Keep-Alive", isOn: $isEnabled)
+            LabeledContent("Location Permission", value: authorizationLabel)
             if isEnabled && (snapshot.authorization == .notDetermined || snapshot.authorization == .whenInUse) {
-                Button("请求 Always 定位授权", action: requestAuthorization)
+                Button("Request Always Location Access", action: requestAuthorization)
             }
-            LabeledContent("当前状态", value: phaseLabel)
+            LabeledContent("Current Status", value: phaseLabel)
             BackgroundDetailsRow(
-                title: "定位用途与隐私",
-                text: "仅在开启此开关、已允许 Always 定位、后台停留约 15 秒且仍有任务运行时使用约 3 公里精度的位置服务。不会保存、显示或上传坐标；普通一次定位工具不会触发此授权。"
+                title: "Location Use & Privacy",
+                text: "Location services at roughly 3 km accuracy are used only when this switch is on, Always location is allowed, the app has been in the background for about 15 seconds, and a task is still running. Coordinates are never saved, shown, or uploaded; the one-time location tool does not trigger this authorization."
             )
         } header: {
-            Label("可选定位保活", systemImage: "location.fill")
+            Label("Optional Location Keep-Alive", systemImage: "location.fill")
         }
     }
 
     private var authorizationLabel: String {
         switch snapshot.authorization {
-        case .notDetermined: "尚未请求"
-        case .whenInUse: "仅使用期间"
-        case .always: "始终允许"
-        case .denied: "已拒绝"
-        case .restricted: "受系统限制"
-        case .unavailable: "不可用"
+        case .notDetermined: "Not Requested"
+        case .whenInUse: "While Using"
+        case .always: "Always"
+        case .denied: "Denied"
+        case .restricted: "Restricted"
+        case .unavailable: "Unavailable"
         }
     }
 
     private var phaseLabel: String {
         switch snapshot.phase {
-        case .idle: "未运行"
-        case .waitingForDelay: "等待后台延迟"
-        case .waitingForPermission: "等待授权"
-        case .running: "运行中"
-        case .degraded: "不可用"
+        case .idle: "Not Running"
+        case .waitingForDelay: "Waiting for Background Delay"
+        case .waitingForPermission: "Waiting for Permission"
+        case .running: "Running"
+        case .degraded: "Unavailable"
         }
     }
 }
@@ -321,34 +321,34 @@ private struct BackgroundNotificationSettingsSection: View {
 
     var body: some View {
         Section {
-            Toggle("任务通知", isOn: $isEnabled)
-            LabeledContent("系统权限", value: authorizationLabel)
+            Toggle("Task Notifications", isOn: $isEnabled)
+            LabeledContent("System Permission", value: authorizationLabel)
             if let errorDescription {
-                Text("通知授权失败：\(errorDescription)")
+                Text("Notification authorization failed: \(errorDescription)")
                     .foregroundStyle(.red)
             } else if authorization == .denied {
-                Text("通知偏好已保存，但系统权限被拒绝；在系统设置中允许通知后才能收到任务完成提醒。")
+                Text("Notification preference saved, but system permission was denied. Allow notifications in Settings to receive task completion alerts.")
                     .foregroundStyle(.orange)
             }
             BackgroundDetailsRow(
-                title: "通知说明",
-                text: "仅在任务结束时发送本地通知。开启开关时才请求系统通知权限。"
+                title: "About Notifications",
+                text: "Sends a local notification only when a task ends. System notification permission is requested only when you turn this on."
             )
         } header: {
-            Label("任务通知", systemImage: "bell.badge")
+            Label("Task Notifications", systemImage: "bell.badge")
         }
     }
 
     private var authorizationLabel: String {
         switch authorization {
         case .notDetermined:
-            "尚未请求"
+            "Not Requested"
         case .denied:
-            "已拒绝"
+            "Denied"
         case .authorized:
-            "已允许"
+            "Allowed"
         case .unavailable:
-            "不可用"
+            "Unavailable"
         }
     }
 }
@@ -358,13 +358,13 @@ private struct BackgroundPrivacySettingsSection: View {
 
     var body: some View {
         Section {
-            Toggle("任务状态隐私", isOn: $isEnabled)
+            Toggle("Task Status Privacy", isOn: $isEnabled)
             BackgroundDetailsRow(
-                title: "隐私显示说明",
-                text: "开启后，锁屏、灵动岛状态和完成通知只显示通用任务状态，不显示会话标题、工具名称或回复内容。"
+                title: "About Private Display",
+                text: "When on, the Lock Screen, Dynamic Island, and completion notifications show only a generic task status, without session titles, tool names, or reply content."
             )
         } header: {
-            Label("隐私显示", systemImage: "eye.slash")
+            Label("Private Display", systemImage: "eye.slash")
         }
     }
 }
@@ -380,38 +380,38 @@ private struct BackgroundRuntimeStatusSection: View {
         Section {
             LabeledContent(
                 "Continued Processing",
-                value: isContinuedProcessingSupported ? "iOS 26 可用" : "当前不可用"
+                value: isContinuedProcessingSupported ? "Available on iOS 26" : "Currently Unavailable"
             )
             LabeledContent(
-                "实时活动",
+                "Live Activities",
                 value: liveActivityStatus
             )
             runtimeContent
             BackgroundDetailsRow(
-                title: "状态说明",
-                text: "Continued Processing 和实时活动都由 iOS 管理。实时活动只显示真实任务状态；两者都不是无限后台或常驻进程保证。"
+                title: "About Status",
+                text: "Continued Processing and Live Activities are both managed by iOS. Live Activities show only real task status; neither guarantees unlimited background time or a resident process."
             )
         } header: {
-            Label("状态", systemImage: "chart.bar.xaxis")
+            Label("Status", systemImage: "chart.bar.xaxis")
         }
     }
 
     private var liveActivityStatus: String {
-        guard isLiveActivitySupported else { return "当前不可用" }
-        return isLiveActivityEnabled ? "已启用" : "已关闭"
+        guard isLiveActivitySupported else { return "Currently Unavailable" }
+        return isLiveActivityEnabled ? "Enabled" : "Off"
     }
 
     @ViewBuilder
     private var runtimeContent: some View {
         switch status {
         case .idle:
-            HarnessStatusPill(title: "空闲", systemImage: "pause.circle", tint: .secondary)
+            HarnessStatusPill(title: "Idle", systemImage: "pause.circle", tint: .secondary)
         case let .running(progress):
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("当前任务")
+                    Text("Current Task")
                     Spacer()
-                    HarnessStatusPill(title: "运行中", systemImage: "bolt.fill", tint: .green)
+                    HarnessStatusPill(title: "Running", systemImage: "bolt.fill", tint: .green)
                     Text("\(progress.completedUnitCount)/\(progress.totalUnitCount)")
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
@@ -421,7 +421,7 @@ private struct BackgroundRuntimeStatusSection: View {
                     total: Double(progress.totalUnitCount)
                 )
                 if privacyModeEnabled {
-                    Text("任务进行中")
+                    Text("Task in Progress")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 } else {
@@ -435,12 +435,12 @@ private struct BackgroundRuntimeStatusSection: View {
             .accessibilityElement(children: .combine)
         case let .completed(success):
             HarnessStatusPill(
-                title: success ? "已完成" : "未完成",
+                title: success ? "Completed" : "Not Completed",
                 systemImage: success ? "checkmark.circle.fill" : "xmark.circle.fill",
                 tint: success ? .green : .red
             )
         case .interrupted:
-            HarnessStatusPill(title: "已被系统中断", systemImage: "pause.circle", tint: .orange)
+            HarnessStatusPill(title: "Interrupted by System", systemImage: "pause.circle", tint: .orange)
         }
     }
 }
@@ -463,11 +463,11 @@ private struct BackgroundDetailsRow: View {
 private struct BackgroundSafetyBoundarySection: View {
     var body: some View {
         Section {
-            Label("静音音频只在已开启、仍有任务且 App 位于后台时运行", systemImage: "speaker.wave.2")
-            Label("后台定位需单独开启并取得 Always 授权，不保存或上传坐标", systemImage: "location")
-            Label("不会使用蓝牙或 VoIP 冒充后台业务", systemImage: "checkmark.shield")
+            Label("Silent audio runs only when enabled, a task is running, and the app is in the background", systemImage: "speaker.wave.2")
+            Label("Background location must be enabled separately with Always permission; coordinates are never saved or uploaded", systemImage: "location")
+            Label("Never uses Bluetooth or VoIP to fake background work", systemImage: "checkmark.shield")
         } header: {
-            Label("执行边界", systemImage: "checkmark.shield")
+            Label("Execution Boundaries", systemImage: "checkmark.shield")
         }
     }
 }

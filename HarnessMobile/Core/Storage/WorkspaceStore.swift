@@ -49,21 +49,21 @@ enum ImageAdmissionError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .empty:
-            "图片内容为空。"
+            "The image is empty."
         case let .inputTooLarge(limit):
-            "原始图片超过本地准入上限（\(limit) 字节）。"
+            "The original image exceeds the local admission limit (\(limit) bytes)."
         case let .tooManyPixels(limit):
-            "图片解码尺寸超过本地准入上限（\(limit) 像素）。"
+            "The decoded image size exceeds the local admission limit (\(limit) pixels)."
         case let .dimensionTooLarge(limit):
-            "图片单边尺寸超过本地准入上限（\(limit) 像素）。"
+            "An image dimension exceeds the local admission limit (\(limit) pixels)."
         case .invalidImage:
-            "图片无法完整解码。"
+            "The image could not be fully decoded."
         case .unsupportedImageType:
-            "图片格式不受支持。"
+            "The image format is not supported."
         case let .typeMismatch(expected, actual):
-            "图片扩展名声明为 \(expected)，但实际内容是 \(actual)。"
+            "The image extension declares \(expected), but the actual content is \(actual)."
         case let .outputTooLarge(limit):
-            "图片压缩后仍超过模型附件上限（\(limit) 字节）。"
+            "The image still exceeds the model attachment limit after compression (\(limit) bytes)."
         }
     }
 }
@@ -455,7 +455,7 @@ actor WorkspaceStore {
         if resolvedPath.isExternalMount {
             data = try coordinatedRead(at: url)
         } else {
-            data = try Data(contentsOf: url, options: [.mappedIfSafe])
+            data = try Data(contentsOf: url, options: [])
         }
         guard let text = String(data: data, encoding: .utf8) else {
             throw WorkspaceError.notUTF8
@@ -479,7 +479,7 @@ actor WorkspaceStore {
         if resolvedPath.isExternalMount {
             return try coordinatedRead(at: url)
         }
-        return try Data(contentsOf: url, options: [.mappedIfSafe])
+        return try Data(contentsOf: url, options: [])
     }
 
     func writeText(path: String, text: String) throws {
@@ -637,7 +637,7 @@ actor WorkspaceStore {
               size <= Self.maximumFileAttachmentBytes else {
             throw WorkspaceError.fileTooLarge(Self.maximumFileAttachmentBytes)
         }
-        let data = try Data(contentsOf: externalURL, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: externalURL, options: [])
         return try stageFileAttachment(data: data, filename: externalURL.lastPathComponent)
     }
 
@@ -683,7 +683,7 @@ actor WorkspaceStore {
               ref.byteCount <= Self.maximumFileAttachmentBytes else {
             throw WorkspaceError.notAFile
         }
-        let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: url, options: [])
         _ = try FileAttachmentAdmission.admit(
             data,
             filename: ref.displayName,
@@ -858,7 +858,7 @@ actor WorkspaceStore {
         }
         return try JSONDecoder().decode(
             AgentImageAttachmentRef.self,
-            from: Data(contentsOf: url, options: [.mappedIfSafe])
+            from: Data(contentsOf: url, options: [])
         )
     }
 
@@ -877,7 +877,7 @@ actor WorkspaceStore {
         guard let size = values.fileSize, size <= maximumImageBytes else {
             throw WorkspaceError.fileTooLarge(maximumImageBytes)
         }
-        return try Data(contentsOf: url, options: [.mappedIfSafe])
+        return try Data(contentsOf: url, options: [])
     }
 
     /// Returns the deterministic provider-request variant for an immutable
@@ -904,7 +904,7 @@ actor WorkspaceStore {
             if let size = values.fileSize,
                size > 0,
                size <= Self.maximumModelRequestImageBytes {
-                return try Data(contentsOf: variantURL, options: [.mappedIfSafe])
+                return try Data(contentsOf: variantURL, options: [])
             }
         }
 
@@ -928,7 +928,7 @@ actor WorkspaceStore {
         guard let size = values.fileSize, size <= maximumImageBytes else {
             throw WorkspaceError.fileTooLarge(maximumImageBytes)
         }
-        return try Data(contentsOf: url, options: [.mappedIfSafe])
+        return try Data(contentsOf: url, options: [])
     }
 
     func hasStagedImage() -> Bool {
@@ -1199,7 +1199,7 @@ actor WorkspaceStore {
         }
         let data = resolved.isExternalMount
             ? try coordinatedRead(at: resolved.url)
-            : try Data(contentsOf: resolved.url, options: [.mappedIfSafe])
+            : try Data(contentsOf: resolved.url, options: [])
         guard data.count <= maximumBytes else {
             throw HarnessFsError(
                 code: .tooLarge,
@@ -1552,7 +1552,7 @@ actor WorkspaceStore {
 
     private func snapshot(for record: MountRecord) -> MountSnapshot {
         let activation = mountActivations[record.id]
-            ?? MountActivation(status: .unavailable, failureMessage: "挂载尚未激活。")
+            ?? MountActivation(status: .unavailable, failureMessage: "The mount is not active yet.")
         return MountSnapshot(
             id: record.id,
             name: record.name,
@@ -1572,7 +1572,7 @@ actor WorkspaceStore {
 
         let data: Data
         do {
-            data = try Data(contentsOf: mountStoreURL, options: [.mappedIfSafe])
+            data = try Data(contentsOf: mountStoreURL, options: [])
         } catch {
             didLoadMounts = false
             throw WorkspaceError.mountStoreUnavailable(error.localizedDescription)
@@ -1638,7 +1638,7 @@ actor WorkspaceStore {
         guard startedScope || allowsUnscopedMounts else {
             mountActivations[record.id] = MountActivation(
                 status: .permissionDenied,
-                failureMessage: "iOS 已撤销这个文件夹的访问权限，请重新授权。"
+                failureMessage: "iOS revoked access to this folder. Please reauthorize it."
             )
             return
         }
@@ -1664,7 +1664,7 @@ actor WorkspaceStore {
             }
             mountActivations[record.id] = MountActivation(
                 status: .unavailable,
-                failureMessage: "原位置不再是可访问的文件夹。"
+                failureMessage: "The original location is no longer an accessible folder."
             )
             return
         }
@@ -1674,7 +1674,7 @@ actor WorkspaceStore {
             activeMountScopes.insert(record.id)
         }
         mountActivations[record.id] = isStale
-            ? MountActivation(status: .staleBookmark, failureMessage: "书签已过期，正在尝试刷新。")
+            ? MountActivation(status: .staleBookmark, failureMessage: "The bookmark is stale. Trying to refresh it.")
             : .active
 
         if isStale {
@@ -1692,7 +1692,7 @@ actor WorkspaceStore {
             } catch {
                 mountActivations[record.id] = MountActivation(
                     status: .staleBookmark,
-                    failureMessage: "书签已过期，请重新选择这个文件夹。"
+                    failureMessage: "The bookmark is stale. Please select this folder again."
                 )
             }
         }
@@ -1827,7 +1827,7 @@ actor WorkspaceStore {
             error: &coordinationError
         ) { coordinatedURL in
             result = Result {
-                try Data(contentsOf: coordinatedURL, options: [.mappedIfSafe])
+                try Data(contentsOf: coordinatedURL, options: [])
             }
         }
         if let coordinationError {
@@ -1956,7 +1956,7 @@ actor WorkspaceStore {
               size <= maximumBytes else {
             return nil
         }
-        let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: url, options: [])
         guard data.count <= maximumBytes,
               let text = String(data: data, encoding: .utf8) else {
             return nil
@@ -1980,7 +1980,7 @@ actor WorkspaceStore {
               size <= maximumBytes else {
             return nil
         }
-        let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: url, options: [])
         guard data.count <= maximumBytes,
               let raw = String(data: data, encoding: .utf8),
               !raw.contains("\0") else {
@@ -2050,7 +2050,7 @@ actor WorkspaceStore {
               size <= maximumSkillBytes else {
             return nil
         }
-        let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: url, options: [])
         guard let text = String(data: data, encoding: .utf8) else { return nil }
         let workspaceRoot = root.resolvingSymlinksInPath().standardizedFileURL
         let path = String(resolved.path.dropFirst(workspaceRoot.path.count + 1))
@@ -2511,7 +2511,10 @@ private enum FileAttachmentAdmission {
             guard hasISOBMFFSignature(data) else { throw WorkspaceError.unsupportedFileType }
             mimeType = "video/quicktime"
         default:
-            throw WorkspaceError.unsupportedFileType
+            // Any other file is admitted as an opaque attachment: sources,
+            // notes, archives, firmware images. Local providers only see its
+            // metadata; a desktop mirror forwards the bytes as they are.
+            mimeType = genericMimeType(forExtension: fileExtension)
         }
         guard expectedMimeType == nil || expectedMimeType == mimeType else {
             throw WorkspaceError.unsupportedFileType
@@ -2519,9 +2522,31 @@ private enum FileAttachmentAdmission {
         return Admitted(
             data: data,
             mimeType: mimeType,
-            filenameExtension: fileExtension,
+            filenameExtension: storableExtension(fileExtension),
             displayName: sanitized
         )
+    }
+
+    /// A mime type for an extension the media signature checks do not cover.
+    static func genericMimeType(forExtension fileExtension: String) -> String {
+        switch fileExtension {
+        case "": return "application/octet-stream"
+        case "md", "markdown": return "text/markdown"
+        case "txt", "log", "cfg", "ini", "conf": return "text/plain"
+        case "json": return "application/json"
+        case "yaml", "yml": return "application/yaml"
+        case "bin", "rom", "img", "fd", "cap", "dat": return "application/octet-stream"
+        default:
+            return UTType(filenameExtension: fileExtension)?.preferredMIMEType
+                ?? "application/octet-stream"
+        }
+    }
+
+    /// The extension used for the stored copy: lower-case alphanumerics only,
+    /// `bin` when the name has none.
+    private static func storableExtension(_ fileExtension: String) -> String {
+        let cleaned = fileExtension.filter { $0.isLetter || $0.isNumber }
+        return cleaned.isEmpty ? "bin" : String(cleaned.prefix(16))
     }
 
     private static func hasMP3Signature(_ data: Data) -> Bool {
@@ -2569,39 +2594,39 @@ enum WorkspaceError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .invalidPath:
-            return "文件路径无效。"
+            return "Invalid file path."
         case .pathEscapesWorkspace:
-            return "文件路径超出 App 本地工作区。"
+            return "The file path is outside the app's local workspace."
         case .notAFile:
-            return "目标不是普通文件。"
+            return "The target is not a regular file."
         case .notADirectory:
-            return "目标不是可挂载的文件夹。"
+            return "The target is not a mountable folder."
         case let .fileTooLarge(limit):
-            return "文件超过本地工具上限（\(limit) 字节）。"
+            return "The file exceeds the local tool limit (\(limit) bytes)."
         case .notUTF8:
-            return "当前版本只读取 UTF-8 文本文件。"
+            return "This version only reads UTF-8 text files."
         case .unsupportedFileType:
-            return "当前版本只允许写入文本类文件。"
+            return "This version only allows writing text files."
         case .noStagedImage:
-            return "请先在对话页拍照或选择一张图片。"
+            return "Take a photo or choose an image in the chat first."
         case .attachmentExpired:
-            return "附件已过期，请重新选择文件后重试。"
+            return "The attachment has expired. Select the file again and retry."
         case .tooManyConflicts:
-            return "同名导入文件过多。"
+            return "Too many imported files with the same name."
         case let .mountLimitReached(limit):
-            return "最多可同时挂载 \(limit) 个外部文件夹。"
+            return "Up to \(limit) external folders can be mounted at once."
         case .mountNotFound:
-            return "找不到这个工作区挂载。"
+            return "This workspace mount could not be found."
         case let .mountUnavailable(name):
-            return "挂载“\(name)”当前不可用，请在文件页重新授权。"
+            return "Mount '\(name)' is currently unavailable. Reauthorize it in Files."
         case let .mountReadOnly(name):
-            return "挂载“\(name)”是只读的，不能修改其中的文件。"
+            return "Mount '\(name)' is read-only; its files cannot be modified."
         case let .bookmarkCreationFailed(message):
-            return "无法保存文件夹授权：\(message)"
+            return "Unable to save folder authorization: \(message)"
         case let .mountStoreCorrupted(message):
-            return "工作区挂载记录损坏：\(message)"
+            return "Workspace mount records are corrupted: \(message)"
         case let .mountStoreUnavailable(message):
-            return "无法读取工作区挂载记录：\(message)"
+            return "Unable to read workspace mount records: \(message)"
         }
     }
 }

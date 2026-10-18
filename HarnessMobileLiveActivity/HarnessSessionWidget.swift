@@ -9,8 +9,8 @@ struct HarnessSessionWidget: Widget {
             HarnessSessionWidgetView(entry: entry)
                 .containerBackground(.background, for: .widget)
         }
-        .configurationDisplayName("Harness 运行状态")
-        .description("只读显示本机运行中的 Harness 会话。")
+        .configurationDisplayName("Harness Status")
+        .description("Shows Harness sessions running on this device (read-only).")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
@@ -88,11 +88,11 @@ private struct HarnessSessionWidgetView: View {
             }
 
             if entry.projection.privacyModeEnabled {
-                Label("隐私模式已开启", systemImage: "lock.fill")
+                Label("Privacy Mode On", systemImage: "lock.fill")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else if visibleSessions.isEmpty {
-                Label("没有运行中的任务", systemImage: "checkmark.circle")
+                Label("No Running Tasks", systemImage: "checkmark.circle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -102,7 +102,7 @@ private struct HarnessSessionWidgetView: View {
                             Circle()
                                 .fill(session.status.tint)
                                 .frame(width: 7, height: 7)
-                            Text("会话 \(shortID(session.id))")
+                            Text("Session \(shortID(session.id))")
                                 .font(.caption)
                                 .lineLimit(1)
                             Spacer(minLength: 4)
@@ -116,7 +116,7 @@ private struct HarnessSessionWidgetView: View {
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Harness 运行状态")
+        .accessibilityLabel("Harness Status")
     }
 
     private func shortID(_ id: UUID) -> String {
@@ -127,9 +127,9 @@ private struct HarnessSessionWidgetView: View {
 private extension HarnessWidgetRunStatus {
     var label: String {
         switch self {
-        case .preparing: "准备中"
-        case .running: "运行中"
-        case .cancelling: "取消中"
+        case .preparing: "Preparing"
+        case .running: "Running"
+        case .cancelling: "Cancelling"
         }
     }
 

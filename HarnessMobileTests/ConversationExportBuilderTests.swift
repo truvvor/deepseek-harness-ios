@@ -78,25 +78,25 @@ final class ConversationExportBuilderTests: XCTestCase {
     func testMarkdownExportUsesNativeTranscriptShape() throws {
         let message = AgentMessage(
             role: .assistant,
-            content: "完成",
-            feedback: MessageFeedback(rating: .negative, note: "需要补充测试")
+            content: "Done",
+            feedback: MessageFeedback(rating: .negative, note: "Needs more tests")
         )
         let data = try ConversationExportBuilder.makeData(
             input: ConversationExportInput(
                 sessionID: UUID(),
-                title: "插件市场",
+                title: "Plugin Marketplace",
                 providerID: "deepseek",
                 model: "deepseek-chat",
-                messages: [.user("修复问题"), message]
+                messages: [.user("Fix the issue"), message]
             ),
             format: .markdown
         )
         let text = String(decoding: data, as: UTF8.self)
 
-        XCTAssertTrue(text.contains("# 插件市场"))
+        XCTAssertTrue(text.contains("# Plugin Marketplace"))
         XCTAssertTrue(text.contains("## User"))
         XCTAssertTrue(text.contains("## Harness"))
         XCTAssertTrue(text.contains("Feedback: negative"))
-        XCTAssertTrue(text.contains("Note: 需要补充测试"))
+        XCTAssertTrue(text.contains("Note: Needs more tests"))
     }
 }

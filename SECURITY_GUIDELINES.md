@@ -10,6 +10,7 @@
 - 私人会话、工作区文件、附件、位置、联系人、健康和媒体数据。
 - 工具授权、插件来源、签名配置和设备身份。
 - 轨迹、诊断、导出和后台 journal 中的派生数据。
+- 文件保护类（D-015）：会话快照、镜像映射、轨迹日志与附件使用 `completeUntilFirstUserAuthentication`（首次解锁后可读写，锁屏期间镜像同步继续）；凭据只在 Keychain `WhenUnlockedThisDeviceOnly`。
 
 ## 信任边界
 

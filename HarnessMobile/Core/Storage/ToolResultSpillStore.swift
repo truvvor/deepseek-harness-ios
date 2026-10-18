@@ -11,7 +11,7 @@ enum ToolResultSpillStoreError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case let .contentTooLarge(actualBytes, maximumBytes):
-            "工具完整结果为 \(actualBytes) 字节，超过本机可保存上限 \(maximumBytes) 字节。"
+            "The full tool result is \(actualBytes) bytes, exceeding the on-device storage limit of \(maximumBytes) bytes."
         }
     }
 }

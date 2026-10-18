@@ -60,9 +60,9 @@ struct ContactsSearchTool: LocalAgentTool {
 
     func summary(arguments: [String: JSONValue]) -> String {
         guard let parsed = try? parsedArguments(arguments) else {
-            return "搜索本机联系人"
+            return "Search on-device contacts"
         }
-        return "在本机联系人中搜索“\(parsed.query)”，最多返回 \(parsed.limit) 项；结果会发送给模型"
+        return "Search on-device contacts for '\(parsed.query)', returning up to \(parsed.limit) items; results are sent to the model"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -212,11 +212,11 @@ struct SystemDeviceContactSearcher: DeviceContactSearching {
         } catch {
             switch CNContactStore.authorizationStatus(for: .contacts) {
             case .denied:
-                throw MobileNativeToolError.permissionDenied("联系人")
+                throw MobileNativeToolError.permissionDenied("Contacts")
             case .restricted:
-                throw MobileNativeToolError.restricted("联系人")
+                throw MobileNativeToolError.restricted("Contacts")
             default:
-                throw MobileNativeToolError.operationFailed("联系人搜索")
+                throw MobileNativeToolError.operationFailed("Contacts search")
             }
         }
     }
@@ -226,27 +226,27 @@ struct SystemDeviceContactSearcher: DeviceContactSearching {
         case .authorized, .limited:
             return
         case .denied:
-            throw MobileNativeToolError.permissionDenied("联系人")
+            throw MobileNativeToolError.permissionDenied("Contacts")
         case .restricted:
-            throw MobileNativeToolError.restricted("联系人")
+            throw MobileNativeToolError.restricted("Contacts")
         case .notDetermined:
             do {
                 _ = try await CNContactStore().requestAccess(for: .contacts)
             } catch {
-                throw MobileNativeToolError.operationFailed("联系人授权")
+                throw MobileNativeToolError.operationFailed("Contacts authorization")
             }
             switch CNContactStore.authorizationStatus(for: .contacts) {
             case .authorized, .limited:
                 return
             case .restricted:
-                throw MobileNativeToolError.restricted("联系人")
+                throw MobileNativeToolError.restricted("Contacts")
             case .denied, .notDetermined:
-                throw MobileNativeToolError.permissionDenied("联系人")
+                throw MobileNativeToolError.permissionDenied("Contacts")
             @unknown default:
-                throw MobileNativeToolError.operationFailed("联系人授权")
+                throw MobileNativeToolError.operationFailed("Contacts authorization")
             }
         @unknown default:
-            throw MobileNativeToolError.operationFailed("联系人授权")
+            throw MobileNativeToolError.operationFailed("Contacts authorization")
         }
     }
 

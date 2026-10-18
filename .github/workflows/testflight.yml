@@ -1,0 +1,272 @@
+name: TestFlight
+
+# Archives HarnessMobile on a self-hosted Apple Silicon Mac runner and uploads
+# the build to App Store Connect / TestFlight.
+#
+# Optional repository secrets (without them the Apple ID signed in to Xcode on
+# the runner is used for signing and upload):
+#   ASC_KEY_ID      App Store Connect API key ID
+#   ASC_ISSUER_ID   App Store Connect API issuer ID
+#   ASC_KEY_P8      Contents of the AuthKey_<id>.p8 file (raw PEM or base64)
+# Optional repository variables:
+#   APPLE_TEAM_ID   Team that signs the app (default: team of the first Apple
+#                   Development/Distribution certificate in the runner keychain)
+#   BUNDLE_ID       Main app bundle ID; extensions and the app group derive
+#                   from it (default: com.llf.harnessmobile)
+#   DEVELOPER_DIR   Xcode to use (default: newest of Xcode.app / Xcode-beta.app)
+
+on:
+  push:
+    tags:
+      - "testflight/*"
+    branches:
+      - claude/gifted-tesla-pzo0xz
+      - dsh-bridge-sync
+    paths-ignore:
+      - "**/*.md"
+      - "HarnessMobileTests/**"
+      - "HarnessMobileUITests/**"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to build (empty = the ref the workflow runs on)
+        required: false
+        default: ""
+      marketing_version:
+        description: CFBundleShortVersionString override (empty = project.yml)
+        required: false
+        default: ""
+
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 120
+    env:
+      ORIGINAL_BUNDLE_ID: com.llf.harnessmobile
+      ORIGINAL_TEAM_ID: 2SH3TUR2JL
+      BUNDLE_ID: ${{ vars.BUNDLE_ID || 'com.truvvor.harnessmobile' }}
+      APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          clean: true
+
+      - name: Select Xcode
+        run: |
+          set -euo pipefail
+          echo "BUILD_ROOT=$RUNNER_TEMP/harness-testflight" >> "$GITHUB_ENV"
+          for dir in /opt/homebrew/bin /opt/homebrew/opt/lld/bin /opt/homebrew/opt/llvm/bin; do
+            [ -d "$dir" ] && echo "$dir" >> "$GITHUB_PATH"
+          done
+          dev_dir="${{ vars.DEVELOPER_DIR }}"
+          if [ -z "$dev_dir" ]; then
+            best=""; best_major=0
+            for app in /Applications/Xcode*.app; do
+              [ -d "$app" ] || continue
+              major="$(DEVELOPER_DIR="$app/Contents/Developer" xcodebuild -version 2>/dev/null | awk 'NR==1{split($2,v,"."); print v[1]}')"
+              echo "Found $app (Xcode ${major:-?})"
+              [ -n "$major" ] || continue
+              if [ "$major" -gt "$best_major" ]; then best="$app"; best_major="$major"; fi
+            done
+            [ -n "$best" ] || { echo "::error::No Xcode found in /Applications"; exit 1; }
+            dev_dir="$best/Contents/Developer"
+          fi
+          echo "DEVELOPER_DIR=$dev_dir" >> "$GITHUB_ENV"
+          DEVELOPER_DIR="$dev_dir" xcodebuild -version
+
+      - name: Ensure Homebrew build tools
+        run: |
+          set -euo pipefail
+          command -v brew >/dev/null || { echo "::error::Homebrew is required on the runner (https://brew.sh)"; exit 1; }
+          missing=()
+          for formula in ninja llvm lld libarchive jq ripgrep; do
+            brew list --formula "$formula" >/dev/null 2>&1 || missing+=("$formula")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install "${missing[@]}"
+          fi
+
+      - name: Restore or build iSH sandbox artifacts
+        run: |
+          set -euo pipefail
+          key="$(cat Dependencies/upstreams.lock.json Scripts/build-ish-sandbox.sh | shasum -a 256 | cut -c1-16)"
+          cache="$HOME/Library/Caches/harness-mobile-ci/ish-$key"
+          target="Vendor/OpenMinisISH/Artifacts"
+          if [ -d "$cache/HarnessISH.xcframework" ]; then
+            echo "Using cached iSH artifacts: $cache"
+          else
+            Scripts/fetch-upstreams.sh ishArm64 openminis
+            Scripts/build-ish-sandbox.sh all
+            rm -rf "$cache.tmp" && mkdir -p "$(dirname "$cache")"
+            cp -R "$target" "$cache.tmp" && mv "$cache.tmp" "$cache"
+          fi
+          rm -rf "$target" && mkdir -p "$(dirname "$target")"
+          cp -R "$cache" "$target"
+          # The artifacts were rebuilt on this runner from the locked upstream
+          # commits; byte-identical output to the committed lock needs the
+          # author's exact toolchain, so re-lock them in this checkout only.
+          for artifact in HarnessISH.xcframework.zip:openminis-ishArm64 RootfsPatch.bundle.zip:ishArm64 alpine-rootfs.zip:alpineRootfs-openminis-ishArm64; do
+            Scripts/record-artifact.sh "$target/${artifact%%:*}" "${artifact#*:}" false
+          done
+          if ! git diff --quiet -- Dependencies/artifacts.lock.json; then
+            echo "::warning::iSH artifacts were rebuilt on the runner and re-locked locally (toolchain differs from the committed lock)"
+            git diff -- Dependencies/artifacts.lock.json
+          fi
+
+      - name: Retarget signing identity
+        run: |
+          set -euo pipefail
+          if [ -z "$APPLE_TEAM_ID" ]; then
+            for cert in "Apple Distribution" "Apple Development"; do
+              APPLE_TEAM_ID="$(security find-certificate -c "$cert" -p 2>/dev/null | openssl x509 -noout -subject 2>/dev/null | sed -nE 's/.*OU ?= ?([A-Z0-9]{10}).*/\1/p' | head -1 || true)"
+              [ -z "$APPLE_TEAM_ID" ] || break
+            done
+            [ -n "$APPLE_TEAM_ID" ] || { echo "::error::Set the APPLE_TEAM_ID variable or sign in to Xcode on the runner"; exit 1; }
+            echo "APPLE_TEAM_ID=$APPLE_TEAM_ID" >> "$GITHUB_ENV"
+          fi
+          echo "Team: $APPLE_TEAM_ID  Bundle ID: $BUNDLE_ID"
+          if [ "$BUNDLE_ID" != "$ORIGINAL_BUNDLE_ID" ]; then
+            grep -rlF "$ORIGINAL_BUNDLE_ID" project.yml HarnessMobile.xcodeproj HarnessMobile HarnessMobileShare HarnessMobileLiveActivity \
+              | while IFS= read -r file; do
+                  sed -i '' "s/com\.llf\.harnessmobile/$BUNDLE_ID/g" "$file"
+                done
+          fi
+          if [ "$APPLE_TEAM_ID" != "$ORIGINAL_TEAM_ID" ]; then
+            sed -i '' "s/$ORIGINAL_TEAM_ID/$APPLE_TEAM_ID/g" project.yml HarnessMobile.xcodeproj/project.pbxproj
+          fi
+          grep -n "PRODUCT_BUNDLE_IDENTIFIER\|DEVELOPMENT_TEAM" HarnessMobile.xcodeproj/project.pbxproj | sort -u -k2 | head -20
+
+      - name: Install App Store Connect API key
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_KEY_P8" ]; then
+            echo "No App Store Connect API key secrets; using the Xcode account on the runner."
+            exit 0
+          fi
+          mkdir -p "$BUILD_ROOT"
+          key_path="$BUILD_ROOT/AuthKey_$ASC_KEY_ID.p8"
+          if printf '%s' "$ASC_KEY_P8" | grep -q "BEGIN PRIVATE KEY"; then
+            printf '%s\n' "$ASC_KEY_P8" > "$key_path"
+          else
+            printf '%s' "$ASC_KEY_P8" | base64 --decode > "$key_path"
+          fi
+          chmod 600 "$key_path"
+          echo "ASC_KEY_PATH=$key_path" >> "$GITHUB_ENV"
+          Scripts/ci-signing-keychain.sh setup
+          echo "CI_KEYCHAIN=1" >> "$GITHUB_ENV"
+
+      - name: Compile check (unsigned, only without an API key)
+        if: env.ASC_KEY_PATH == ''
+        run: |
+          set -euo pipefail
+          xcodebuild build \
+            -project HarnessMobile.xcodeproj \
+            -scheme HarnessMobile \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$BUILD_ROOT/DerivedData" \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+
+      - name: Archive
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          build_number="$(( ${{ github.run_number }} + 100 ))$(printf '.%s' "${{ github.run_attempt }}" | sed 's/^\.1$//')"
+          auth_args=()
+          if [ -n "${ASC_KEY_PATH:-}" ]; then
+            auth_args=(-authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          fi
+          version_args=()
+          if [ -n "${{ inputs.marketing_version }}" ]; then
+            version_args+=("MARKETING_VERSION=${{ inputs.marketing_version }}")
+          fi
+          # Xcode may create a signing key mid-build; codesign can only use it
+          # after the CI keychain re-authorizes Apple tools, so retry once.
+          signed_xcodebuild() {
+            local log="$BUILD_ROOT/xcodebuild-$1.log"; shift
+            if xcodebuild "$@" 2>&1 | tee "$log"; then return 0; fi
+            if [ -n "${CI_KEYCHAIN:-}" ] && grep -q errSecInternalComponent "$log"; then
+              echo "::warning::codesign could not use a new key yet; re-authorizing the CI keychain and retrying"
+              Scripts/ci-signing-keychain.sh grant
+              xcodebuild "$@"
+            else
+              return 1
+            fi
+          }
+          signed_xcodebuild archive archive \
+            -project HarnessMobile.xcodeproj \
+            -scheme HarnessMobile \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$BUILD_ROOT/HarnessMobile.xcarchive" \
+            -derivedDataPath "$BUILD_ROOT/DerivedData" \
+            -allowProvisioningUpdates \
+            ${auth_args[@]+"${auth_args[@]}"} \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="$build_number" \
+            ${version_args[@]+"${version_args[@]}"}
+          echo "Archived build $build_number"
+
+      - name: Export and upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          auth_args=()
+          if [ -n "${ASC_KEY_PATH:-}" ]; then
+            auth_args=(-authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          fi
+          cat > "$BUILD_ROOT/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+            <key>testFlightInternalTestingOnly</key><false/>
+          </dict>
+          </plist>
+          EOF
+          # Xcode may create a signing key mid-build; codesign can only use it
+          # after the CI keychain re-authorizes Apple tools, so retry once.
+          signed_xcodebuild() {
+            local log="$BUILD_ROOT/xcodebuild-$1.log"; shift
+            if xcodebuild "$@" 2>&1 | tee "$log"; then return 0; fi
+            if [ -n "${CI_KEYCHAIN:-}" ] && grep -q errSecInternalComponent "$log"; then
+              echo "::warning::codesign could not use a new key yet; re-authorizing the CI keychain and retrying"
+              Scripts/ci-signing-keychain.sh grant
+              xcodebuild "$@"
+            else
+              return 1
+            fi
+          }
+          signed_xcodebuild export -exportArchive \
+            -archivePath "$BUILD_ROOT/HarnessMobile.xcarchive" \
+            -exportPath "$BUILD_ROOT/export" \
+            -exportOptionsPlist "$BUILD_ROOT/ExportOptions.plist" \
+            -allowProvisioningUpdates \
+            ${auth_args[@]+"${auth_args[@]}"}
+
+      - name: Clean up
+        if: always()
+        run: |
+          if [ -n "${CI_KEYCHAIN:-}" ]; then Scripts/ci-signing-keychain.sh restore || true; fi
+          rm -rf "$BUILD_ROOT"

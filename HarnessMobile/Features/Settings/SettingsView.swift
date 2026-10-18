@@ -9,10 +9,10 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
-                LabeledContent("服务商", value: activeProfileName)
+                LabeledContent("Provider", value: activeProfileName)
                 LabeledContent("API", value: endpointHost)
-                LabeledContent("模型", value: model.configuration.model)
-                LabeledContent("思考", value: model.configuration.reasoningMode.title)
+                LabeledContent("Model", value: model.configuration.model)
+                LabeledContent("Reasoning", value: model.configuration.reasoningMode.title)
                 if let compatibilityNotice = provider.compatibilityNotice {
                     Label(compatibilityNotice, systemImage: "info.circle")
                         .font(.footnote)
@@ -21,10 +21,10 @@ struct SettingsView: View {
                 NavigationLink {
                     ProviderProfilesView()
                 } label: {
-                    SettingsLinkLabel(title: "模型与服务商", systemImage: "server.rack", tint: .blue)
+                    SettingsLinkLabel(title: "Models & Providers", systemImage: "server.rack", tint: .blue)
                 }
                 .accessibilityIdentifier("settings-model-providers")
-            } header: { Label("模型", systemImage: "server.rack") }
+            } header: { Label("Model", systemImage: "server.rack") }
 
             Section {
                 NavigationLink {
@@ -35,21 +35,21 @@ struct SettingsView: View {
                         requestLocationAuthorization: model.requestBackgroundLocationAuthorization
                     )
                 } label: {
-                    SettingsLinkLabel(title: "后台任务与恢复", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90", tint: .orange)
+                    SettingsLinkLabel(title: "Background Tasks & Recovery", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90", tint: .orange)
                 }
                 .accessibilityIdentifier("settings-background-tasks")
-                LabeledContent("当前状态", value: backgroundStatusLabel)
-                LabeledContent("活动任务", value: "\(model.backgroundSystemProjection.activeRunCount) 个")
-            } header: { Label("后台", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90") }
+                LabeledContent("Current Status", value: backgroundStatusLabel)
+                LabeledContent("Active Tasks", value: "\(model.backgroundSystemProjection.activeRunCount)")
+            } header: { Label("Background", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90") }
 
             Section {
                 NavigationLink {
                     WebSearchSettingsView()
                 } label: {
-                    SettingsLinkLabel(title: "联网搜索", systemImage: "magnifyingglass", tint: .cyan)
+                    SettingsLinkLabel(title: "Web Search", systemImage: "magnifyingglass", tint: .cyan)
                 }
                 .accessibilityIdentifier("settings-web-search")
-            } header: { Label("搜索", systemImage: "magnifyingglass") }
+            } header: { Label("Search", systemImage: "magnifyingglass") }
 
             Section {
                 NavigationLink {
@@ -58,138 +58,147 @@ struct SettingsView: View {
                     SettingsLinkLabel(title: "GitHub Webhook", systemImage: "arrow.down.circle", tint: .purple)
                 }
                 .accessibilityIdentifier("settings-github-webhook")
-            } header: { Label("事件接入", systemImage: "arrow.down.circle") }
+            } header: { Label("Event Ingestion", systemImage: "arrow.down.circle") }
 
             Section {
                 NavigationLink {
                     AgentProviderBundlesView()
                 } label: {
-                    SettingsLinkLabel(title: "Agent 编排 Bundle", systemImage: "arrow.triangle.branch", tint: .indigo)
+                    SettingsLinkLabel(title: "Agent Orchestration Bundle", systemImage: "arrow.triangle.branch", tint: .indigo)
                 }
                 .accessibilityIdentifier("settings-agent-bundles")
                 NavigationLink {
                     PhonePermissionsView()
                 } label: {
-                    SettingsLinkLabel(title: "手机权限", systemImage: "hand.raised", tint: .green)
+                    SettingsLinkLabel(title: "Device Permissions", systemImage: "hand.raised", tint: .green)
                 }
                 .accessibilityIdentifier("settings-phone-permissions")
-            } header: { Label("Agent 与权限", systemImage: "person.crop.circle.badge.checkmark") }
+            } header: { Label("Agents & Permissions", systemImage: "person.crop.circle.badge.checkmark") }
 
             Section {
                 NavigationLink {
                     PluginManagementView()
                 } label: {
-                    SettingsLinkLabel(title: "Cordis 插件", systemImage: "puzzlepiece.extension", tint: .purple)
+                    SettingsLinkLabel(title: "Cordis Plugins", systemImage: "puzzlepiece.extension", tint: .purple)
                 }
                 NavigationLink {
                     ToolApprovalSettingsView()
                 } label: {
                     HStack {
-                        SettingsLinkLabel(title: "工具授权", systemImage: "checkmark.shield", tint: .teal)
+                        SettingsLinkLabel(title: "Tool Approvals", systemImage: "checkmark.shield", tint: .teal)
                         Spacer()
-                        Text("仅本次")
+                        Text("This Time Only")
                             .foregroundStyle(.secondary)
                     }
                 }
                 .accessibilityIdentifier("settings-tool-approvals")
-                LabeledContent("本机工具", value: "\(ProductionToolCatalog.approvedNames.count) 项")
-            } header: { Label("工具与插件", systemImage: "puzzlepiece.extension") }
+                LabeledContent("Local Tools", value: "\(ProductionToolCatalog.approvedNames.count)")
+            } header: { Label("Tools & Plugins", systemImage: "puzzlepiece.extension") }
+
+            Section {
+                NavigationLink {
+                    DesktopBridgeSettingsView()
+                } label: {
+                    SettingsLinkLabel(title: "Desktop DSH Bridge", systemImage: "desktopcomputer", tint: .blue)
+                }
+                .accessibilityIdentifier("settings-desktop-bridge")
+            } header: { Label("Desktop Mirror", systemImage: "desktopcomputer") }
 
             Section {
                 NavigationLink {
                     WorkspaceView()
                 } label: {
-                    SettingsLinkLabel(title: "本机工作区", systemImage: "folder", tint: .orange)
+                    SettingsLinkLabel(title: "Local Workspace", systemImage: "folder", tint: .orange)
                 }
                 .accessibilityIdentifier("settings-workspace")
                 NavigationLink {
                     MemoryManagementView()
                 } label: {
-                    SettingsLinkLabel(title: "记忆", systemImage: "brain", tint: .purple)
+                    SettingsLinkLabel(title: "Memory", systemImage: "brain", tint: .purple)
                 }
                 .accessibilityIdentifier("settings-memory")
-                LabeledContent("会话存储", value: "本机持久化")
-                LabeledContent("同步", value: "未启用")
-                Text("会话、轨迹和工作区文件保存在此 iPhone。当前版本不会把凭据或会话正文上传到同步服务。")
+                LabeledContent("Session Storage", value: "On-Device")
+                LabeledContent("Desktop Mirror", value: mirroredSessionCount > 0 ? "\(mirroredSessionCount) Read-Only" : "Off")
+                Text("Sessions, trajectories, and workspace files are stored on this iPhone. The optional Desktop DSH Bridge mirrors sessions of your DeepSeek Harness desktop; messages typed in a mirror run on the desktop agent, which stays the master of that session. Local sessions never send their tools or agent loop to another machine.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-            } header: { Label("存储与同步", systemImage: "externaldrive") }
+            } header: { Label("Storage & Sync", systemImage: "externaldrive") }
 
             Section {
                 Button {
                     isResetConfirmationPresented = true
                 } label: {
-                    Label("清空当前会话", systemImage: "trash")
+                    Label("Clear Current Session", systemImage: "trash")
                 }
                 .foregroundStyle(.red)
 
                 Button {
                     isRemoveConfirmationPresented = true
                 } label: {
-                    Label("重置全部模型连接", systemImage: "arrow.counterclockwise")
+                    Label("Reset All Model Connections", systemImage: "arrow.counterclockwise")
                 }
                 .foregroundStyle(.red)
             } header: {
-                Label("危险操作", systemImage: "exclamationmark.triangle")
+                Label("Danger Zone", systemImage: "exclamationmark.triangle")
             } footer: {
-                Text("这些操作只影响本机配置或当前会话；工作区文件不会被删除。")
+                Text("These actions only affect local configuration or the current session; workspace files are not deleted.")
             }
 
             Section {
-                DisclosureGroup("执行边界") {
-                    LabeledContent("模型推理", value: "你配置的 API")
-                    LabeledContent("Agent Loop", value: "本机")
-                    LabeledContent("工具与文件", value: "本机")
-                    LabeledContent("命令执行", value: "手机 iSH / Alpine")
-                    LabeledContent("Linux 网络", value: "默认开启")
-                    Text("模型 provider 只负责推理。shell_execute、文件和 Agent Loop 都在 iPhone 内执行；Linux 网络默认可用，也可在“命令”页主动关闭。")
+                DisclosureGroup("Execution Boundary") {
+                    LabeledContent("Model Inference", value: "Your Configured API")
+                    LabeledContent("Agent Loop", value: "On Device")
+                    LabeledContent("Tools & Files", value: "On Device")
+                    LabeledContent("Command Execution", value: "On-Device iSH / Alpine")
+                    LabeledContent("Linux Network", value: "On by Default")
+                    Text("The model provider only handles inference. shell_execute, files, and the Agent Loop all run on the iPhone; Linux networking is available by default and can be turned off on the Commands page.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
                 NavigationLink {
                     DiagnosticLogView()
                 } label: {
-                    SettingsLinkLabel(title: "详细日志", systemImage: "doc.text.magnifyingglass", tint: .gray)
+                    SettingsLinkLabel(title: "Detailed Logs", systemImage: "doc.text.magnifyingglass", tint: .gray)
                 }
                 .accessibilityIdentifier("settings-diagnostics")
                 if let usage = model.latestUsage {
-                    LabeledContent("最近用量", value: "输入 \(usage.promptTokens) · 输出 \(usage.completionTokens)")
+                    LabeledContent("Recent Usage", value: "Input \(usage.promptTokens) · Output \(usage.completionTokens)")
                 }
-                Text("诊断导出会在本机先脱敏；默认不包含 API Key、Authorization、命令正文或模型提示词。")
+                Text("Diagnostic exports are redacted on device first; by default they exclude API keys, Authorization headers, command text, and model prompts.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-            } header: { Label("隐私与诊断", systemImage: "checkmark.shield") }
+            } header: { Label("Privacy & Diagnostics", systemImage: "checkmark.shield") }
         }
         .listStyle(.insetGrouped)
         .environment(\.defaultMinListRowHeight, 44)
         .scrollContentBackground(.hidden)
         .background(HarnessTheme.pageBackground)
-        .navigationTitle("设置")
+        .navigationTitle("Settings")
         .confirmationDialog(
-            "清空当前会话？",
+            "Clear Current Session?",
             isPresented: $isResetConfirmationPresented,
             titleVisibility: .visible
         ) {
-            Button("清空", role: .destructive) {
+            Button("Clear", role: .destructive) {
                 Task {
                     await model.resetConversation()
                 }
             }
         } message: {
-            Text("这会删除本机保存的当前对话，不会删除工作区文件。")
+            Text("This deletes the current conversation stored on this device. Workspace files are not deleted.")
         }
         .confirmationDialog(
-            "重置全部模型连接？",
+            "Reset All Model Connections?",
             isPresented: $isRemoveConfirmationPresented,
             titleVisibility: .visible
         ) {
-            Button("移除", role: .destructive) {
+            Button("Remove", role: .destructive) {
                 Task {
                     await model.removeConfiguration()
                 }
             }
         } message: {
-            Text("所有 Provider Profile 和 API Key 会被移除，本地会话和工作区文件保留。")
+            Text("All Provider Profiles and API Keys will be removed. Local sessions and workspace files are kept.")
         }
     }
 
@@ -202,17 +211,21 @@ struct SettingsView: View {
     }
 
     private var endpointHost: String {
-        URLComponents(string: model.configuration.baseURL)?.host ?? "无效地址"
+        URLComponents(string: model.configuration.baseURL)?.host ?? "Invalid URL"
+    }
+
+    private var mirroredSessionCount: Int {
+        model.sessions.filter(\.isDesktopMirror).count
     }
 
     private var backgroundStatusLabel: String {
         switch model.backgroundSystemProjection.survivalTier {
-        case .foreground: "前台"
-        case .finiteBackgroundTask: "短时后台"
+        case .foreground: "Foreground"
+        case .finiteBackgroundTask: "Short Background"
         case .continuedProcessing: "Continued Processing"
-        case .extendedAudio: "音频延展"
-        case .extendedLocation: "定位延展"
-        case .degraded: "降级"
+        case .extendedAudio: "Extended (Audio)"
+        case .extendedLocation: "Extended (Location)"
+        case .degraded: "Degraded"
         }
     }
 }
@@ -233,6 +246,294 @@ private struct SettingsLinkLabel: View {
     }
 }
 
+/// Desktop DeepSeek Harness bridge (mirror + desktop turns, D-014).
+///
+/// This screen configures the bridge and syncs the mirror list. Desktop turns
+/// are started from a mirror's chat (D-014), never from here, and the app never
+/// sends its own tools or agent loop to another machine.
+private struct DesktopBridgeSettingsView: View {
+    @Environment(AppModel.self) private var model
+
+    @State private var isEnabled = false
+    @State private var baseURLText = ""
+    @State private var includesArchived = false
+    @State private var autoFollow = false
+    @State private var token = ""
+    @State private var tokenConfigured = false
+    @State private var isSavingToken = false
+    @State private var isImporting = false
+    @State private var isProbing = false
+    @State private var healthSummary: String?
+    @State private var errorMessage: String?
+    @State private var importSummary: String?
+    @State private var mirrorSessions: [ConversationSessionSummary] = []
+    @State private var isConfirmingForgetAll = false
+    @State private var isForgetting = false
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Enable Desktop Bridge", isOn: $isEnabled)
+                    .accessibilityIdentifier("desktop-bridge-enabled")
+                TextField("Bridge URL", text: $baseURLText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .accessibilityIdentifier("desktop-bridge-url")
+                Toggle("Include Archived Desktop Sessions", isOn: $includesArchived)
+                Toggle("Follow Open Mirror Automatically", isOn: $autoFollow)
+                HStack {
+                    Button("Save") { saveSettings() }
+                        .buttonStyle(.borderedProminent)
+                    Button("Test Connection") { probe() }
+                        .disabled(isProbing || !isEnabled)
+                    if isProbing { ProgressView().controlSize(.small) }
+                }
+            } header: {
+                Text("Bridge")
+            } footer: {
+                Text("The address is the DSH host origin, for example http://203.0.113.7:19387, a LAN IP, or a host name. /bridge/v1 is appended automatically. Over plain HTTP the bearer token and session content travel unencrypted, so prefer https:// (a reverse proxy or a tailnet) when the host is reachable from the internet. Model providers always require HTTPS.")
+            }
+
+            Section {
+                SecureField("Bearer Token", text: $token)
+                    .textContentType(.password)
+                    .accessibilityIdentifier("desktop-bridge-token")
+                LabeledContent("Token", value: tokenConfigured ? "In Keychain" : "Not Configured")
+                HStack {
+                    Button("Save Token") { saveToken() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSavingToken)
+                    if tokenConfigured {
+                        Button("Delete Token", role: .destructive) { deleteToken() }
+                            .disabled(isSavingToken)
+                    }
+                    if isSavingToken { ProgressView().controlSize(.small) }
+                }
+            } header: {
+                Text("Credential")
+            } footer: {
+                Text("The token is the content of api-bridge.token on the DSH host. It is stored only in this device's Keychain (WhenUnlockedThisDeviceOnly) and is sent only as the Authorization header of a bridge request; it is never written to settings, logs, URLs, session content or exports.")
+            }
+
+            Section {
+                Button {
+                    importSessions()
+                } label: {
+                    Label("Sync Desktop Sessions", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .disabled(isImporting || !isEnabled)
+
+                if isImporting {
+                    if let progress = model.desktopMirrorProgress {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ProgressView(value: progress.fraction)
+                            Text(progress.currentTitle ?? "Finishing…")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Importing desktop sessions")
+                    } else {
+                        ProgressView()
+                    }
+                }
+                if let importSummary {
+                    Text(importSummary)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                if let healthSummary {
+                    Text(healthSummary)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Import")
+            } footer: {
+                Text("Sync imports every session the desktop sidebar shows, refreshes mirrors that already exist, and removes local mirrors whose desktop session is no longer listed (archived, deleted or hidden). Each mirror is a local copy of the desktop log; sync never writes anything back to the desktop.")
+            }
+
+            Section {
+                if mirrorSessions.isEmpty {
+                    Text("No desktop sessions have been mirrored yet.")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(mirrorSessions) { session in
+                    Button {
+                        Task { await model.openDesktopMirrorSession(session.id) }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(session.title).font(.body.weight(.semibold))
+                            HStack(spacing: 6) {
+                                Label("Desktop Mirror", systemImage: "desktopcomputer")
+                                Text("·")
+                                Text("\(session.messageCount) messages")
+                                if model.followedMirrorSessionIDs.contains(session.id) {
+                                    Text("·")
+                                    Label("Following", systemImage: "dot.radiowaves.left.and.right")
+                                }
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens the mirror of this desktop session")
+                    .swipeActions(edge: .trailing) {
+                        Button("Forget", role: .destructive) {
+                            Task { await model.removeDesktopMirrorSession(session.id) }
+                        }
+                    }
+                }
+
+                if !mirrorSessions.isEmpty {
+                    Button(role: .destructive) {
+                        isConfirmingForgetAll = true
+                    } label: {
+                        Label("Forget All Mirrors", systemImage: "trash")
+                    }
+                    .disabled(isForgetting || isImporting)
+                    .confirmationDialog(
+                        "Forget all \(mirrorSessions.count) mirrored sessions?",
+                        isPresented: $isConfirmingForgetAll,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Forget All", role: .destructive) { forgetAllMirrors(thenSync: false) }
+                        if isEnabled {
+                            Button("Forget All and Sync Again") { forgetAllMirrors(thenSync: true) }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("Only the copies on this iPhone are deleted. The desktop sessions stay as they are and can be synced again.")
+                    }
+                }
+            } header: {
+                Text("Mirrored Sessions")
+            } footer: {
+                Text("The desktop stays the master of a mirrored session. While the bridge is connected, a message typed in a mirror runs as a turn of the desktop agent and the stop button cancels it there; the iPhone only keeps the mirrored log and never runs its own agent for it. Forget removes the local copy only.")
+            }
+        }
+        .listStyle(.insetGrouped)
+        .environment(\.defaultMinListRowHeight, 44)
+        .scrollContentBackground(.hidden)
+        .background(HarnessTheme.pageBackground)
+        .navigationTitle("Desktop DSH Bridge")
+        .task {
+            let settings = model.desktopMirrorSettings
+            isEnabled = settings.isEnabled
+            baseURLText = settings.baseURL?.absoluteString ?? ""
+            includesArchived = settings.includesArchivedSessions
+            autoFollow = settings.followsSelectedMirrorAutomatically
+            tokenConfigured = await model.desktopMirrorTokenConfigured()
+            await reloadMirrorSessions()
+        }
+        .alert("Desktop Bridge", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
+    }
+
+    private func saveSettings() {
+        let settings = BridgeSettings(
+            baseURL: URL(string: baseURLText.trimmingCharacters(in: .whitespacesAndNewlines)),
+            isEnabled: isEnabled,
+            includesArchivedSessions: includesArchived,
+            followsSelectedMirrorAutomatically: autoFollow
+        )
+        if isEnabled, settings.baseURL == nil {
+            errorMessage = BridgeSettingsError.invalidBaseURL.errorDescription
+            return
+        }
+        Task {
+            guard await model.saveDesktopMirrorSettings(settings) else {
+                errorMessage = model.desktopMirrorLastError
+                return
+            }
+            // Show the normalized address so the user can see what will be used.
+            baseURLText = model.desktopMirrorSettings.baseURL?.absoluteString ?? baseURLText
+            errorMessage = nil
+            await reloadMirrorSessions()
+        }
+    }
+
+    private func saveToken() {
+        isSavingToken = true
+        Task {
+            let success = await model.saveDesktopMirrorToken(token)
+            if success {
+                token = ""
+                tokenConfigured = true
+            } else {
+                errorMessage = model.desktopMirrorLastError
+            }
+            isSavingToken = false
+        }
+    }
+
+    private func deleteToken() {
+        isSavingToken = true
+        Task {
+            await model.deleteDesktopMirrorToken()
+            tokenConfigured = false
+            isSavingToken = false
+        }
+    }
+
+    private func probe() {
+        isProbing = true
+        healthSummary = nil
+        Task {
+            if let health = await model.checkDesktopMirrorHealth() {
+                let services = health.services?.keys.sorted().joined(separator: ", ") ?? "unknown"
+                healthSummary = "Bridge \(health.displayStatus) · services: \(services)"
+            } else {
+                errorMessage = model.desktopMirrorLastError ?? "The bridge did not answer."
+            }
+            isProbing = false
+        }
+    }
+
+    private func importSessions() {
+        isImporting = true
+        importSummary = nil
+        Task {
+            let result = await model.importDesktopMirrorSessions()
+            importSummary = "Created \(result.created), refreshed \(result.refreshed), removed \(result.removed), failed \(result.failures.count)."
+            if !result.failures.isEmpty {
+                errorMessage = result.failures.values.sorted().first
+            }
+            isImporting = false
+            await reloadMirrorSessions()
+        }
+    }
+
+    private func forgetAllMirrors(thenSync: Bool) {
+        isForgetting = true
+        importSummary = nil
+        Task {
+            let removed = await model.forgetAllDesktopMirrors()
+            importSummary = "Removed \(removed) mirrored sessions."
+            isForgetting = false
+            await reloadMirrorSessions()
+            if thenSync {
+                importSessions()
+            }
+        }
+    }
+
+    private func reloadMirrorSessions() async {
+        mirrorSessions = model.sessions.filter(\.isDesktopMirror)
+    }
+}
+
 private struct WebSearchSettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var selectedProvider = "none"
@@ -242,8 +543,8 @@ private struct WebSearchSettingsView: View {
     @State private var isSaving = false
 
     private let providers = [
-        (id: "none", name: "关闭搜索", detail: "不注册联网搜索工具"),
-        (id: DeepSeekSearchProvider.identifierValue, name: "DeepSeek", detail: "使用当前模型服务商的搜索能力"),
+        (id: "none", name: "Search Off", detail: "Don't register the web search tool"),
+        (id: DeepSeekSearchProvider.identifierValue, name: "DeepSeek", detail: "Use the current model provider's search capability"),
         (id: ExaSearchProvider.identifierValue, name: "Exa", detail: "Exa Search API"),
         (id: PerplexitySearchProvider.identifierValue, name: "Perplexity", detail: "Perplexity Sonar API")
     ]
@@ -251,7 +552,7 @@ private struct WebSearchSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Picker("搜索服务商", selection: $selectedProvider) {
+                Picker("Search Provider", selection: $selectedProvider) {
                     ForEach(providers, id: \.id) { provider in
                         VStack(alignment: .leading) {
                             Text(provider.name)
@@ -267,9 +568,9 @@ private struct WebSearchSettingsView: View {
                     Task { await refreshCredentialStatus(for: newValue) }
                 }
             } header: {
-                Text("联网搜索")
+                Text("Web Search")
             } footer: {
-                Text("搜索结果会携带服务商返回的 URL、标题和摘要。DeepSeek 仅在当前模型服务商为官方 DeepSeek 时可用。")
+                Text("Search results include the URL, title, and snippet returned by the provider. DeepSeek is only available when the current model provider is official DeepSeek.")
             }
 
             if selectedProvider == ExaSearchProvider.identifierValue || selectedProvider == PerplexitySearchProvider.identifierValue {
@@ -277,21 +578,21 @@ private struct WebSearchSettingsView: View {
                     SecureField("API Key", text: $apiKey)
                         .textContentType(.password)
                         .accessibilityIdentifier("web-search-api-key")
-                    LabeledContent("凭据状态", value: credentialStatusLabel)
+                    LabeledContent("Credential Status", value: credentialStatusLabel)
                     HStack {
-                        Button("保存") { saveKey() }
+                        Button("Save") { saveKey() }
                             .buttonStyle(.borderedProminent)
                             .disabled(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
                         if credentialStatus == .configured {
-                            Button("删除 Key", role: .destructive) { deleteKey() }
+                            Button("Delete Key", role: .destructive) { deleteKey() }
                                 .disabled(isSaving)
                         }
                         if isSaving { ProgressView().controlSize(.small) }
                     }
                 } header: {
-                    Text("\(selectedProvider.capitalized) 凭据")
+                    Text("\(selectedProvider.capitalized) Credentials")
                 } footer: {
-                    Text("Key 仅保存到本机 Keychain；未配置 Key 时搜索工具会返回明确错误。")
+                    Text("The key is stored only in the local Keychain. Without a key, the search tool returns an explicit error.")
                 }
             }
         }
@@ -299,17 +600,17 @@ private struct WebSearchSettingsView: View {
         .environment(\.defaultMinListRowHeight, 44)
         .scrollContentBackground(.hidden)
         .background(HarnessTheme.pageBackground)
-        .navigationTitle("联网搜索")
+        .navigationTitle("Web Search")
         .task {
             let saved = UserDefaults.standard.string(forKey: "harness.web-search-provider")
             selectedProvider = saved ?? (model.effectiveConfiguration.providerID == .deepSeekOfficial ? DeepSeekSearchProvider.identifierValue : "none")
             await refreshCredentialStatus(for: selectedProvider)
         }
-        .alert("搜索设置失败", isPresented: Binding(
+        .alert("Search Settings Failed", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
-            Button("好") { errorMessage = nil }
+            Button("OK") { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
         }
@@ -317,10 +618,10 @@ private struct WebSearchSettingsView: View {
 
     private var credentialStatusLabel: String {
         switch credentialStatus {
-        case .unknown: "检查中"
-        case .configured: "已配置"
-        case .missing: "缺少 Key"
-        case .originMismatch: "来源不匹配"
+        case .unknown: "Checking"
+        case .configured: "Configured"
+        case .missing: "Missing Key"
+        case .originMismatch: "Origin Mismatch"
         }
     }
 
@@ -382,26 +683,26 @@ private struct LocalWebhookSettingsView: View {
                 SecureField("Webhook Secret", text: $secret)
                     .textContentType(.password)
                     .accessibilityIdentifier("github-webhook-secret")
-                LabeledContent("签名校验", value: configured ? "已启用" : "未配置")
+                LabeledContent("Signature Verification", value: configured ? "Enabled" : "Not Configured")
                 HStack {
-                    Button("保存") { save() }
+                    Button("Save") { save() }
                         .buttonStyle(.borderedProminent)
                         .disabled(secret.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
                     if configured {
-                        Button("删除 Secret", role: .destructive) { remove() }
+                        Button("Delete Secret", role: .destructive) { remove() }
                             .disabled(isSaving)
                     }
                     if isSaving { ProgressView().controlSize(.small) }
                 }
             } header: {
-                Text("GitHub 签名")
+                Text("GitHub Signature")
             } footer: {
-                Text("设置后，POST /webhook/github 必须携带匹配的 X-Hub-Signature-256。事件仍只投影到本机 Job。")
+                Text("Once set, POST /webhook/github must include a matching X-Hub-Signature-256. Events are still projected only to local Jobs.")
             }
 
             Section {
                 if rules.isEmpty {
-                    Text("未配置时，所有事件使用默认本机 Job。")
+                    Text("When not configured, all events use the default local Job.")
                         .foregroundStyle(.secondary)
                 }
                 ForEach(rules) { rule in
@@ -413,34 +714,34 @@ private struct LocalWebhookSettingsView: View {
                     .swipeActions {
                         Button(role: .destructive) {
                             Task { try? await model.deleteLocalWebhookRule(id: rule.id); await reloadRules() }
-                        } label: { Label("删除", systemImage: "trash") }
+                        } label: { Label("Delete", systemImage: "trash") }
                     }
                 }
-                TextField("规则 ID", text: $ruleID)
+                TextField("Rule ID", text: $ruleID)
                     .textInputAutocapitalization(.never)
-                TextField("Provider（如 github）", text: $providerKind)
+                TextField("Provider (e.g. github)", text: $providerKind)
                     .textInputAutocapitalization(.never)
-                TextField("事件（* 表示全部）", text: $eventName)
+                TextField("Event (* for all)", text: $eventName)
                     .textInputAutocapitalization(.never)
-                TextField("Job 标签（可选）", text: $jobLabel)
-                TextField("唤醒提示（可选）", text: $prompt, axis: .vertical)
-                Stepper("失败重试：\(maximumAttempts) 次", value: $maximumAttempts, in: 1...5)
-                Toggle("事件后唤醒当前 Agent", isOn: $wakeActiveSession)
-                Button("保存规则") { saveRule() }
+                TextField("Job Label (Optional)", text: $jobLabel)
+                TextField("Wake Prompt (Optional)", text: $prompt, axis: .vertical)
+                Stepper("Retries on Failure: \(maximumAttempts)", value: $maximumAttempts, in: 1...5)
+                Toggle("Wake Current Agent After Event", isOn: $wakeActiveSession)
+                Button("Save Rule") { saveRule() }
                     .disabled(ruleID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             } header: {
                 Text("Webhook Rules")
             } footer: {
-                Text("规则按 provider 与 event 匹配；{event}、{delivery}、{payload} 可用于唤醒提示。")
+                Text("Rules match on provider and event; {event}, {delivery}, and {payload} can be used in the wake prompt.")
             }
 
             Section {
-                LabeledContent("本机地址", value: "127.0.0.1")
-                Text("iOS 不提供公网持续监听；需要外部入口时请使用用户自行配置的隧道或推送转发，并保留本机事件证据。")
+                LabeledContent("Local Address", value: "127.0.0.1")
+                Text("iOS does not support persistent public listening. For external access, use a tunnel or push relay you configure yourself, and keep local event evidence.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } header: {
-                Text("监听范围")
+                Text("Listening Scope")
             }
         }
         .listStyle(.insetGrouped)
@@ -449,11 +750,11 @@ private struct LocalWebhookSettingsView: View {
         .background(HarnessTheme.pageBackground)
         .navigationTitle("GitHub Webhook")
         .task { configured = await model.localWebhookSecretConfigured(); await reloadRules() }
-        .alert("Webhook 设置失败", isPresented: Binding(
+        .alert("Webhook Settings Failed", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
-            Button("好") { errorMessage = nil }
+            Button("OK") { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
         }
@@ -527,12 +828,12 @@ private struct DiagnosticLogView: View {
 
         Form {
             Section {
-                LabeledContent("Agent", value: model.isRunning ? "运行中" : "空闲")
-                LabeledContent("当前步骤", value: "\(model.currentStep)")
-                LabeledContent("会话轨迹", value: "\(model.trajectoryEvents.count) 条")
-                LabeledContent("Harness Trace", value: "\(model.harnessTraceEvents.count) 条")
+                LabeledContent("Agent", value: model.isRunning ? "Running" : "Idle")
+                LabeledContent("Current Step", value: "\(model.currentStep)")
+                LabeledContent("Session Trajectory", value: "\(model.trajectoryEvents.count)")
+                LabeledContent("Harness Trace", value: "\(model.harnessTraceEvents.count)")
             } header: {
-                Label("当前运行", systemImage: "waveform.path.ecg")
+                Label("Current Run", systemImage: "waveform.path.ecg")
             }
 
             Section {
@@ -541,28 +842,28 @@ private struct DiagnosticLogView: View {
                     .textSelection(.enabled)
 
                 if let diagnostics = model.ishPluginHostDiagnostics {
-                    LabeledContent("等待中的 RPC", value: "\(diagnostics.pendingRequestCount)")
+                    LabeledContent("Pending RPCs", value: "\(diagnostics.pendingRequestCount)")
                     LabeledContent(
-                        "待写入 stdin",
+                        "Queued stdin",
                         value: ByteCountFormatter.string(
                             fromByteCount: Int64(diagnostics.outboundQueuedBytes),
                             countStyle: .memory
                         )
                     )
                     LabeledContent(
-                        "stdin 写入",
-                        value: diagnostics.outboundWriteInFlight ? "进行中" : "空闲"
+                        "stdin Write",
+                        value: diagnostics.outboundWriteInFlight ? "In Progress" : "Idle"
                     )
-                    LabeledContent("stdin 拒绝次数", value: "\(diagnostics.rejectedWriteCount)")
+                    LabeledContent("stdin Rejections", value: "\(diagnostics.rejectedWriteCount)")
                     if let failure = diagnostics.lastTransportFailure {
-                        LabeledContent("最近传输错误") {
+                        LabeledContent("Last Transport Error") {
                             Text(failure)
                                 .font(.caption.monospaced())
                                 .multilineTextAlignment(.trailing)
                         }
                     }
                     if !diagnostics.stderrTail.isEmpty {
-                        DisclosureGroup("stderr 最近输出") {
+                        DisclosureGroup("Recent stderr Output") {
                             Text(diagnostics.stderrTail)
                                 .font(.caption.monospaced())
                                 .textSelection(.enabled)
@@ -582,12 +883,12 @@ private struct DiagnosticLogView: View {
             }
 
             Section {
-                Button("刷新日志", systemImage: "arrow.clockwise") {
+                Button("Refresh Logs", systemImage: "arrow.clockwise") {
                     refresh()
                 }
                 .disabled(isRefreshing || isPreparingExport)
 
-                Button("导出详细日志", systemImage: "square.and.arrow.up") {
+                Button("Export Detailed Logs", systemImage: "square.and.arrow.up") {
                     prepareExport()
                 }
                 .disabled(isRefreshing || isPreparingExport)
@@ -595,36 +896,36 @@ private struct DiagnosticLogView: View {
                 if isRefreshing || isPreparingExport {
                     HStack(spacing: 10) {
                         ProgressView()
-                        Text(isPreparingExport ? "正在生成脱敏日志…" : "正在刷新本机状态…")
+                        Text(isPreparingExport ? "Generating redacted logs…" : "Refreshing local status…")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
                 }
 
-                DisclosureGroup("导出内容与脱敏") {
-                    Text("导出包含设备与运行状态、Cordis 插件、Plugin Host stderr、有限 runtime telemetry、Harness Trace 和当前会话完整轨迹。API Key、Authorization 及常见密码/Secret 字段会在手机上脱敏后再写入文件；同时会写入当前会话的本地 Downloads 工作区。")
+                DisclosureGroup("Export Contents & Redaction") {
+                    Text("The export includes device and runtime status, Cordis plugins, Plugin Host stderr, limited runtime telemetry, Harness Trace, and the full trajectory of the current session. API keys, Authorization, and common password/secret fields are redacted on the phone before being written to the file; a copy is also written to the current session's local Downloads workspace.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             } footer: {
-                Text("导出前在本机脱敏，并保存到当前会话 Downloads。")
+                Text("Redacted on device before export and saved to the current session's Downloads.")
             }
 
             Section {
-                Toggle("记录有限性能/资源样本", isOn: $preferences.isPerformanceResourceSamplingEnabled)
+                Toggle("Record Limited Performance/Resource Samples", isOn: $preferences.isPerformanceResourceSamplingEnabled)
                     .onChange(of: preferences.isPerformanceResourceSamplingEnabled) { _, _ in
                         Task { await model.configureRuntimePerformanceSampling() }
                     }
 
-                DisclosureGroup("采样内容与隐私") {
-                    Text("开启后仅记录有界的热状态、低电量和前后台数值标记；不记录提示词、工具参数或输出、URL、请求头、Cookie、环境变量和调用栈。")
+                DisclosureGroup("Sampled Data & Privacy") {
+                    Text("When on, only bounded numeric markers for thermal state, low power, and foreground/background are recorded; prompts, tool arguments or output, URLs, request headers, cookies, environment variables, and call stacks are never recorded.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             } header: {
-                Text("性能与资源采样")
+                Text("Performance & Resource Sampling")
             } footer: {
-                Text("默认关闭，仅记录有界的系统数值标记。")
+                Text("Off by default; records only bounded numeric system markers.")
             }
 
             if let workspaceExportPath {
@@ -633,9 +934,9 @@ private struct DiagnosticLogView: View {
                         .font(.caption.monospaced())
                         .textSelection(.enabled)
                 } header: {
-                    Text("本地副本")
+                    Text("Local Copy")
                 } footer: {
-                    Text("这是当前会话哈希隔离的工作区相对路径，不包含会话原始 ID。")
+                    Text("This is a workspace-relative path isolated by the current session's hash; it does not contain the raw session ID.")
                 }
             }
         }
@@ -643,7 +944,7 @@ private struct DiagnosticLogView: View {
         .environment(\.defaultMinListRowHeight, 44)
         .scrollContentBackground(.hidden)
         .background(HarnessTheme.pageBackground)
-        .navigationTitle("详细日志")
+        .navigationTitle("Detailed Logs")
         .navigationBarTitleDisplayMode(.inline)
         .fileExporter(
             isPresented: $isFileExporterPresented,
@@ -700,9 +1001,9 @@ private struct ToolApprovalSettingsView: View {
         Form {
             if model.trustedToolApprovals.isEmpty {
                 Section {
-                    Label("暂无长期工具授权", systemImage: "checkmark.shield")
+                    Label("No Persistent Tool Approvals", systemImage: "checkmark.shield")
                 } footer: {
-                    Text("只有在首次弹窗中选择“始终允许”才会保存；iOS 系统隐私权限仍由系统单独管理。")
+                    Text("Approvals are saved only when you choose 'Always Allow' in the first prompt; iOS privacy permissions are still managed separately by the system.")
                 }
             } else {
                 Section {
@@ -711,13 +1012,13 @@ private struct ToolApprovalSettingsView: View {
                             model.revokeToolApproval(id: grant.id)
                         }
                     }
-                    Button("撤销全部工具授权", role: .destructive) {
+                    Button("Revoke All Tool Approvals", role: .destructive) {
                         isRevokeAllConfirmationPresented = true
                     }
                 } header: {
-                    Text("长期授权")
+                    Text("Persistent Approvals")
                 } footer: {
-                    Text("iOS 系统隐私权限仍由系统单独管理。")
+                    Text("iOS privacy permissions are still managed separately by the system.")
                 }
             }
         }
@@ -725,17 +1026,17 @@ private struct ToolApprovalSettingsView: View {
         .environment(\.defaultMinListRowHeight, 44)
         .scrollContentBackground(.hidden)
         .background(HarnessTheme.pageBackground)
-        .navigationTitle("工具授权")
+        .navigationTitle("Tool Approvals")
         .confirmationDialog(
-            "撤销全部工具授权？",
+            "Revoke All Tool Approvals?",
             isPresented: $isRevokeAllConfirmationPresented,
             titleVisibility: .visible
         ) {
-            Button("全部撤销", role: .destructive) {
+            Button("Revoke All", role: .destructive) {
                 model.revokeAllToolApprovals()
             }
         } message: {
-            Text("删除后，下次命中相同范围的工具调用会再次询问。")
+            Text("After deletion, tool calls matching the same scope will ask again.")
         }
     }
 }
@@ -775,7 +1076,7 @@ private struct ToolApprovalGrantRow: View {
             }
             .buttonStyle(.borderless)
             .frame(minWidth: 44, minHeight: 44)
-            .accessibilityLabel("撤销 \(grant.scope.toolName) 授权")
+            .accessibilityLabel("Revoke \(grant.scope.toolName) Approval")
         }
         .accessibilityElement(children: .contain)
     }
@@ -815,20 +1116,20 @@ private extension ToolApprovalScope {
     var resourceSummary: String {
         if toolName == Self.allLocalToolsMarker,
            resources == [Self.allLocalToolsResource] {
-            return "本机工具（全部风险级别）"
+            return "Local Tools (All Risk Levels)"
         }
         return resources.map { resource in
             switch resource {
             case "tool":
-                "整个工具"
+                "Entire Tool"
             case "workspace:root":
-                "App 工作区"
+                "App Workspace"
             case "ish-sandbox:/workspace":
-                "iSH /workspace 沙箱"
+                "iSH /workspace Sandbox"
             default:
-                resource.replacingOccurrences(of: "workspace:file:", with: "工作区文件：")
+                resource.replacingOccurrences(of: "workspace:file:", with: "Workspace file: ")
             }
         }
-        .joined(separator: "，")
+        .joined(separator: ", ")
     }
 }

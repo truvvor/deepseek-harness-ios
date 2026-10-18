@@ -16,6 +16,9 @@
 | D-007 | `project.yml` 是 Xcode 工程真源 | Accepted | 2026-08-31 |
 | D-008 | 不支持下载原生代码与 Browser Client-half | Superseded by D-010 | 2026-09-03 |
 | D-009 | 12 份控制文档由 `AGENTS.md` 路由 | Accepted | 2026-08-31 |
+| D-010 | 桌面级插件对齐（取代 D-008） | Accepted | 2026-09-03 |
+| D-011 | 可配置远程执行后端（修改 D-001） | Accepted | 2026-09-03 |
+| D-012 | 桌面会话只读镜像；不把本地 Agent 循环送去远端 | Accepted | 2026-09-05 |
 
 ## D-001 · 设备内执行边界
 
@@ -99,6 +102,91 @@ P1：模拟器 iSH host 运行，模型工具目录出现 7 工具，`cordis_ins
 P2：市场安装走 host 装载；真实插件 define→run→stop 全链路通过。
 P3：带 npm 依赖的真实 cordis 插件安装成功。
 
+
+## D-012 · 桌面会话只读镜像，本地 Agent 循环不出设备
+
+状态：Accepted
+日期：2026-09-05
+补充：D-001、D-010、D-011（均不因本决策改变）
+
+背景：
+桌面 DSH Host 上有用户真实的工作会话。用户需要在 iPhone 上读到这些会话；同时仓库的硬边界禁止把本机的 prompt、工具集和 Agent 循环交给另一台机器执行。`dsh-api-bridge` 在同一 Host 上暴露 `/bridge/v1`（bearer token，读接口 + SSE 镜像 + v4 JSONL 导出），Host 本身没有 TLS，正常形态是局域网或 tailnet/SSH 隧道。
+
+决策：
+1. （已被 D-014 取代）应用只**读**桌面会话：`GET /sessions`、`/sessions/{id}/messages`、`/sessions/{id}/export`、`/sessions/{id}/stream`。桥接客户端不实现 prompt、cancel、archive、chat-completions 任何写路由，因此结构上不可能把本机 prompt/工具/Agent 循环发到桌面。
+2. （已被 D-014 取代）导入的会话是**只读镜像**：`ConversationSession.bridgeMirror` 记录来源，`isResumable` 恒为 `false`，`AppModel.send` 与重跑路径拒绝在镜像会话上启动本地 Agent 循环。桌面日志保持该会话的唯一历史权威。
+3. 事件写入复用既有追加式边界 `SessionTrajectoryRepository.admitSyncEnvelope`（连续后缀、≤512 事件、assets/tombstones fail-closed），不为桥接新增第二套轨迹写路径。
+4. 反向（手机轨迹 → 桌面）只允许用户显式触发的**单向上传**，且不携带任何凭据语义；本决策不开启该通道（`sessionLogEnabled` 保持关闭）。
+5. （已被 D-013 取代）明文 HTTP 只允许指向用户自己的桌面桥接地址，并由 `NSAllowsLocalNetworking` + 单个 `NSExceptionDomains` 条目限定；不使用 `NSAllowsArbitraryLoads`，模型 Provider 仍强制 HTTPS。令牌只存 Keychain（`WhenUnlockedThisDeviceOnly`），只出现在 `Authorization` 头，不进入 URL、日志、设置、轨迹或导出。
+
+后果：
+`SECURITY_GUIDELINES.md` 第 5 条的“未配置不产生网络请求”对桥接同样成立：未启用或未存令牌时不创建客户端。`Docs/DESKTOP_PARITY_REMEDIATION.md` 记录实现与证据状态；脚本审计新增 `Core/Bridge/` 网络边界例外并注明只读理由。
+
+验证：
+代码、转换器和导入路径已有窄单元测试（见 `Docs/DESKTOP_PARITY_REMEDIATION.md` 的 BRIDGE-001）。真实桌面桥、隧道/局域网、iOS 真机网络与 ATS 行为尚未验收，状态保持 `VERIFY`。
+
+## D-013 · 桌面桥接允许任意地址的明文 HTTP（取代 D-012 第 5 条）
+
+状态：Accepted
+日期：2026-10-02
+取代：D-012 第 5 条（ATS 范围）；D-012 其余条款不变
+
+背景：
+用户会把桌面 DSH Host 直接暴露在公网或局域网的裸 IP 上（例如 `http://203.0.113.7:19387`）。`NSExceptionDomains` 不能用通配符描述 IP，而 `NSAllowsLocalNetworking` 只覆盖 `.local`/非限定主机名；并且 iOS 10+ 只要存在 `NSAllowsLocalNetworking`，`NSAllowsArbitraryLoads` 就会被忽略。按 D-012 的 ATS 配置，裸 IP 桥接地址无法连通。
+
+决策：
+1. `Info.plist` 的 `NSAppTransportSecurity` 只设置 `NSAllowsArbitraryLoads = true`，移除 `NSAllowsLocalNetworking` 与 `dsh-host.local` 例外。
+2. HTTPS 约束改由代码执行，不再依赖 ATS：模型 Provider 仍只接受 `https` 源（`CredentialStore.validatedOrigin`），桥接地址由 `BridgeSettings.validatedBaseURL` 接受 `http`/`https`。
+3. 明文 HTTP 下 bearer 令牌与会话内容以明文传输；设置页明确提示，推荐 HTTPS（反向代理或 tailnet）。桥接仍只读，D-012 第 1–4 条不变。
+
+后果：
+`web_fetch` 与内置浏览器原本就允许 `http` 方案，此前被 ATS 拦截，现在可以访问明文 HTTP 页面，与桌面版行为一致。
+
+验证：
+真机上对裸 IP 的 HTTP 桥接连通性尚未验收，状态保持 `VERIFY`。
+
+## D-014 · 已连接时可在镜像会话中驱动桌面 Agent（取代 D-012 第 1、2 条）
+
+状态：Accepted
+日期：2026-10-02
+取代：D-012 第 1 条（桥接客户端只读）与第 2 条（镜像会话只读）；D-012 第 3、4 条与 D-013 不变
+
+背景：
+用户需要在 iPhone 上继续桌面会话，而不只是阅读；桌面 DSH 是该会话的唯一主控（master），iPhone 只保存镜像日志。用户明确拒绝在手机上本地 fork 继续。`dsh-api-bridge` 已提供 `POST /bridge/v1/sessions/{id}/prompt`（阻塞至 `turn/end`，`mode: queue|steer`）与 `POST …/cancel`，由桌面同一个 `sessionController` 执行回合。
+
+决策：
+1. 对**已镜像的桌面会话**，在桥接已配置且启用时，输入框文本原样发送到 `POST …/prompt`；停止按钮发送 `POST …/cancel`。回合完全由桌面 Agent 用桌面的模型、工具和循环执行，并由桌面写入其日志。
+2. 手机不在镜像会话上运行本地 Agent 循环、不写本地轨迹、不发送本机工具集、模型配置、凭据或附件；回合产生的事件只通过既有 `stream` 信号 + `/export` 后缀导入（`admitSyncEnvelope`）回到手机。镜像会话的编辑/重跑与本地命令仍被拒绝。
+3. 这是**用户自己的桌面主机**上的会话控制，不是本机 Agent 的服务器执行回退：本地会话的模型推理、工具和命令边界（D-001、D-010、D-011）不变，桥接仍不实现 chat-completions、archive 或 `/sync/envelope` 上传。
+4. 未连接（未启用、无令牌或网络失败）时发送明确报错，镜像保持只读。
+
+后果：
+`BridgeClient` 增加 `prompt`/`cancel` 两条写路由；`BridgeMirrorCoordinator.sendPrompt` 在回合期间重启镜像跟随以实时显示中间事件；`AppModel.submit` 在镜像会话中转发到桌面，`isChatBusy`/`cancelActiveTurn` 只驱动聊天界面。桥接在客户端断开时会中止桌面回合，因此应用在回合期间申请有限的后台执行时间；超出后台宽限期仍会中止，需要桥接侧支持断开后继续才能消除。
+
+补充（2026-10-14）：同一边界下增加两条桌面控制路由——`POST …/compact`（桌面自行压缩上下文）与 `POST …/questions/{requestId}/answer`（回答桌面 Agent 的提问，请求体为上游 `AskUserQuestionAnswer`）。压缩与提问的真源仍是桌面日志；手机只显示 `question/requested` 之后、`question/resolved` 之前的未决问题并转发答案。
+
+验证：
+`HarnessMobileTests/BridgeClientPromptTests.swift` 覆盖请求路径、方法、令牌头、请求体、409/404/401 映射。真实桌面桥接下的回合、取消、前后台切换尚未在真机验收，状态保持 `VERIFY`。
+
+## D-015 · 镜像同步在锁屏期间继续（会话快照与镜像映射降为“首次解锁后可用”）
+
+状态：Accepted
+日期：2026-10-18
+取代：无（补充 D-014）
+
+背景：
+TestFlight 152 在锁屏期间的镜像后台同步中崩溃（`SIGBUS`，APFS 拒绝对 `FileProtectionType.complete` 文件 pagein）。去掉内存映射后不再崩溃，但锁屏期间读写会话快照仍报错，桌面回合的事件、问题与通知在解锁前到不了手机。用户明确要求锁屏时同步继续。
+
+决策：
+1. `SessionStore` 快照与 `BridgeSessionMirrorStore` 映射改用 `completeUntilFirstUserAuthentication`（iOS 应用的系统默认类）：首次解锁后即使再次锁屏也可读写；设备重启到首次解锁前仍不可读。轨迹日志、transcript 与附件本来就是该默认类，不变。Keychain 中的凭据与桥接令牌保护类不变。
+2. 镜像中的桌面回合（手机发起的 prompt，或跟随流报告的 `turn/start`）计入后台保活输入 `hasLiveRoot`，与本地运行同等待遇：用户在 Background 设置中开启的音频/位置保活层会在桌面回合期间维持进程，SSE 跟随与导入继续；回合结束后保活按既有规则退出。
+3. 未开启任何保活层时，iOS 仍会在后台宽限期后挂起应用；这是平台边界，不以静默方式绕过。
+
+后果：
+锁屏且已解锁过的设备上，镜像同步与桌面问题通知在回合期间持续工作；代价是会话快照在锁屏时可被已解锁后获得文件系统访问的进程读取（与系统默认一致）。文档：`SECURITY_GUIDELINES.md` 的受保护资产表按此更新。
+
+验证：
+真机：开启 Enhanced Background 或 Location keep-alive，锁屏期间从桌面发起回合，观察镜像更新与问题通知。状态 `VERIFY`。
 
 ## 新决策模板
 

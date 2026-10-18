@@ -32,6 +32,7 @@
 | 后台 | Continued Processing、有限 lease、journal、Live Activity、通知 | VERIFY | `Core/Background/`、真机切屏验收 |
 | 浏览器 | 本机 WebKit tab、读取、点击和下载边界 | PARTIAL | 机器清单、Browser tests |
 | Sync contract | 本地 envelope 与轨迹持久化契约 | PARTIAL | 机器清单、Sync tests |
+| 桌面会话镜像 | 只读拉取桌面 DSH 会话（列表 / v4 JSONL 导出 / SSE 跟随），导入为本地只读镜像 | VERIFY | `Core/Bridge/`、`AppModel+Bridge.swift`、Bridge tests（D-012） |
 | Share/App Intents | 分享扩展、Shortcuts、Widget/深链进入会话 | VERIFY | Extension/App Intent tests |
 
 本表不取代具体工具清单；工具名、schema、权限模式和生产注册以 `ProductionToolCatalog.swift` 的实际编译结果为准。

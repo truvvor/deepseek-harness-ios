@@ -52,7 +52,7 @@ struct MessageBubble: View, Equatable {
                                 )
                             } label: {
                                 Label(
-                                    "显示前面的 \(min(hiddenToolCallCount, Self.toolCallPageSize)) 个工具调用",
+                                    "Show \(min(hiddenToolCallCount, Self.toolCallPageSize)) earlier tool calls",
                                     systemImage: "arrow.up.circle"
                                 )
                             }
@@ -60,7 +60,7 @@ struct MessageBubble: View, Equatable {
                             .buttonStyle(.plain)
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier("load-earlier-tool-calls")
-                            .accessibilityValue("尚有 \(hiddenToolCallCount) 个较早工具调用")
+                            .accessibilityValue("\(hiddenToolCallCount) earlier tool calls remaining")
                         }
 
                         ForEach(visibleToolCalls) { call in
@@ -86,6 +86,10 @@ struct MessageBubble: View, Equatable {
                             }
                         }
                     }
+                }
+
+                if !message.remoteAttachments.isEmpty {
+                    RemoteAttachmentStrip(attachments: message.remoteAttachments)
                 }
 
                 if !message.content.isEmpty, message.role != .tool {
@@ -135,7 +139,7 @@ struct MessageBubble: View, Equatable {
         .contextMenu {
             if message.role != .tool, !message.content.isEmpty {
                 Button(action: copyMessage) {
-                    Label("复制", systemImage: "doc.on.doc")
+                    Label("Copy", systemImage: "doc.on.doc")
                 }
             }
 
@@ -144,7 +148,7 @@ struct MessageBubble: View, Equatable {
                     onRetryUserMessage(retryUserMessageID)
                 } label: {
                     Label(
-                        message.role == .assistant ? "重新生成回答" : "重试此消息",
+                        message.role == .assistant ? "Regenerate Response" : "Retry This Message",
                         systemImage: "arrow.clockwise"
                     )
                 }
@@ -155,7 +159,7 @@ struct MessageBubble: View, Equatable {
                 Button {
                     onEditUserMessage(message)
                 } label: {
-                    Label("编辑并重新运行", systemImage: "pencil")
+                    Label("Edit and Rerun", systemImage: "pencil")
                 }
                 .disabled(!canRerunUserMessage)
             }
@@ -178,7 +182,7 @@ struct MessageBubble: View, Equatable {
         HStack(spacing: 2) {
             actionButton(
                 systemImage: copied ? "checkmark" : "doc.on.doc",
-                label: copied ? "已复制" : "复制",
+                label: copied ? "Copied" : "Copy",
                 disabled: message.content.isEmpty,
                 action: copyMessage
             )
@@ -186,7 +190,7 @@ struct MessageBubble: View, Equatable {
             if let retryUserMessageID {
                 actionButton(
                     systemImage: "arrow.clockwise",
-                    label: message.role == .assistant ? "重新生成回答" : "重试此消息",
+                    label: message.role == .assistant ? "Regenerate Response" : "Retry This Message",
                     disabled: !canRerunUserMessage
                 ) {
                     onRetryUserMessage(retryUserMessageID)
@@ -196,7 +200,7 @@ struct MessageBubble: View, Equatable {
             if message.role == .user {
                 actionButton(
                     systemImage: "pencil",
-                    label: "编辑并重新运行",
+                    label: "Edit and Rerun",
                     disabled: !canRerunUserMessage
                 ) {
                     onEditUserMessage(message)
@@ -207,12 +211,12 @@ struct MessageBubble: View, Equatable {
                 feedbackButton(
                     rating: .positive,
                     systemImage: "hand.thumbsup",
-                    label: "有帮助"
+                    label: "Helpful"
                 )
                 feedbackButton(
                     rating: .negative,
                     systemImage: "hand.thumbsdown",
-                    label: "需要改进"
+                    label: "Needs Improvement"
                 )
             }
 
@@ -225,8 +229,8 @@ struct MessageBubble: View, Equatable {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
-                .accessibilityLabel(feedback.note == nil ? "添加反馈备注" : "编辑反馈备注")
-                .help(feedback.note == nil ? "添加反馈备注" : "编辑反馈备注")
+                .accessibilityLabel(feedback.note == nil ? "Add feedback note" : "Edit feedback note")
+                .help(feedback.note == nil ? "Add feedback note" : "Edit feedback note")
             }
         }
         .font(.caption.weight(.medium))
@@ -249,7 +253,7 @@ struct MessageBubble: View, Equatable {
                 .frame(width: 44, height: 44)
         }
         .buttonStyle(.plain)
-        .foregroundStyle(copied && label == "已复制" ? Color.accentColor : Color.secondary)
+        .foregroundStyle(copied && label == "Copied" ? Color.accentColor : Color.secondary)
         .disabled(disabled)
         .accessibilityLabel(label)
         .help(label)
@@ -357,14 +361,14 @@ struct EditUserMessageView: View {
         NavigationStack {
             TextEditor(text: $text)
                 .padding(.horizontal, 12)
-                .navigationTitle("编辑消息")
+                .navigationTitle("Edit Message")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("取消") { dismiss() }
+                        Button("Cancel") { dismiss() }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("重新运行") {
+                        Button("Rerun") {
                             onRerun()
                             dismiss()
                         }
@@ -400,7 +404,7 @@ private struct MessageFeedbackNoteSheet: View {
                 Section {
                     TextEditor(text: $note)
                         .frame(minHeight: 120)
-                        .accessibilityLabel("反馈备注")
+                        .accessibilityLabel("Feedback Note")
 
                     Text("\(note.utf8.count) / \(MessageFeedback.maximumNoteUTF8Bytes) bytes")
                         .font(.caption.monospacedDigit())
@@ -410,17 +414,17 @@ private struct MessageFeedbackNoteSheet: View {
                                 : Color.secondary
                         )
                 } header: {
-                    Label("备注", systemImage: "note.text")
+                    Label("Note", systemImage: "note.text")
                 }
             }
-            .navigationTitle("反馈备注")
+            .navigationTitle("Feedback Note")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
+                    Button("Save") {
                         onSave(note)
                         dismiss()
                     }
@@ -481,7 +485,7 @@ private struct ReasoningDisclosure: View {
                 HStack(spacing: 7) {
                     Image(systemName: "brain.head.profile")
                         .foregroundStyle(.secondary)
-                    Text("思考")
+                    Text("Thinking")
                         .fontWeight(.semibold)
                     Text(summary)
                         .foregroundStyle(.secondary)
@@ -501,9 +505,9 @@ private struct ReasoningDisclosure: View {
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(isStreaming ? "正在思考" : "思考过程")
+            .accessibilityLabel(isStreaming ? "Thinking" : "Reasoning")
             .accessibilityValue(summary)
-            .accessibilityHint(isExpanded ? "折叠完整思考过程" : "展开完整思考过程")
+            .accessibilityHint(isExpanded ? "Collapse full reasoning" : "Expand full reasoning")
 
             if isExpanded {
                 if isStreaming {
@@ -545,14 +549,143 @@ private struct ReasoningDisclosure: View {
             .split(whereSeparator: \Character.isNewline)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-        guard !lines.isEmpty else { return isStreaming ? "正在推理" : "已完成" }
+        guard !lines.isEmpty else { return isStreaming ? "Reasoning" : "Completed" }
         let value: String
         if isStreaming {
-            value = lines.last ?? "正在推理"
+            value = lines.last ?? "Reasoning"
         } else {
             value = lines.first(where: { !$0.hasPrefix("[") }) ?? lines[0]
         }
         guard value.count > 160 else { return value }
         return String(value.prefix(160)) + "…"
+    }
+}
+
+/// Attachments of a mirrored desktop message. Images are fetched through
+/// the bridge on first display; files show as chips that share their bytes.
+private struct RemoteAttachmentStrip: View {
+    let attachments: [AgentRemoteAttachment]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(attachments) { attachment in
+                switch attachment.kind {
+                case .image:
+                    RemoteImageAttachmentView(attachment: attachment)
+                case .file:
+                    RemoteFileAttachmentChip(attachment: attachment)
+                }
+            }
+        }
+    }
+}
+
+private struct RemoteImageAttachmentView: View {
+    @Environment(AppModel.self) private var model
+    let attachment: AgentRemoteAttachment
+
+    @State private var image: UIImage?
+    @State private var failed = false
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 280, maxHeight: 280)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            } else if failed {
+                Label(attachment.name ?? "Image", systemImage: "photo.badge.exclamationmark")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ProgressView()
+                    .frame(width: 80, height: 80)
+            }
+        }
+        .accessibilityLabel(attachment.name ?? "Image attachment")
+        .task(id: attachment.id) {
+            guard image == nil else { return }
+            do {
+                let content = try await model.desktopMirrorAttachment(attachment)
+                image = UIImage(data: content.data)
+                failed = image == nil
+            } catch {
+                failed = true
+            }
+        }
+    }
+}
+
+private struct RemoteFileAttachmentChip: View {
+    @Environment(AppModel.self) private var model
+    let attachment: AgentRemoteAttachment
+
+    @State private var exportURL: URL?
+    @State private var isLoading = false
+    @State private var errorText: String?
+
+    var body: some View {
+        HStack(spacing: 8) {
+            HarnessIconTile(systemImage: "doc", tint: .secondary, size: 24)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(attachment.name ?? attachment.id)
+                    .font(.footnote.weight(.medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                if let detail {
+                    Text(detail)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+            if let exportURL {
+                ShareLink(item: exportURL) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .accessibilityLabel("Share \(attachment.name ?? "file")")
+            } else if isLoading {
+                ProgressView().controlSize(.small)
+            } else {
+                Button {
+                    Task { await download() }
+                } label: {
+                    Image(systemName: "arrow.down.circle")
+                }
+                .accessibilityLabel("Download \(attachment.name ?? "file")")
+            }
+        }
+        .padding(8)
+        .background(Color(uiColor: .tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var detail: String? {
+        if let errorText { return errorText }
+        var parts: [String] = []
+        if let mime = attachment.mimeType { parts.append(mime) }
+        if let bytes = attachment.byteCount {
+            parts.append(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private func download() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let content = try await model.desktopMirrorAttachment(attachment)
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("desktop-attachments", isDirectory: true)
+                .appendingPathComponent(attachment.id, isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let url = directory.appendingPathComponent(attachment.name ?? "attachment")
+            try content.data.write(to: url, options: .atomic)
+            exportURL = url
+            errorText = nil
+        } catch {
+            errorText = error.localizedDescription
+        }
     }
 }

@@ -317,7 +317,7 @@ final class SessionStoreTests: XCTestCase {
         )
         let event = AgentToolEvent(
             call: call,
-            summary: "检查网络",
+            summary: "Check network",
             status: .succeeded,
             output: [
                 AgentToolOutputChunk(channel: .stdout, text: "HTTP 200")
@@ -327,17 +327,17 @@ final class SessionStoreTests: XCTestCase {
             finishedAt: .now
         )
         let workState = ConversationWorkState(
-            goal: ConversationGoal(title: "修复插件市场", status: .active),
-            plan: [ConversationPlanStep(title: "复现", status: .completed)],
-            todos: [ConversationTodoItem(title: "验证真机", status: .pending)]
+            goal: ConversationGoal(title: "Fix plugin marketplace", status: .active),
+            plan: [ConversationPlanStep(title: "Reproduce", status: .completed)],
+            todos: [ConversationTodoItem(title: "Verify on device", status: .pending)]
         )
         var controls = ConversationControlState(interactionMode: .plan)
-        _ = try controls.enqueue("继续验证")
+        _ = try controls.enqueue("Continue verifying")
         _ = try await store.checkpointSession(
             id: source.id,
             checkpoint: ConversationCheckpoint(
                 messages: [
-                    .user("市场打不开"),
+                    .user("Marketplace will not open"),
                     .assistant("", toolCalls: [call], toolEvents: [event]),
                     .tool(callID: call.id, name: call.name, content: "ok")
                 ],
@@ -350,8 +350,8 @@ final class SessionStoreTests: XCTestCase {
         let persistedSource = try await store.session(id: source.id)
         let stateAfterFork = try await store.loadState()
         XCTAssertEqual(fork.forkedFromSessionID, source.id)
-        XCTAssertEqual(fork.title, "Investigate plugin host 副本")
-        XCTAssertEqual(fork.messages.map(\.content), ["市场打不开", "", "ok"])
+        XCTAssertEqual(fork.title, "Investigate plugin host Copy")
+        XCTAssertEqual(fork.messages.map(\.content), ["Marketplace will not open", "", "ok"])
         XCTAssertEqual(fork.messages.map(\.createdAt), persistedSource.messages.map(\.createdAt))
         XCTAssertNotEqual(
             fork.messages.map(\.id),
@@ -380,7 +380,7 @@ final class SessionStoreTests: XCTestCase {
         XCTAssertTrue(clearedFork.messages.isEmpty)
         XCTAssertEqual(
             preservedSource.messages.map(\.content),
-            ["市场打不开", "", "ok"]
+            ["Marketplace will not open", "", "ok"]
         )
     }
 

@@ -30,7 +30,7 @@ struct NativeAgentCompiledLocalTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "原生插件 \(plugin.name)：\(compiledTool.description)"
+        "Native plugin \(plugin.name): \(compiledTool.description)"
     }
 
     func approvalResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -128,7 +128,7 @@ extension NativeAgentCompiledPlugin {
                         return .ask
                     case .deny:
                         return .deny(
-                            reason: guardRule.reason ?? "原生插件策略拒绝了这次工具调用。"
+                            reason: guardRule.reason ?? "The native plugin policy denied this tool call."
                         )
                     }
                 }

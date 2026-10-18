@@ -100,7 +100,7 @@ final class ISHPluginSettingsDraftTests: XCTestCase {
 
         draft.set(.number(2.5), at: ["count"])
 
-        XCTAssertEqual(draft.validationIssues(in: form), ["count 必须按步长 1 取值。"])
+        XCTAssertEqual(draft.validationIssues(in: form), ["count must be a multiple of step 1."])
     }
 
     private func namespace(

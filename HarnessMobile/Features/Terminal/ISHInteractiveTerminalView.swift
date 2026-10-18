@@ -216,7 +216,7 @@ struct ISHInteractiveTerminalView: View {
                 Button {
                     terminal.clearScreen()
                 } label: {
-                    Label("清屏", systemImage: "paintbrush")
+                    Label("Clear Screen", systemImage: "paintbrush")
                         .frame(minWidth: 44, minHeight: 44)
                 }
                 .disabled(terminal.state != .ready)
@@ -268,7 +268,7 @@ struct ISHInteractiveTerminalView: View {
             VStack(spacing: 12) {
                 ProgressView()
                     .tint(.white)
-                Text("正在启动 ARM64 Alpine")
+                Text("Starting ARM64 Alpine")
                     .foregroundStyle(.white)
             }
             .accessibilityIdentifier("ish-terminal-preparing")
@@ -280,7 +280,7 @@ struct ISHInteractiveTerminalView: View {
                 Text(message)
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
-                Button("重试") {
+                Button("Retry") {
                     terminal.retry(store: model.workspaceStore)
                 }
                 .buttonStyle(.borderedProminent)
@@ -318,34 +318,34 @@ private struct ISHInteractiveEnvironmentView: View {
     var body: some View {
         Form {
             Section {
-                environmentRow("cpu", "系统", "Alpine Linux ARM64", .black)
-                environmentRow("folder", "工作目录", "/workspace", .blue)
-                environmentRow("iphone", "执行位置", "本机 iSH", .orange)
+                environmentRow("cpu", "System", "Alpine Linux ARM64", .black)
+                environmentRow("folder", "Working Directory", "/workspace", .blue)
+                environmentRow("iphone", "Runs On", "On-device iSH", .orange)
             } header: {
-                Label("运行环境", systemImage: "terminal")
+                Label("Environment", systemImage: "terminal")
             }
 
             Section {
                 Toggle(
-                    "允许 Linux 命令联网",
+                    "Allow Network for Linux Commands",
                     isOn: Binding(
                         get: { terminal.isGuestNetworkEnabled },
                         set: { terminal.setGuestNetworkEnabled($0) }
                     )
                 )
-                Text("模型 API 由原生网络层访问，不受这个开关影响。")
+                Text("The model API is accessed by the native networking layer and is not affected by this switch.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } header: {
-                Label("网络", systemImage: "network")
+                Label("Network", systemImage: "network")
             }
         }
         .harnessCompactListChrome()
-        .navigationTitle("iSH 环境")
+        .navigationTitle("iSH Environment")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("完成") {
+                Button("Done") {
                     dismiss()
                 }
             }

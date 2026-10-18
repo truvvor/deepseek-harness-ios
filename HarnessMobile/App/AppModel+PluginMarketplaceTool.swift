@@ -18,12 +18,12 @@ extension AppModel {
             let refreshed = await refreshISHPluginMarketplace(forceRefresh: request.forceRefresh)
             guard refreshed else {
                 throw LocalToolError.pluginDenied(
-                    ishPluginMarketplaceFailure?.message ?? "插件市场目录暂时不可用。"
+                    ishPluginMarketplaceFailure?.message ?? "The plugin marketplace catalog is temporarily unavailable."
                 )
             }
             guard let catalog = ishPluginMarketplaceCatalog else {
                 throw LocalToolError.pluginDenied(
-                    ishPluginMarketplaceFailure?.message ?? "插件市场目录暂时不可用。"
+                    ishPluginMarketplaceFailure?.message ?? "The plugin marketplace catalog is temporarily unavailable."
                 )
             }
             let installed = ISHMarketplacePluginList(
@@ -74,7 +74,7 @@ extension AppModel {
         case .list:
             guard await startISHPluginHost(reportErrorsGlobally: false) else {
                 throw LocalToolError.pluginDenied(
-                    ishPluginMarketplaceFailure?.message ?? "本机插件 Host 尚未运行。"
+                    ishPluginMarketplaceFailure?.message ?? "The on-device plugin Host is not running yet."
                 )
             }
             let list = ISHMarketplacePluginList(
@@ -128,8 +128,8 @@ extension AppModel {
                 "requires_explicit_enable": .bool(requiresExplicitEnable),
                 "next_action": .string(
                     requiresExplicitEnable
-                        ? "新插件默认停用；如果用户希望本轮之后可调用它，请用返回的 plugin id 再调用 action=enable。"
-                        : "插件已处于启用状态，下一轮模型请求即可使用它贡献的工具。"
+                        ? "New plugins are disabled by default. If the user wants it callable after this turn, call action=enable with the returned plugin id."
+                        : "The plugin is already enabled; its contributed tools are available from the next model request."
                 )
             ]
             if let warning = ishPluginMarketplaceFailure?.message {
@@ -157,8 +157,8 @@ extension AppModel {
                     "requires_explicit_enable": .bool(requiresExplicitEnable),
                     "next_action": .string(
                         requiresExplicitEnable
-                            ? "iSH 插件默认停用；确认需要后再用返回的 plugin id 调用 action=enable。"
-                            : "插件已经启用，下一轮模型请求即可使用它的贡献。"
+                            ? "iSH plugins are disabled by default. Once confirmed as needed, call action=enable with the returned plugin id."
+                            : "The plugin is already enabled; its contributions are available from the next model request."
                     )
                 ]
             )
@@ -171,7 +171,7 @@ extension AppModel {
             )
             guard changed else {
                 throw LocalToolError.pluginDenied(
-                    ishPluginMarketplaceFailure?.message ?? "插件启停失败。"
+                    ishPluginMarketplaceFailure?.message ?? "Failed to enable or disable the plugin."
                 )
             }
             var values: [String: JSONValue] = [
@@ -193,7 +193,7 @@ extension AppModel {
             let removed = await uninstallISHMarketplacePlugin(id: id)
             guard removed else {
                 throw LocalToolError.pluginDenied(
-                    ishPluginMarketplaceFailure?.message ?? "插件卸载失败。"
+                    ishPluginMarketplaceFailure?.message ?? "Failed to uninstall the plugin."
                 )
             }
             var values: [String: JSONValue] = [
@@ -214,7 +214,7 @@ extension AppModel {
             let cleared = await clearISHPluginMarketplaceCache(includeNpm: request.includeNPM)
             guard cleared else {
                 throw LocalToolError.pluginDenied(
-                    ishPluginMarketplaceFailure?.message ?? "插件缓存清理失败。"
+                    ishPluginMarketplaceFailure?.message ?? "Failed to clear the plugin cache."
                 )
             }
             return try marketplaceToolEnvelope(
@@ -234,13 +234,13 @@ extension AppModel {
             compilerGuidance: nil
         )
         guard beginISHPluginMarketplaceOperation(.preparingHost, retry: retry) else {
-            throw LocalToolError.pluginDenied("另一个插件市场操作仍在执行。")
+            throw LocalToolError.pluginDenied("Another plugin marketplace operation is still running.")
         }
         defer { finishISHPluginMarketplaceOperation() }
         beginNativePluginCompilationTrace(source: source)
         guard await startISHPluginHost(reportErrorsGlobally: false),
               let client = ishPluginHostClient else {
-            let message = ishPluginMarketplaceFailure?.message ?? "iSH 插件 Host 启动失败。"
+            let message = ishPluginMarketplaceFailure?.message ?? "Failed to start the iSH plugin Host."
             failNativePluginCompilationTrace(message)
             throw LocalToolError.pluginFailed(message)
         }
@@ -257,7 +257,7 @@ extension AppModel {
         updateNativePluginCompilationStage(
             .sourceAcquisition,
             state: .running,
-            detail: "正在手机内下载并准备受限源码快照。"
+            detail: "Downloading and preparing a restricted source snapshot on the device."
         )
         do {
             let prepared = try await withTemporaryISHGuestNetwork {
@@ -283,31 +283,31 @@ extension AppModel {
             updateNativePluginCompilationStage(
                 .sourceAcquisition,
                 state: .succeeded,
-                detail: "源码已下载到手机隔离缓存，未发送 API 密钥。"
+                detail: "Source downloaded to the device's isolated cache. No API key was sent."
             )
 
             guard let candidate else {
                 updateNativePluginCompilationStage(
                     .sourceAnalysis,
                     state: .succeeded,
-                    detail: "Host 没有生成可安全交给主 Agent 的源码快照。"
+                    detail: "The Host did not produce a source snapshot that can be safely handed to the main Agent."
                 )
                 updateNativePluginCompilationStage(
                     .adaptability,
                     state: .skipped,
-                    detail: "没有可供原生适配的源码快照。"
+                    detail: "No source snapshot is available for native adaptation."
                 )
                 updateNativePluginCompilationStage(
                     .modelCompilation,
                     state: .skipped,
-                    detail: "主 Agent 无法读取源码，未生成原生清单。"
+                    detail: "The main Agent could not read the source; no native manifest was generated."
                 )
                 return [
                     "status": .string("prepared_ish_only"),
                     "prepared_token": .string(prepared.preparedToken),
                     "native_candidate_available": .bool(false),
                     "next_action": .string(
-                        "这个来源没有安全的原生源码快照；如需继续，请调用 action=install_ish 并传回 prepared_token。"
+                        "This source has no safe native source snapshot. To continue, call action=install_ish and pass back prepared_token."
                     )
                 ]
             }
@@ -318,17 +318,17 @@ extension AppModel {
             updateNativePluginCompilationStage(
                 .sourceAnalysis,
                 state: .succeeded,
-                detail: "已分析 \(candidate.files.count) 个源码文件（\(sourceBytes) 字节）。"
+                detail: "Analyzed \(candidate.files.count) source files (\(sourceBytes) bytes)."
             )
             updateNativePluginCompilationStage(
                 .adaptability,
                 state: .running,
-                detail: "等待主 Agent 根据真实源码判断原生适配边界。"
+                detail: "Waiting for the main Agent to determine native adaptation boundaries from the real source."
             )
             updateNativePluginCompilationStage(
                 .modelCompilation,
                 state: .running,
-                detail: "源码已交给当前主 Agent；不会启动编译子 Agent。"
+                detail: "Source handed to the current main Agent; no compiler sub-Agent will be started."
             )
             return mainAgentPreparationValues(
                 candidate: candidate,
@@ -424,11 +424,11 @@ extension AppModel {
               preparation.preparedToken == token,
               let candidate = preparation.candidate else {
             throw LocalToolError.pluginFailed(
-                "准备令牌已失效或没有原生源码快照；请重新调用 action=install。"
+                "The prepared token has expired or has no native source snapshot. Call action=install again."
             )
         }
         guard let file = candidate.files.first(where: { $0.path == path }) else {
-            throw LocalToolError.pluginFailed("源码快照中不存在文件：\(path)")
+            throw LocalToolError.pluginFailed("File not found in source snapshot: \(path)")
         }
         return [
             "prepared_token": .string(token),
@@ -446,7 +446,7 @@ extension AppModel {
         guard let preparation = pendingAgentPluginPreparation,
               preparation.preparedToken == preparedToken else {
             throw LocalToolError.pluginFailed(
-                "准备令牌已失效或没有原生源码快照；请重新调用 action=install。"
+                "The prepared token has expired or has no native source snapshot. Call action=install again."
             )
         }
         let request = PluginInstallRequest(
@@ -473,7 +473,7 @@ extension AppModel {
             operation: { @MainActor [weak self] in
                 guard let self else {
                     throw PluginInstallCoordinatorError.operationFailed(
-                        "AppModel 已结束。"
+                        "AppModel has ended."
                     )
                 }
                 let plugin = try await self.installMainAgentNativePluginUncoordinated(
@@ -497,7 +497,7 @@ extension AppModel {
         )
         guard let plugin = ishMarketplacePlugins.first(where: { $0.id == result.pluginID }) else {
             throw PluginInstallCoordinatorError.operationFailed(
-                "安装已提交，但本机插件清单尚未同步。"
+                "Installation submitted, but the on-device plugin manifest has not synced yet."
             )
         }
         if let client = ishPluginHostClient {
@@ -507,7 +507,7 @@ extension AppModel {
             )
         }
         pendingAgentPluginPreparation = nil
-        completeNativePluginCompilationTrace("主 Agent 原生编译成功，插件已安装。")
+        completeNativePluginCompilationTrace("Main Agent native compilation succeeded; plugin installed.")
         return plugin
     }
 
@@ -519,7 +519,7 @@ extension AppModel {
               preparation.preparedToken == preparedToken,
               let candidate = preparation.candidate else {
             throw LocalToolError.pluginFailed(
-                "准备令牌已失效或没有原生源码快照；请重新调用 action=install。"
+                "The prepared token has expired or has no native source snapshot. Call action=install again."
             )
         }
         let retry = ISHPluginMarketplaceRetry.install(
@@ -528,7 +528,7 @@ extension AppModel {
             compilerGuidance: nil
         )
         guard beginISHPluginMarketplaceOperation(.compilingNativePlugin, retry: retry) else {
-            throw LocalToolError.pluginDenied("另一个插件市场操作仍在执行。")
+            throw LocalToolError.pluginDenied("Another plugin marketplace operation is still running.")
         }
         defer { finishISHPluginMarketplaceOperation() }
 
@@ -538,11 +538,11 @@ extension AppModel {
             updateNativePluginCompilationStage(
                 .modelCompilation,
                 state: .succeeded,
-                detail: "当前主 Agent 已提交结构化原生插件清单。"
+                detail: "The current main Agent submitted a structured native plugin manifest."
             )
             guard draft.adaptable else {
                 let reason = draft.reason?.trimmingCharacters(in: .whitespacesAndNewlines)
-                    ?? "主 Agent 判断源码无法映射到当前原生能力。"
+                    ?? "The main Agent determined the source cannot be mapped to current native capabilities."
                 recordNativePluginCompilationDiagnostic(
                     NativeAgentCompilationDiagnostic(
                         code: "NATIVE_SOURCE_UNADAPTABLE",
@@ -550,7 +550,7 @@ extension AppModel {
                         message: reason,
                         retryable: false,
                         preparedToken: preparedToken,
-                        suggestedAction: "如果确实需要保留原插件运行时，使用同一 prepared_token 调用 action=install_ish；不要反复提交相同的不可适配清单。"
+                        suggestedAction: "If you really need to keep the original plugin runtime, call action=install_ish with the same prepared_token. Do not resubmit the same unadaptable manifest."
                     )
                 )
                 updateNativePluginCompilationStage(
@@ -559,18 +559,18 @@ extension AppModel {
                     detail: reason
                 )
                 throw LocalToolError.pluginFailed(
-                    "主 Agent 已判定原生方案不适配：\(reason) 如需继续，请用同一 prepared_token 调用 action=install_ish。"
+                    "The main Agent determined a native approach does not fit: \(reason) To continue, call action=install_ish with the same prepared_token."
                 )
             }
             updateNativePluginCompilationStage(
                 .adaptability,
                 state: .succeeded,
-                detail: "主 Agent 判断可转换为原生工具：\(draft.name)"
+                detail: "The main Agent determined this can be converted to a native tool: \(draft.name)"
             )
             updateNativePluginCompilationStage(
                 .validation,
                 state: .running,
-                detail: "正在由签名内置 Swift 代码校验主 Agent 清单。"
+                detail: "Validating the main Agent manifest with signed built-in Swift code."
             )
             let plugin = try await materializeAndInstallNativeAgentPlugin(
                 candidate,
@@ -595,7 +595,7 @@ extension AppModel {
                 // submitting the same manifest again. Repair it first.
                 retryable: false,
                 preparedToken: preparedToken,
-                suggestedAction: "先根据错误字段修正 native_manifest；修正版可使用同一 prepared_token 再次提交 action=install_native。不要原样重复提交。若核心行为无法映射，改用 action=install_ish。"
+                suggestedAction: "First fix native_manifest based on the error fields; submit the corrected version with action=install_native using the same prepared_token. Do not resubmit unchanged. If the core behavior cannot be mapped, use action=install_ish instead."
             )
             recordNativePluginCompilationDiagnostic(diagnostic)
             updateNativePluginCompilationStage(
@@ -604,7 +604,7 @@ extension AppModel {
                 detail: message
             )
             throw LocalToolError.pluginFailed(
-                "主 Agent 清单未通过 Swift 校验（\(diagnostic.code)）：\(message)；请先修正 native_manifest，再使用同一 prepared_token 提交修正版 action=install_native（不要原样重试）。"
+                "The main Agent manifest failed Swift validation (\(diagnostic.code)): \(message). Fix native_manifest first, then submit the corrected version with action=install_native using the same prepared_token (do not retry unchanged)."
             )
         }
     }
@@ -630,7 +630,7 @@ extension AppModel {
         guard let preparation = pendingAgentPluginPreparation,
               preparation.preparedToken == preparedToken else {
             throw LocalToolError.pluginFailed(
-                "准备令牌已失效；请重新调用 action=install。"
+                "The prepared token has expired. Call action=install again."
             )
         }
         let request = PluginInstallRequest(
@@ -646,7 +646,7 @@ extension AppModel {
             operation: { @MainActor [weak self] in
                 guard let self else {
                     throw PluginInstallCoordinatorError.operationFailed(
-                        "AppModel 已结束。"
+                        "AppModel has ended."
                     )
                 }
                 let plugin = try await self.installPreparedPluginInISHUncoordinated(
@@ -657,7 +657,7 @@ extension AppModel {
         )
         guard let plugin = ishMarketplacePlugins.first(where: { $0.id == result.pluginID }) else {
             throw PluginInstallCoordinatorError.operationFailed(
-                "安装已提交，但本机插件清单尚未同步。"
+                "Installation submitted, but the on-device plugin manifest has not synced yet."
             )
         }
         return plugin
@@ -669,7 +669,7 @@ extension AppModel {
         guard let preparation = pendingAgentPluginPreparation,
               preparation.preparedToken == preparedToken else {
             throw LocalToolError.pluginFailed(
-                "准备令牌已失效；请重新调用 action=install。"
+                "The prepared token has expired. Call action=install again."
             )
         }
         let retry = ISHPluginMarketplaceRetry.install(
@@ -678,25 +678,25 @@ extension AppModel {
             compilerGuidance: nil
         )
         guard beginISHPluginMarketplaceOperation(.installingPlugin, retry: retry) else {
-            throw LocalToolError.pluginDenied("另一个插件市场操作仍在执行。")
+            throw LocalToolError.pluginDenied("Another plugin marketplace operation is still running.")
         }
         defer { finishISHPluginMarketplaceOperation() }
         guard await startISHPluginHost(reportErrorsGlobally: false),
               let client = ishPluginHostClient else {
             throw LocalToolError.pluginFailed(
-                ishPluginMarketplaceFailure?.message ?? "iSH 插件 Host 启动失败。"
+                ishPluginMarketplaceFailure?.message ?? "Failed to start the iSH plugin Host."
             )
         }
 
         updateNativePluginCompilationStage(
             .nativeInstallation,
             state: .skipped,
-            detail: "主 Agent 选择保留原插件运行时，不注册原生清单。"
+            detail: "The main Agent chose to keep the original plugin runtime; no native manifest will be registered."
         )
         updateNativePluginCompilationStage(
             .ishFallback,
             state: .running,
-            detail: "正在手机 iSH 沙箱中提交已准备的插件。"
+            detail: "Submitting the prepared plugin in the on-device iSH sandbox."
         )
         do {
             let plugin = try await commitISHMarketplacePluginInstall(
@@ -709,9 +709,9 @@ extension AppModel {
             updateNativePluginCompilationStage(
                 .ishFallback,
                 state: .succeeded,
-                detail: "iSH 插件已安装；可在启用后加载 Host 贡献。"
+                detail: "iSH plugin installed; Host contributions load once enabled."
             )
-            completeNativePluginCompilationTrace("主 Agent 选择 iSH 兼容路径，插件已安装。")
+            completeNativePluginCompilationTrace("The main Agent chose the iSH compatibility path; plugin installed.")
             return plugin
         } catch {
             updateNativePluginCompilationStage(

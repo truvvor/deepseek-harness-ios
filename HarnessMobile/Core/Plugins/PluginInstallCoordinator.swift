@@ -130,19 +130,19 @@ enum PluginInstallCoordinatorError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case let .invalidRequest(reason):
-            return "插件安装请求无效：\(reason)"
+            return "Invalid plugin install request: \(reason)"
         case let .operationInFlight(sourceKey):
-            return "插件来源正在安装：\(sourceKey)"
+            return "Plugin source is already installing: \(sourceKey)"
         case let .duplicate(pluginID, scope):
-            return "插件 \(pluginID) 在作用域 \(scope.description) 已安装；更新时需要 replace=true。"
+            return "Plugin \(pluginID) is already installed in scope \(scope.description); updating requires replace=true."
         case let .unknown(pluginID, scope):
-            return "作用域 \(scope.description) 中不存在插件 \(pluginID)。"
+            return "Plugin \(pluginID) does not exist in scope \(scope.description)."
         case let .transactionNotFound(id):
-            return "插件安装事务 \(id.uuidString) 不存在或已结束。"
+            return "Plugin install transaction \(id.uuidString) does not exist or has ended."
         case let .resultMismatch(reason):
-            return "插件安装结果与请求不一致：\(reason)"
+            return "Plugin install result does not match the request: \(reason)"
         case let .operationFailed(reason):
-            return "插件后端安装失败：\(reason)"
+            return "Plugin backend install failed: \(reason)"
         }
     }
 }
@@ -392,7 +392,7 @@ actor PluginInstallCoordinator {
             try validate(result)
             guard result.scope == .global else {
                 throw PluginInstallCoordinatorError.resultMismatch(
-                    "全局库存不能包含会话作用域记录。"
+                    "The global inventory cannot contain session-scoped records."
                 )
             }
         }
@@ -449,27 +449,27 @@ actor PluginInstallCoordinator {
     private func validate(_ request: PluginInstallRequest) throws {
         guard request.sourceKey.utf8.count <= 4_096,
               !request.sourceKey.isEmpty else {
-            throw PluginInstallCoordinatorError.invalidRequest("来源标识为空。")
+            throw PluginInstallCoordinatorError.invalidRequest("Source identifier is empty.")
         }
         if let requestedVersion = request.requestedVersion {
             guard !requestedVersion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   requestedVersion.utf8.count <= 80 else {
-                throw PluginInstallCoordinatorError.invalidRequest("版本号不合法。")
+                throw PluginInstallCoordinatorError.invalidRequest("Invalid version number.")
             }
         }
         switch request.source {
         case let .marketplace(source), let .preparedMarketplace(source, token: _):
             guard !source.location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   source.location.utf8.count <= 2_048 else {
-                throw PluginInstallCoordinatorError.invalidRequest("市场来源位置不合法。")
+                throw PluginInstallCoordinatorError.invalidRequest("Invalid marketplace source location.")
             }
             guard !source.location.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else {
-                throw PluginInstallCoordinatorError.invalidRequest("市场来源不能包含控制字符。")
+                throw PluginInstallCoordinatorError.invalidRequest("Marketplace source cannot contain control characters.")
             }
         case let .native(sourceDigest):
             guard sourceDigest.utf8.count == 64,
                   sourceDigest.allSatisfy(\.isHexDigit) else {
-                throw PluginInstallCoordinatorError.invalidRequest("原生插件来源摘要必须是 64 位十六进制值。")
+                throw PluginInstallCoordinatorError.invalidRequest("Native plugin source digest must be a 64-character hex value.")
             }
         }
     }
@@ -480,29 +480,29 @@ actor PluginInstallCoordinator {
     ) throws {
         guard !result.pluginID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               result.pluginID.utf8.count <= 256 else {
-            throw PluginInstallCoordinatorError.resultMismatch("插件 ID 不合法。")
+            throw PluginInstallCoordinatorError.resultMismatch("Invalid plugin ID.")
         }
         guard !result.version.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               result.version.utf8.count <= 80 else {
-            throw PluginInstallCoordinatorError.resultMismatch("插件版本不合法。")
+            throw PluginInstallCoordinatorError.resultMismatch("Invalid plugin version.")
         }
         if let request {
             guard result.scope == request.scope else {
-                throw PluginInstallCoordinatorError.resultMismatch("作用域不匹配。")
+                throw PluginInstallCoordinatorError.resultMismatch("Scope mismatch.")
             }
             guard result.sourceKey == request.sourceKey else {
-                throw PluginInstallCoordinatorError.resultMismatch("来源标识不匹配。")
+                throw PluginInstallCoordinatorError.resultMismatch("Source identifier mismatch.")
             }
             if let requestedVersion = request.requestedVersion,
                result.version != requestedVersion {
-                throw PluginInstallCoordinatorError.resultMismatch("版本不匹配。")
+                throw PluginInstallCoordinatorError.resultMismatch("Version mismatch.")
             }
             if let expectedBackend = request.source.expectedBackend,
                result.backend != expectedBackend {
-                throw PluginInstallCoordinatorError.resultMismatch("执行后端不匹配。")
+                throw PluginInstallCoordinatorError.resultMismatch("Execution backend mismatch.")
             }
         } else if result.sourceKey.isEmpty {
-            throw PluginInstallCoordinatorError.resultMismatch("来源标识为空。")
+            throw PluginInstallCoordinatorError.resultMismatch("Source identifier is empty.")
         }
     }
 }

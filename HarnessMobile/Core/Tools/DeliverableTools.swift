@@ -60,7 +60,7 @@ private struct WorkspaceDiffTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "比较文件差异：\(arguments["file_path"]?.stringValue ?? "文件")"
+        "Compare file differences: \(arguments["file_path"]?.stringValue ?? "file")"
     }
 
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool { true }
@@ -163,7 +163,7 @@ private struct DeliverableWriteTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "生成交付物：\(arguments["file_path"]?.stringValue ?? "文件")"
+        "Generate deliverable: \(arguments["file_path"]?.stringValue ?? "file")"
     }
 
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> {

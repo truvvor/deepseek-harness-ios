@@ -39,7 +39,7 @@ struct AgentProviderBundleInstallStatus: Sendable, Equatable {
         Self(
             bundleID: id,
             phase: .unknown,
-            message: "尚未检查手机 iSH 中的安装状态。",
+            message: "Installation status in on-device iSH has not been checked yet.",
             installedVersion: nil,
             didInstall: false
         )
@@ -66,21 +66,21 @@ enum AgentProviderBundleInstallError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .alreadyInstalling:
-            "这个 Profile Bundle 已在安装。"
+            "This Profile Bundle is already being installed."
         case .invalidCatalogContract:
-            "内置 Profile Bundle 安装清单不一致，已拒绝安装。"
+            "The built-in Profile Bundle install manifest is inconsistent; installation was refused."
         case .checksumMismatch:
-            "下载文件的 SHA-256 与内置清单不一致，已拒绝安装并保留旧版本。"
+            "The downloaded file's SHA-256 doesn't match the built-in manifest; installation was refused and the previous version was kept."
         case let .packageIdentityMismatch(detail):
-            "npm 包身份与内置清单不一致：\(detail)"
+            "npm package identity doesn't match the built-in manifest: \(detail)"
         case let .packageDoesNotDeclareCLI(detail):
-            "npm 包不能忠实安装为声明的 CLI：\(detail)"
+            "The npm package can't be faithfully installed as the declared CLI: \(detail)"
         case let .unsupportedGuestRuntime(detail):
-            "这个 CLI 不支持当前手机 iSH 运行时：\(detail)"
+            "This CLI doesn't support the current on-device iSH runtime: \(detail)"
         case let .installationFailed(detail):
-            "Profile Bundle 本机安装失败：\(detail)"
+            "Profile Bundle local installation failed: \(detail)"
         case .invalidInstallReceipt:
-            "安装事务完成后没有得到可信的本机安装回执。"
+            "No trusted local install receipt was received after the install transaction completed."
         }
     }
 }
@@ -160,7 +160,7 @@ actor AgentProviderBundleInstaller {
               Self.hasConsistentCatalogContract(bundle) else {
             return statuses[id] ?? .unknown(id)
         }
-        let checking = Self.status(id, .checking, "正在检查手机 iSH 固定安装目录。")
+        let checking = Self.status(id, .checking, "Checking the pinned install directory in on-device iSH.")
         await publish(checking, observer: onEvent)
         do {
             let result = try await execute(
@@ -176,7 +176,7 @@ actor AgentProviderBundleInstaller {
             let failed = Self.status(
                 id,
                 .failed,
-                "无法检查手机 iSH：\(Self.safeDetail(error.localizedDescription))"
+                "Unable to check on-device iSH: \(Self.safeDetail(error.localizedDescription))"
             )
             await publish(failed, observer: onEvent)
             return failed
@@ -201,7 +201,7 @@ actor AgentProviderBundleInstaller {
         defer { activeBundleIDs.remove(id) }
 
         await publish(
-            Self.status(id, .preparingRuntime, "正在手机 iSH 中准备受约束安装事务。"),
+            Self.status(id, .preparingRuntime, "Preparing a constrained install transaction in on-device iSH."),
             observer: onEvent
         )
         let command = Self.installCommand(bundle, reinstall: reinstall)
@@ -218,18 +218,18 @@ actor AgentProviderBundleInstaller {
                 }
             )
         } catch is CancellationError {
-            let cancelled = Self.status(id, .cancelled, "安装已取消；旧版本已保留或恢复。")
+            let cancelled = Self.status(id, .cancelled, "Installation cancelled; the previous version was kept or restored.")
             await publish(cancelled, observer: onEvent)
             throw CancellationError()
         } catch let error as ISHSandboxError where error == .cancelled {
-            let cancelled = Self.status(id, .cancelled, "安装已取消；旧版本已保留或恢复。")
+            let cancelled = Self.status(id, .cancelled, "Installation cancelled; the previous version was kept or restored.")
             await publish(cancelled, observer: onEvent)
             throw CancellationError()
         } catch {
             let failed = Self.status(
                 id,
                 .failed,
-                "安装进程未完成：\(Self.safeDetail(error.localizedDescription))"
+                "Install process did not complete: \(Self.safeDetail(error.localizedDescription))"
             )
             await publish(failed, observer: onEvent)
             throw error
@@ -251,7 +251,7 @@ actor AgentProviderBundleInstaller {
         let installed = Self.status(
             id,
             .installed,
-            receipt.didInstall ? "已在手机 iSH 中安装并验证。" : "手机 iSH 中的固定版本已经验证。",
+            receipt.didInstall ? "Installed and verified in on-device iSH." : "The pinned version in on-device iSH has been verified.",
             version: receipt.version,
             didInstall: receipt.didInstall
         )
@@ -261,7 +261,7 @@ actor AgentProviderBundleInstaller {
 
     func cancel(_ id: AgentProviderBundleID, onEvent: AgentProviderBundleInstallObserver = { _ in }) async {
         guard activeBundleIDs.contains(id) else { return }
-        await publish(Self.status(id, .cancelling, "正在取消并回滚安装事务。"), observer: onEvent)
+        await publish(Self.status(id, .cancelling, "Cancelling and rolling back the install transaction."), observer: onEvent)
         await cancelExecution(Self.sessionID(id))
     }
 
@@ -322,12 +322,12 @@ actor AgentProviderBundleInstaller {
     ) -> AgentProviderBundleInstallStatus {
         guard result.exitCode == 0,
               result.stdout.contains("HARNESS_PROFILE_INSPECT:installed:\(bundle.installPayload.version)") else {
-            return status(bundle.id, .notInstalled, "手机 iSH 中尚未安装这个固定版本。")
+            return status(bundle.id, .notInstalled, "This pinned version is not yet installed in on-device iSH.")
         }
         return status(
             bundle.id,
             .installed,
-            "手机 iSH 中已安装并验证固定版本。",
+            "The pinned version is installed and verified in on-device iSH.",
             version: bundle.installPayload.version
         )
     }
@@ -453,20 +453,20 @@ actor AgentProviderBundleInstaller {
             "  exit 0",
             "fi",
             "mkdir -p -- \(shellQuote(stage + "/unpacked")) \(shellQuote(stage + "/bin"))",
-            "printf '%s\\n' 'HARNESS_PROFILE_EVENT:preparing-runtime:正在准备 iSH Node.js 运行时。'",
+            "printf '%s\\n' 'HARNESS_PROFILE_EVENT:preparing-runtime:Preparing the iSH Node.js runtime.'",
             "apk add --no-cache nodejs npm ca-certificates >/dev/null",
-            "printf '%s\\n' 'HARNESS_PROFILE_EVENT:downloading:正在 iSH 本机下载内置清单指定的官方 tarball。'",
+            "printf '%s\\n' 'HARNESS_PROFILE_EVENT:downloading:Downloading the official tarball specified by the built-in manifest locally in iSH.'",
             "wget -q -O \(shellQuote(archive)) \(shellQuote(payload.sourceURL))",
-            "printf '%s\\n' 'HARNESS_PROFILE_EVENT:verifying:正在核对内置 SHA-256。'",
+            "printf '%s\\n' 'HARNESS_PROFILE_EVENT:verifying:Verifying against the built-in SHA-256.'",
             "actual=$(sha256sum \(shellQuote(archive)) | awk '{print $1}')",
             "if [ \"$actual\" != \(shellQuote(payload.sha256.lowercased())) ]; then",
             "  printf '%s\\n' 'HARNESS_PROFILE_ERROR:checksum-mismatch:downloaded tarball digest differs from catalog' >&2",
             "  exit 70",
             "fi",
             "tar -xzf \(shellQuote(archive)) -C \(shellQuote(stage + "/unpacked"))",
-            "printf '%s\\n' 'HARNESS_PROFILE_EVENT:inspecting-package:正在验证 npm 包身份和声明的 CLI。'",
+            "printf '%s\\n' 'HARNESS_PROFILE_EVENT:inspecting-package:Verifying npm package identity and the declared CLI.'",
             "node -e \(shellQuote(nodeInspector)) -- \(shellQuote(unpacked)) \(shellQuote(payload.packageName)) \(shellQuote(payload.version)) \(shellQuote(payload.executable))",
-            "printf '%s\\n' 'HARNESS_PROFILE_EVENT:installing-dependencies:正在安装该固定 npm 包声明的运行依赖（禁用生命周期脚本）。'",
+            "printf '%s\\n' 'HARNESS_PROFILE_EVENT:installing-dependencies:Installing runtime dependencies declared by the pinned npm package (lifecycle scripts disabled).'",
             "mkdir -p -- \(shellQuote(runtime))",
             "npm install --prefix \(shellQuote(runtime)) --omit=dev --ignore-scripts --no-audit --no-fund --loglevel=error \(shellQuote(archive))",
             "if [ ! -x \(shellQuote(runtime + "/node_modules/.bin/" + payload.executable)) ]; then",
@@ -474,7 +474,7 @@ actor AgentProviderBundleInstaller {
             "  exit 72",
             "fi",
             "ln -s \(shellQuote("../runtime/node_modules/.bin/" + payload.executable)) \(shellQuote(executable))",
-            "printf '%s\\n' 'HARNESS_PROFILE_EVENT:validating-executable:正在 iSH 中执行无凭据版本探针。'",
+            "printf '%s\\n' 'HARNESS_PROFILE_EVENT:validating-executable:Running a credential-free version probe in iSH.'",
             "if ! \(shellQuote(executable)) --version >/dev/null 2>\(shellQuote(stage + "/probe.err")); then",
             "  detail=$(head -n 1 \(shellQuote(stage + "/probe.err")) | tr '\\r\\n' ' ' | cut -c1-240)",
             "  printf 'HARNESS_PROFILE_ERROR:unsupported-runtime:%s\\n' \"${detail:-declared CLI failed its on-device version probe}\" >&2",
@@ -482,7 +482,7 @@ actor AgentProviderBundleInstaller {
             "fi",
             "printf \(shellQuote(stampBody)) > \(shellQuote(stamp))",
             "rm -f -- \(shellQuote(archive)) \(shellQuote(stage + "/probe.err"))",
-            "printf '%s\\n' 'HARNESS_PROFILE_EVENT:committing:正在原子替换固定安装目录。'",
+            "printf '%s\\n' 'HARNESS_PROFILE_EVENT:committing:Atomically replacing the pinned install directory.'",
             "if [ -e \"$TARGET\" ]; then mv -- \"$TARGET\" \"$BACKUP\"; fi",
             "swapped=1",
             "mv -- \"$STAGE\" \"$TARGET\"",

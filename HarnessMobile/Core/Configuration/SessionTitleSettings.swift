@@ -9,9 +9,9 @@ enum SessionTitleAutomaticMode: String, Codable, Sendable, Equatable, CaseIterab
 
     var title: String {
         switch self {
-        case .disabled: return "仅使用本机标题"
-        case .firstPrompt: return "首条提问后生成"
-        case .allPrompts: return "每轮提问后更新"
+        case .disabled: return "Local Titles Only"
+        case .firstPrompt: return "Generate After First Prompt"
+        case .allPrompts: return "Update After Every Prompt"
         }
     }
 }
@@ -57,13 +57,13 @@ enum SessionTitleGeneratorError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .noMessages: return "没有可用于生成标题的用户消息。"
-        case .inputTooLarge: return "标题生成输入超过 64 KiB。"
-        case .outputTooLarge: return "标题模型输出超过 1 KiB。"
-        case .emptyOutput: return "标题模型返回了空标题。"
-        case .unexpectedToolCall: return "标题模型意外请求了工具。"
-        case .incompleteFinish: return "标题模型没有正常结束输出。"
-        case .timedOut: return "标题模型在 15 秒内没有完成。"
+        case .noMessages: return "No user messages available to generate a title."
+        case .inputTooLarge: return "Title generation input exceeds 64 KiB."
+        case .outputTooLarge: return "Title model output exceeds 1 KiB."
+        case .emptyOutput: return "Title model returned an empty title."
+        case .unexpectedToolCall: return "Title model unexpectedly requested a tool."
+        case .incompleteFinish: return "Title model did not finish its output normally."
+        case .timedOut: return "Title model did not finish within 15 seconds."
         }
     }
 }

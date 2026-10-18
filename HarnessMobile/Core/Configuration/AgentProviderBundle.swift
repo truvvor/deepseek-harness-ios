@@ -79,11 +79,11 @@ enum AgentProviderBundleValidationError: LocalizedError, Sendable, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .invalidPayload: "Profile Bundle 清单无效或来源不受信任。"
-        case .unsupportedPermissionOverride: "权限模式由 Profile Bundle 固定，不能由工具参数覆盖。"
-        case .invalidInstanceName: "Profile Bundle 实例名无效。"
-        case .duplicateInstance: "Profile Bundle 实例名已存在。"
-        case .notInstalled: "请先在手机 iSH 中安装并验证 Profile Bundle，再启用它。"
+        case .invalidPayload: "The Profile Bundle manifest is invalid or its source is untrusted."
+        case .unsupportedPermissionOverride: "The permission mode is fixed by the Profile Bundle and cannot be overridden by tool arguments."
+        case .invalidInstanceName: "Invalid Profile Bundle instance name."
+        case .duplicateInstance: "The Profile Bundle instance name already exists."
+        case .notInstalled: "Install and verify the Profile Bundle in the on-device iSH before enabling it."
         }
     }
 }
@@ -191,9 +191,9 @@ struct AgentProviderBundleFailureFacts: Codable, Sendable, Equatable {
     }
 
     var userMessage: String {
-        var message = provider + " Profile Bundle 在 " + stage + " 阶段失败（" + errorCategory
+        var message = provider + " Profile Bundle failed at the " + stage + " stage (" + errorCategory
         if let exitCode { message += ", exit " + String(exitCode) }
-        message += "）。"
+        message += ")."
         if let detail, !detail.isEmpty { message += " " + detail }
         return message
     }
@@ -331,13 +331,13 @@ enum AgentProviderBundleCapability: String, Codable, CaseIterable, Sendable {
 
     var displayName: String {
         switch self {
-        case .parentContext: "父会话上下文"
-        case .outputSchema: "结构化输出 schema"
-        case .depthLimit: "Harness 深度限制"
-        case .toolFilter: "工具过滤器"
-        case .persona: "子 Agent persona"
-        case .modelOverride: "模型覆盖"
-        case .continuations: "持久会话续接"
+        case .parentContext: "Parent session context"
+        case .outputSchema: "Structured output schema"
+        case .depthLimit: "Harness depth limit"
+        case .toolFilter: "Tool filter"
+        case .persona: "Sub-agent persona"
+        case .modelOverride: "Model override"
+        case .continuations: "Persistent session continuation"
         }
     }
 }
@@ -417,8 +417,8 @@ struct AgentProviderBundle: Codable, Sendable, Equatable, Identifiable {
 
     var installHint: String {
         switch id {
-        case .codex: "在 iSH 中把 Codex CLI 安装到 " + resolvedExecutablePath + " 后即可作为子 Agent 调用。"
-        case .claudeCode: "在 iSH 中把 Claude CLI 安装到 " + resolvedExecutablePath + " 后即可作为子 Agent 调用。"
+        case .codex: "Install the Codex CLI in iSH at " + resolvedExecutablePath + " to use it as a sub-agent."
+        case .claudeCode: "Install the Claude CLI in iSH at " + resolvedExecutablePath + " to use it as a sub-agent."
         }
     }
 
@@ -445,8 +445,8 @@ struct AgentProviderBundle: Codable, Sendable, Equatable, Identifiable {
     ) -> String? {
         let unsupported = unsupportedCapabilities(for: request)
         guard !unsupported.isEmpty else { return nil }
-        let names = unsupported.map(\.displayName).joined(separator: "、")
-        return "Profile Bundle \(displayName) 不支持：\(names)。该请求未启动。"
+        let names = unsupported.map(\.displayName).joined(separator: ", ")
+        return "Profile Bundle \(displayName) does not support: \(names). The request was not started."
     }
 
     static let catalog: [AgentProviderBundle] = [

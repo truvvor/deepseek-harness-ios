@@ -20,10 +20,10 @@ final class SessionSnapshotTests: XCTestCase {
             makeEvent("turnStart", seq: 1, data: ["turn": .number(1)]),
             makeEvent("toolCall", seq: 2, data: [
                 "name": .string("schedule.create"),
-                "arguments": .object(["label": .string("早班提醒"), "runAt": .string("2026-09-04T06:00:00+08:00")])
+                "arguments": .object(["label": .string("Morning shift reminder"), "runAt": .string("2026-09-04T06:00:00+08:00")])
             ]),
             makeEvent("toolResult", seq: 3, data: [
-                "content": .string("已创建 id sk-demo1234567890"),
+                "content": .string("Created id sk-demo1234567890"),
                 "runId": .string(UUID().uuidString)
             ]),
             makeEvent("turnEnd", seq: 4, data: ["reason": .string("completed")])
@@ -59,7 +59,7 @@ final class SessionSnapshotTests: XCTestCase {
         var changed = scenarioEvents()
         changed[1] = makeEvent("toolCall", seq: 2, data: [
             "name": .string("schedule.list"),
-            "arguments": .object(["label": .string("早班提醒")])
+            "arguments": .object(["label": .string("Morning shift reminder")])
         ])
         let mismatch = try SessionSnapshot.replay(fixture: fixture, against: changed)
         let expected = try XCTUnwrap(mismatch)

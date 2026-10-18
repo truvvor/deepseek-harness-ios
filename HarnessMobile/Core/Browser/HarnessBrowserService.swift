@@ -120,15 +120,15 @@ enum HarnessBrowserServiceError: Error, LocalizedError, Sendable, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .unavailable: "本机浏览器服务当前不可用。"
-        case .invalidSession: "浏览器会话标识无效。"
-        case .invalidAction: "浏览器动作不受支持。"
-        case .invalidURL: "浏览器仅允许不含凭据的 HTTP/HTTPS 地址。"
-        case .tabNotFound: "找不到当前会话的浏览器标签页。"
-        case .webContentTerminated: "浏览器页面进程已终止，标签页已关闭。"
-        case .downloadStorageUnavailable: "浏览器下载目录当前不可用。"
-        case .resultTooLarge: "浏览器结果超过本机输出上限。"
-        case .backendFailure: "本机浏览器页面未能完成动作。"
+        case .unavailable: "The local browser service is currently unavailable."
+        case .invalidSession: "Invalid browser session identifier."
+        case .invalidAction: "Unsupported browser action."
+        case .invalidURL: "The browser only allows HTTP/HTTPS URLs without credentials."
+        case .tabNotFound: "Browser tab for the current session not found."
+        case .webContentTerminated: "The browser page process terminated; the tab was closed."
+        case .downloadStorageUnavailable: "The browser download directory is currently unavailable."
+        case .resultTooLarge: "The browser result exceeds the local output limit."
+        case .backendFailure: "The local browser page could not complete the action."
         }
     }
 }

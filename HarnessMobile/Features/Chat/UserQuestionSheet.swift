@@ -79,7 +79,7 @@ private struct GenericUserQuestionSheet: View {
                     }
                     .buttonStyle(.bordered)
                     .disabled(index == 0)
-                    .accessibilityLabel("上一题")
+                    .accessibilityLabel("Previous Question")
 
                     Text("\(index + 1) / \(pending.request.questions.count)")
                         .font(.footnote.monospacedDigit())
@@ -93,11 +93,11 @@ private struct GenericUserQuestionSheet: View {
                     }
                     .buttonStyle(.bordered)
                     .disabled(index == pending.request.questions.count - 1)
-                    .accessibilityLabel("下一题")
+                    .accessibilityLabel("Next Question")
 
                     Spacer(minLength: 0)
 
-                    Button("跳过", action: skipCurrent)
+                    Button("Skip", action: skipCurrent)
                         .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("ask-user-skip-\(question.id)")
@@ -109,7 +109,7 @@ private struct GenericUserQuestionSheet: View {
                 .padding(16)
             }
             .accessibilityIdentifier("ask-user-question-sheet")
-            .navigationTitle("需要你的选择")
+            .navigationTitle("Your Input Needed")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -118,7 +118,7 @@ private struct GenericUserQuestionSheet: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel("取消提问")
+                    .accessibilityLabel("Cancel Questions")
                     .accessibilityIdentifier("ask-user-cancel")
                 }
             }
@@ -131,7 +131,7 @@ private struct GenericUserQuestionSheet: View {
     }
 
     private var primaryActionTitle: String {
-        index == pending.request.questions.count - 1 ? "提交" : "下一题"
+        index == pending.request.questions.count - 1 ? "Submit" : "Next"
     }
 
     @ViewBuilder
@@ -170,7 +170,7 @@ private struct GenericUserQuestionSheet: View {
                                         .font(.body.weight(.medium))
                                         .foregroundStyle(.primary)
                                     if display.recommended {
-                                        Text("推荐")
+                                        Text("Recommended")
                                             .font(.caption2.weight(.semibold))
                                             .foregroundStyle(.tint)
                                     }
@@ -209,7 +209,7 @@ private struct GenericUserQuestionSheet: View {
             }
 
             TextField(
-                question.options == nil ? "输入回答" : "补充或自定义回答",
+                question.options == nil ? "Enter an answer" : "Add details or a custom answer",
                 text: customBinding(for: question),
                 axis: .vertical
             )
@@ -218,7 +218,7 @@ private struct GenericUserQuestionSheet: View {
             .accessibilityIdentifier("ask-user-custom-\(question.id)")
 
             if isSkipped(question) {
-                Label("本题已跳过", systemImage: "forward.end.fill")
+                Label("Question skipped", systemImage: "forward.end.fill")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -286,7 +286,7 @@ private struct GenericUserQuestionSheet: View {
     private func continueFlow() {
         let draft = drafts[question.id] ?? Draft()
         guard draft.skipped || isAnswered(draft) else {
-            validationMessage = "请回答或跳过本题。"
+            validationMessage = "Answer or skip this question."
             return
         }
         if index < pending.request.questions.count - 1 {
@@ -315,7 +315,7 @@ private struct GenericUserQuestionSheet: View {
             return !draft.skipped && !isAnswered(draft)
         }) {
             index = missingIndex
-            validationMessage = "还有问题未回答；可以回答或逐题跳过。"
+            validationMessage = "Some questions are unanswered; answer or skip each one."
             return
         }
         let answers = pending.request.questions.map { question in
@@ -355,7 +355,7 @@ private struct PlanReviewSheet: View {
             VStack(spacing: 0) {
                 HStack(spacing: 10) {
                     HarnessIconTile(systemImage: "doc.text.magnifyingglass", tint: .accentColor, size: 28)
-                    Text("计划审阅")
+                    Text("Plan Review")
                         .font(.headline)
                     Spacer(minLength: 0)
                 }
@@ -411,13 +411,13 @@ private struct PlanReviewSheet: View {
         Button {
             model.cancelPendingUserQuestion()
         } label: {
-            Label("讨论计划", systemImage: "square.and.pencil")
+            Label("Discuss Plan", systemImage: "square.and.pencil")
                 .frame(maxWidth: fullWidth ? .infinity : nil)
         }
         .buttonStyle(.plain)
         .controlSize(.large)
         .foregroundStyle(.secondary)
-        .accessibilityHint("关闭计划审核并返回聊天输入")
+        .accessibilityHint("Closes plan review and returns to chat input")
         .accessibilityIdentifier("plan-review-chat")
     }
 
@@ -428,12 +428,12 @@ private struct PlanReviewSheet: View {
         Button {
             answer(with: decline.label)
         } label: {
-            Label("拒绝", systemImage: "xmark")
+            Label("Decline", systemImage: "xmark")
                 .frame(maxWidth: fullWidth ? .infinity : nil)
         }
         .buttonStyle(.bordered)
         .controlSize(.large)
-        .accessibilityHint(decline.description ?? "保持 Plan 模式并继续修改计划")
+        .accessibilityHint(decline.description ?? "Stays in Plan mode to keep revising the plan")
         .accessibilityIdentifier("plan-review-refuse")
     }
 
@@ -441,12 +441,12 @@ private struct PlanReviewSheet: View {
         Button {
             answer(with: review.approve.label)
         } label: {
-            Label("批准", systemImage: "checkmark")
+            Label("Approve", systemImage: "checkmark")
                 .frame(maxWidth: fullWidth ? .infinity : nil)
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .accessibilityHint(review.approve.description ?? "批准计划并在下一步退出 Plan 模式")
+        .accessibilityHint(review.approve.description ?? "Approves the plan and exits Plan mode on the next step")
         .accessibilityIdentifier("plan-review-approve")
     }
 

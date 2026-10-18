@@ -28,7 +28,7 @@ struct AppRootView: View {
     var body: some View {
         Group {
             if !model.isReady {
-                ProgressView("正在载入本地会话…")
+                ProgressView("Loading local sessions…")
             } else if isPluginMarketPreviewRequested {
                 NavigationStack {
                     CommunityPluginMarketView()
@@ -179,26 +179,26 @@ private struct HarnessToolsView: View {
 
     var body: some View {
         List {
-            Section("工作") {
+            Section("Work") {
                 toolRow(
-                    title: "iSH 终端",
-                    detail: "在手机 Alpine 沙箱中执行命令",
+                    title: "iSH Terminal",
+                    detail: "Run commands in the phone's Alpine sandbox",
                     systemImage: "terminal.fill",
                     tint: .primary,
                     accessibilityIdentifier: "tool-route-terminal",
                     route: .terminal
                 )
                 toolRow(
-                    title: "任务与轨迹",
-                    detail: "目标、计划、待办与 Harness 调用链",
+                    title: "Tasks & Trajectory",
+                    detail: "Goals, plans, todos, and the Harness call chain",
                     systemImage: "rectangle.3.group",
                     tint: .blue,
                     accessibilityIdentifier: "tool-route-console",
                     route: .console
                 )
                 toolRow(
-                    title: "工作区",
-                    detail: "导入、查看与导出本机会话文件",
+                    title: "Workspace",
+                    detail: "Import, view, and export local session files",
                     systemImage: "folder.fill",
                     tint: .orange,
                     accessibilityIdentifier: "tool-route-workspace",
@@ -206,18 +206,18 @@ private struct HarnessToolsView: View {
                 )
             }
 
-            Section("扩展") {
+            Section("Extensions") {
                 toolRow(
-                    title: "Cordis 插件",
-                    detail: "管理原生插件、社区插件与动态贡献",
+                    title: "Cordis Plugins",
+                    detail: "Manage native plugins, community plugins, and dynamic contributions",
                     systemImage: "puzzlepiece.extension.fill",
                     tint: .purple,
                     accessibilityIdentifier: "tool-route-plugins",
                     route: .plugins
                 )
                 toolRow(
-                    title: "设置",
-                    detail: "模型服务商、权限、后台任务与运行环境",
+                    title: "Settings",
+                    detail: "Model providers, permissions, background tasks, and runtime environment",
                     systemImage: "gearshape.fill",
                     tint: .gray,
                     accessibilityIdentifier: "tool-route-settings",
@@ -226,7 +226,7 @@ private struct HarnessToolsView: View {
             }
         }
         .harnessCompactListChrome()
-        .navigationTitle("工具")
+        .navigationTitle("Tools")
         .navigationBarTitleDisplayMode(.inline)
     }
 

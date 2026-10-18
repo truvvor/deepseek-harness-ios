@@ -125,13 +125,13 @@ enum AnthropicMessagesWireError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case let .invalidToolArguments(toolName):
-            return "工具 \(toolName) 的参数不是 Anthropic Messages 可接受的 JSON 对象。"
+            return "Arguments for tool \(toolName) are not a JSON object acceptable to Anthropic Messages."
         case .missingToolCallID:
-            return "工具结果缺少对应的 Tool Use ID。"
+            return "Tool result is missing its corresponding Tool Use ID."
         case let .unsupportedImageRole(role):
-            return "Anthropic Messages 不能在 \(role) 历史消息中携带图片。"
+            return "Anthropic Messages can't carry images in \(role) history messages."
         case let .unsupportedImageMIME(mimeType):
-            return "Anthropic Messages 不支持图片类型 \(mimeType)。"
+            return "Anthropic Messages doesn't support image type \(mimeType)."
         }
     }
 }
@@ -456,7 +456,7 @@ struct AnthropicStreamDecoder: Sendable {
         case "error":
             throw ModelClientError.providerStreamFailure(
                 code: envelope.error?.type,
-                message: envelope.error?.message ?? "Anthropic 流式响应失败。"
+                message: envelope.error?.message ?? "Anthropic streaming response failed."
             )
         case "ping", "content_block_stop":
             return []

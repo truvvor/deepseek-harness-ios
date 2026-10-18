@@ -53,9 +53,9 @@ final class WorkflowRunTreeTests: XCTestCase {
 
     func testBuildsFoldableRunsWithMembersAndOutcomes() {
         let events = [
-            runStart("r1", name: "项目摘要", seq: 1),
-            agentStart("r1", sequence: 0, label: "研究员", childID: "c0", parentID: nil, depth: 0, seq: 2),
-            agentStart("r1", sequence: 1, label: "分析员", childID: "c1", parentID: "c0", depth: 1, seq: 3),
+            runStart("r1", name: "Project summary", seq: 1),
+            agentStart("r1", sequence: 0, label: "Researcher", childID: "c0", parentID: nil, depth: 0, seq: 2),
+            agentStart("r1", sequence: 1, label: "Analyst", childID: "c1", parentID: "c0", depth: 1, seq: 3),
             agentEnd("r1", sequence: 1, outcome: "success", seq: 4),
             agentEnd("r1", sequence: 0, outcome: "error", seq: 5),
             event(WorkflowRunTree.runEndType, seq: 6, data: ["runId": .string("r1"), "stopReason": .string("completed")])
@@ -63,7 +63,7 @@ final class WorkflowRunTreeTests: XCTestCase {
         let tree = WorkflowRunTree.build(from: events)
         XCTAssertEqual(tree.runCount, 1)
         let run = tree.runs[0]
-        XCTAssertEqual(run.name, "项目摘要")
+        XCTAssertEqual(run.name, "Project summary")
         XCTAssertEqual(run.stopReason, "completed")
         XCTAssertEqual(run.memberCount, 2)
         XCTAssertEqual(run.members[0].childID, "c0")

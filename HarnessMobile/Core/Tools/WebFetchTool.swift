@@ -100,33 +100,33 @@ enum WebFetchError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            "网址格式无效。"
+            "Invalid URL format."
         case let .urlTooLong(limit):
-            "网址超过 \(limit) 字节上限。"
+            "The URL exceeds the \(limit)-byte limit."
         case let .unsupportedScheme(scheme):
-            "不支持 \(scheme)://，web_fetch 只允许 HTTP 和 HTTPS。"
+            "\(scheme):// is not supported; web_fetch only allows HTTP and HTTPS."
         case .credentialsNotAllowed:
-            "网址中不能包含用户名或密码。"
+            "The URL cannot contain a username or password."
         case let .redirectLimitExceeded(limit):
-            "网页跳转超过 \(limit) 次上限。"
+            "The page exceeded the limit of \(limit) redirects."
         case let .redirectMissingLocation(status):
-            "HTTP \(status) 跳转响应缺少 Location。"
+            "HTTP \(status) redirect response is missing Location."
         case let .crossOriginRedirect(origin):
-            "网页跳转到了新的来源 \(origin)，请对该网址单独调用 web_fetch。"
+            "The page redirected to a new origin \(origin); call web_fetch on that URL separately."
         case let .unsupportedContentType(contentType):
-            "不支持网页响应类型：\(contentType)。"
+            "Unsupported response content type: \(contentType)."
         case let .unsupportedCharset(charset):
-            "不支持网页字符集：\(charset)。"
+            "Unsupported page charset: \(charset)."
         case let .responseTooLarge(limit):
-            "网页响应超过 \(limit) 字节上限。"
+            "The page response exceeds the \(limit)-byte limit."
         case .invalidResponse:
-            "网页服务返回了无效的 HTTP 响应。"
+            "The web server returned an invalid HTTP response."
         case let .decodingFailed(charset):
-            "无法使用字符集 \(charset) 解码网页正文。"
+            "Unable to decode the page body with charset \(charset)."
         case .timedOut:
-            "网页请求超时。"
+            "The web request timed out."
         case let .networkFailure(message):
-            "网页请求失败：\(message)"
+            "Web request failed: \(message)"
         }
     }
 }
@@ -172,9 +172,9 @@ struct WebFetchTool: LocalAgentTool {
         guard let rawURL = arguments["url"]?.stringValue,
               let url = try? WebFetchURLPolicy.validate(rawURL, limits: client.limits),
               let origin = try? WebFetchURLPolicy.normalizedOrigin(for: url) else {
-            return "从手机访问网页"
+            return "Fetch web page from phone"
         }
-        return "从手机访问网页：\(origin)"
+        return "Fetch web page from phone: \(origin)"
     }
 
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool {
@@ -350,7 +350,7 @@ struct WebSearchTool: LocalAgentTool {
 
     func summary(arguments: [String: JSONValue]) -> String {
         let queries = (try? parsedQueries(arguments: arguments)) ?? []
-        return "联网搜索：\(String(queries.joined(separator: ", ").prefix(72)))"
+        return "Web search: \(String(queries.joined(separator: ", ").prefix(72)))"
     }
 
     func concurrencyResources(arguments: [String: JSONValue]) throws -> Set<String> {
@@ -393,7 +393,7 @@ struct WebSearchTool: LocalAgentTool {
             "source_count": .number(Double(merged.sources.count)),
             "truncated": .bool(merged.truncated),
             "query_count": .number(Double(queries.count)),
-            "note": .string("搜索在手机上并发执行；结果按查询 round-robin 合并并按 URL 去重。使用 web_fetch 获取页面正文并核对来源。")
+            "note": .string("Searches run concurrently on the phone; results are merged round-robin by query and deduplicated by URL. Use web_fetch to retrieve page content and verify sources.")
         ]).displayText
     }
 
@@ -498,7 +498,7 @@ struct WebSearchTool: LocalAgentTool {
 
             guard failures.isEmpty else {
                 throw WebFetchError.networkFailure(
-                    "手机直连搜索源均不可用（\(failures.joined(separator: "; "))）"
+                    "All on-device search providers are unavailable (\(failures.joined(separator: "; ")))"
                 )
             }
             return []
@@ -868,7 +868,7 @@ enum DeepSeekSearchTransport {
             let detail = String(decoding: data.prefix(400), as: UTF8.self)
             throw DeepSeekSearchError.endpoint(
                 status: http.statusCode,
-                detail: "端点 \(endpoint) 返回 \(http.statusCode)：\(detail)"
+                detail: "Endpoint \(endpoint) returned \(http.statusCode): \(detail)"
             )
         }
         return try JSONDecoder().decode(JSONValue.self, from: data)
@@ -1309,7 +1309,7 @@ enum ExaSearchTransport {
             let detail = String(decoding: data.prefix(400), as: UTF8.self)
             throw ExaSearchError.endpoint(
                 status: http.statusCode,
-                detail: "端点 \(baseURL) 返回 \(http.statusCode)：\(detail)"
+                detail: "Endpoint \(baseURL) returned \(http.statusCode): \(detail)"
             )
         }
         return try JSONDecoder().decode(JSONValue.self, from: data)
@@ -1356,7 +1356,7 @@ enum PerplexitySearchTransport {
             let detail = String(decoding: data.prefix(400), as: UTF8.self)
             throw PerplexitySearchError.endpoint(
                 status: http.statusCode,
-                detail: "端点 \(baseURL) 返回 \(http.statusCode)：\(detail)"
+                detail: "Endpoint \(baseURL) returned \(http.statusCode): \(detail)"
             )
         }
         return try JSONDecoder().decode(JSONValue.self, from: data)

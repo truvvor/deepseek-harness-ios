@@ -17,7 +17,7 @@ struct DeviceTimeTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "读取本机当前时间"
+        "Read the device's current time"
     }
 
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool {

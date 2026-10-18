@@ -9,9 +9,9 @@ import XCTest
 final class HarnessLiveActivityStateTests: XCTestCase {
     func testPrivacyModeRemovesSensitiveActivityContent() {
         let state = HarnessLiveActivityState.make(
-            sessionTitle: "修复 SecretProject 的登录故障",
+            sessionTitle: "Fix SecretProject login failure",
             phase: .usingTool,
-            detail: "正在读取 /private/workspace/token.txt",
+            detail: "Reading /private/workspace/token.txt",
             toolName: "shell_execute",
             toolSummary: "cat /private/workspace/token.txt",
             completedUnitCount: 2,
@@ -20,8 +20,8 @@ final class HarnessLiveActivityStateTests: XCTestCase {
             updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
         )
 
-        XCTAssertEqual(state.sessionTitle, "Harness 任务")
-        XCTAssertEqual(state.detail, "正在执行已批准的本机工具")
+        XCTAssertEqual(state.sessionTitle, "Harness Task")
+        XCTAssertEqual(state.detail, "Running an approved local tool")
         XCTAssertNil(state.toolName)
         XCTAssertNil(state.toolSummary)
         XCTAssertEqual(state.completedUnitCount, 2)
@@ -31,7 +31,7 @@ final class HarnessLiveActivityStateTests: XCTestCase {
 
     func testVisibleStateNormalizesAndBoundsText() {
         let state = HarnessLiveActivityState.make(
-            sessionTitle: "  会话\n标题  ",
+            sessionTitle: "  Session\nTitle  ",
             phase: .working,
             detail: String(repeating: "a", count: 200),
             toolName: "  read_file  ",
@@ -41,7 +41,7 @@ final class HarnessLiveActivityStateTests: XCTestCase {
             privacyModeEnabled: false
         )
 
-        XCTAssertEqual(state.sessionTitle, "会话 标题")
+        XCTAssertEqual(state.sessionTitle, "Session Title")
         XCTAssertEqual(state.detail.count, 160)
         XCTAssertEqual(state.toolName, "read_file")
         XCTAssertEqual(state.toolSummary, "reading file")
@@ -124,8 +124,8 @@ final class HarnessLiveActivityStateTests: XCTestCase {
             isBackgrounded: true,
             liveActivitySupported: true,
             liveActivityEnabled: true,
-            notificationAuthorization: "已允许",
-            locationAuthorization: "始终允许",
+            notificationAuthorization: "Allowed",
+            locationAuthorization: "Always",
             privacyModeEnabled: true
         )
 

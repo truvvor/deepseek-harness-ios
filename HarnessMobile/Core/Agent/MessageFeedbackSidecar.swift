@@ -45,9 +45,9 @@ enum MessageFeedbackSidecarError: LocalizedError, Sendable, Equatable {
     var errorDescription: String? {
         switch self {
         case let .revisionConflict(expected, actual):
-            return "反馈已在其他位置更新（期望 revision \(expected)，当前为 \(actual)）。请重新读取后再修改。"
+            return "Feedback was updated elsewhere (expected revision \(expected), current is \(actual)). Reload before editing."
         case .missingRating:
-            return "请先对该消息点赞或点踩，再添加反馈备注。"
+            return "Rate this message with a thumbs up or down before adding a feedback note."
         }
     }
 }

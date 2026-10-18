@@ -98,7 +98,7 @@ struct WorkspaceGlobTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "查找文件：\(String((arguments["pattern"]?.stringValue ?? "").prefix(96)))"
+        "Find files: \(String((arguments["pattern"]?.stringValue ?? "").prefix(96)))"
     }
 
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool { true }
@@ -177,7 +177,7 @@ struct WorkspaceGrepTool: LocalAgentTool {
     }
 
     func summary(arguments: [String: JSONValue]) -> String {
-        "正则搜索：\(String((arguments["pattern"]?.stringValue ?? "").prefix(96)))"
+        "Regex search: \(String((arguments["pattern"]?.stringValue ?? "").prefix(96)))"
     }
 
     func isConcurrencySafe(arguments: [String: JSONValue]) throws -> Bool { true }

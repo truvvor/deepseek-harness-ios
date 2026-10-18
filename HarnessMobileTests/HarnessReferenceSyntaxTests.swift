@@ -149,7 +149,7 @@ final class HarnessReferenceSyntaxTests: XCTestCase {
 
     func testReferenceSourceMetadataIsStableAndLocalized() {
         XCTAssertEqual(HarnessReferenceSource.allCases.map(\.title), [
-            "文件", "历史会话", "子 Agent", "Skill", "插件"
+            "File", "Past Session", "Sub-agent", "Skill", "Plugin"
         ])
         XCTAssertEqual(HarnessReferenceSource.file.systemImage, "doc.text")
         XCTAssertEqual(HarnessReferenceSource.session.systemImage, "clock.arrow.circlepath")
@@ -186,16 +186,16 @@ final class HarnessReferenceSyntaxTests: XCTestCase {
         let id = UUID(uuidString: "4D16E270-86A5-49D5-9127-88C04010722B")!
         let mention = HarnessReferenceSyntax.formatSessionMention(
             sessionID: id,
-            label: "历史]记录"
+            label: "past]notes"
         )
         let parsed = try HarnessReferenceSyntax.parseSessionReferences(
-            in: "参考 \(mention) 继续"
+            in: "See \(mention) and continue"
         )
 
-        XCTAssertEqual(parsed.renderedText, "参考 @历史]记录 继续")
+        XCTAssertEqual(parsed.renderedText, "See @past]notes and continue")
         XCTAssertEqual(
             parsed.references,
-            [HarnessSessionReference(sessionID: id, label: "历史]记录")]
+            [HarnessSessionReference(sessionID: id, label: "past]notes")]
         )
         XCTAssertEqual(
             try HarnessReferenceSyntax.decodeSessionURI(

@@ -13,9 +13,9 @@ struct ProviderProfilesView: View {
             Section {
                 if model.providerProfiles.isEmpty {
                     ContentUnavailableView(
-                        "没有服务商",
+                        "No Providers",
                         systemImage: "server.rack",
-                        description: Text("添加目录服务商或自定义 OpenAI-compatible 服务商。")
+                        description: Text("Add a catalog provider or a custom OpenAI-compatible provider.")
                     )
                     .listRowBackground(Color.clear)
                 } else {
@@ -33,7 +33,7 @@ struct ProviderProfilesView: View {
                                 Button {
                                     activate(profile)
                                 } label: {
-                                    Label("设为默认", systemImage: "checkmark.circle")
+                                    Label("Set as Default", systemImage: "checkmark.circle")
                                 }
                                 .tint(.green)
                                 .disabled(!canActivate(profile))
@@ -43,40 +43,40 @@ struct ProviderProfilesView: View {
                             Button(role: .destructive) {
                                 pendingDeletion = profile
                             } label: {
-                                Label("删除", systemImage: "trash")
+                                Label("Delete", systemImage: "trash")
                             }
 
                             Button {
                                 presentedEditor = .edit(profile.id)
                             } label: {
-                                Label("编辑", systemImage: "pencil")
+                                Label("Edit", systemImage: "pencil")
                             }
                             .tint(.blue)
                         }
                         .contextMenu {
                             if model.providerDirectory.activeProfileID != profile.id {
-                                Button("设为默认", systemImage: "checkmark.circle") {
+                                Button("Set as Default", systemImage: "checkmark.circle") {
                                     activate(profile)
                                 }
                                 .disabled(!canActivate(profile))
                             }
-                            Button("编辑", systemImage: "pencil") {
+                            Button("Edit", systemImage: "pencil") {
                                 presentedEditor = .edit(profile.id)
                             }
-                            Button("快速测试", systemImage: "bolt.horizontal.circle") {
+                            Button("Quick Test", systemImage: "bolt.horizontal.circle") {
                                 quickTest(profile)
                             }
                             .disabled(!canActivate(profile))
-                            Button("删除", systemImage: "trash", role: .destructive) {
+                            Button("Delete", systemImage: "trash", role: .destructive) {
                                 pendingDeletion = profile
                             }
                         }
                     }
                 }
             } header: {
-                Label("服务商配置", systemImage: "server.rack")
+                Label("Provider Configuration", systemImage: "server.rack")
             } footer: {
-                Text("默认 Profile 用于新请求；当前正在运行的请求不会在中途切换。API Key 只保存在各自的本机 Keychain 项中。")
+                Text("The default Profile is used for new requests; requests already running are not switched mid-flight. Each API Key is stored only in its own on-device Keychain item.")
             }
 
             Section {
@@ -84,18 +84,18 @@ struct ProviderProfilesView: View {
                     List {
                         providerBehaviorSections
                     }
-                    .navigationTitle("模型行为")
+                    .navigationTitle("Model Behavior")
                     .navigationBarTitleDisplayMode(.inline)
                 } label: {
                     LabeledContent {
-                        Text("压缩、时间、标题")
+                        Text("Compaction, time, titles")
                             .foregroundStyle(.secondary)
                     } label: {
-                        Label("模型行为", systemImage: "slider.horizontal.3")
+                        Label("Model Behavior", systemImage: "slider.horizontal.3")
                     }
                 }
                 .accessibilityIdentifier("provider-behavior-settings")
-            } header: { Label("请求行为", systemImage: "slider.horizontal.3") }
+            } header: { Label("Request Behavior", systemImage: "slider.horizontal.3") }
 
             Section {
                 ForEach(catalogProviders) { descriptor in
@@ -104,10 +104,10 @@ struct ProviderProfilesView: View {
                     } label: {
                         LabeledContent {
                             if hasCatalogProfile(descriptor.id) {
-                                Text("已添加")
+                                Text("Added")
                                     .foregroundStyle(.secondary)
                             } else if !descriptor.supportsCurrentInferenceWire {
-                                Text("协议待接入")
+                                Text("Protocol Pending")
                                     .foregroundStyle(.orange)
                             }
                         } label: {
@@ -123,15 +123,15 @@ struct ProviderProfilesView: View {
                 Button {
                     presentedEditor = .addCustom
                 } label: {
-                    Label("自定义 OpenAI-compatible", systemImage: "plus.rectangle.on.rectangle")
+                    Label("Custom OpenAI-compatible", systemImage: "plus.rectangle.on.rectangle")
                 }
-            } header: { Label("添加", systemImage: "plus.circle") }
+            } header: { Label("Add", systemImage: "plus.circle") }
         }
         .listStyle(.insetGrouped)
         .environment(\.defaultMinListRowHeight, 44)
         .scrollContentBackground(.hidden)
         .background(HarnessTheme.pageBackground)
-        .navigationTitle("模型与服务商")
+        .navigationTitle("Models & Providers")
         .task {
             await model.refreshProviderCredentialStatuses()
         }
@@ -143,17 +143,17 @@ struct ProviderProfilesView: View {
             isPresented: deletionPresented,
             titleVisibility: .visible
         ) {
-            Button("删除 Profile 与 API Key", role: .destructive) {
+            Button("Delete Profile and API Key", role: .destructive) {
                 deletePendingProfile()
             }
-            Button("取消", role: .cancel) {
+            Button("Cancel", role: .cancel) {
                 pendingDeletion = nil
             }
         } message: {
-            Text("本地会话和工作区文件会保留。引用该 Profile 的旧会话需要重新选择模型后才能继续请求。")
+            Text("Local sessions and workspace files are kept. Older sessions that reference this Profile need a new model selected before they can send requests.")
         }
-        .alert("服务商操作失败", isPresented: operationErrorPresented) {
-            Button("好") {
+        .alert("Provider Operation Failed", isPresented: operationErrorPresented) {
+            Button("OK") {
                 operationError = nil
             }
         } message: {
@@ -164,8 +164,8 @@ struct ProviderProfilesView: View {
     @ViewBuilder
     private var providerBehaviorSections: some View {
         Section {
-            Picker("摘要模型", selection: compactionSummaryRouteBinding) {
-                Text("跟随当前会话")
+            Picker("Summary Model", selection: compactionSummaryRouteBinding) {
+                Text("Follow Current Session")
                     .tag(nil as CompactionSummaryRoute?)
                 ForEach(compactionSummaryRouteOptions) { option in
                     Text("\(option.profileName) / \(option.route.model)")
@@ -174,44 +174,44 @@ struct ProviderProfilesView: View {
             }
             .disabled(model.isRunning)
         } header: {
-            Text("上下文压缩")
+            Text("Context Compaction")
         } footer: {
-            Text("独立摘要路由只会在尚未输出内容时回退；半截输出、取消、截断或工具调用不会静默重试。")
+            Text("A separate summary route falls back only before any content is produced; partial output, cancellation, truncation, or tool calls are never silently retried.")
         }
 
         Section {
-            Toggle("向 Agent 提供当前时间", isOn: timeContextEnabledBinding)
+            Toggle("Provide Current Time to Agent", isOn: timeContextEnabledBinding)
                 .disabled(model.isRunning)
             if model.timeContextSettings.isEnabled {
-                Picker("显示时区", selection: timeContextTimeZoneBinding) {
-                    Text("跟随 iPhone（\(TimeZone.current.identifier)）")
+                Picker("Time Zone", selection: timeContextTimeZoneBinding) {
+                    Text("Follow iPhone (\(TimeZone.current.identifier))")
                         .tag(nil as String?)
                     Text("UTC")
                         .tag(Optional("UTC"))
                 }
-                Picker("刷新间隔", selection: timeContextRefreshBinding) {
-                    Text("每个模型步骤").tag(0)
-                    Text("1 分钟").tag(60_000)
-                    Text("5 分钟").tag(300_000)
-                    Text("15 分钟").tag(900_000)
+                Picker("Refresh Interval", selection: timeContextRefreshBinding) {
+                    Text("Every Model Step").tag(0)
+                    Text("1 Minute").tag(60_000)
+                    Text("5 Minutes").tag(300_000)
+                    Text("15 Minutes").tag(900_000)
                 }
             }
         } header: {
-            Text("时间上下文")
+            Text("Time Context")
         } footer: {
-            Text("时间以持久快照追加到消息尾部；刷新间隔内不会重复注入。")
+            Text("The time is appended to the end of messages as a persistent snapshot and is not reinjected within the refresh interval.")
         }
 
         Section {
-            Picker("自动标题", selection: sessionTitleModeBinding) {
+            Picker("Automatic Titles", selection: sessionTitleModeBinding) {
                 ForEach(SessionTitleAutomaticMode.allCases) { mode in
                     Text(mode.title).tag(mode)
                 }
             }
             .disabled(model.isRunning)
             if model.sessionTitleSettings.automaticMode != .disabled {
-                Picker("标题模型", selection: sessionTitleRouteBinding) {
-                    Text("跟随会话模型")
+                Picker("Title Model", selection: sessionTitleRouteBinding) {
+                    Text("Follow Session Model")
                         .tag(nil as CompactionSummaryRoute?)
                     ForEach(compactionSummaryRouteOptions) { option in
                         Text("\(option.profileName) / \(option.route.model)")
@@ -221,9 +221,9 @@ struct ProviderProfilesView: View {
                 .disabled(model.isRunning)
             }
         } header: {
-            Text("会话标题")
+            Text("Session Titles")
         } footer: {
-            Text("标题请求不带工具；失败时保留首条提问生成的本机标题。")
+            Text("Title requests use no tools; on failure the on-device title generated from the first prompt is kept.")
         }
     }
 
@@ -232,8 +232,8 @@ struct ProviderProfilesView: View {
     }
 
     private var deletionTitle: String {
-        guard let pendingDeletion else { return "删除 Provider Profile？" }
-        return "删除“\(pendingDeletion.displayName)”？"
+        guard let pendingDeletion else { return "Delete Provider Profile?" }
+        return "Delete '\(pendingDeletion.displayName)'?"
     }
 
     private var deletionPresented: Binding<Bool> {
@@ -471,7 +471,7 @@ private struct ProviderProfileListRow: View {
                             Text(profile.displayName)
                                 .font(.body.weight(.medium))
                             if profile.isCustom {
-                                Text("自定义")
+                                Text("Custom")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
@@ -504,11 +504,11 @@ private struct ProviderProfileListRow: View {
                         .controlSize(.small)
                 } else if isActive {
                     HarnessStatusPill(
-                        title: "默认",
+                        title: "Default",
                         systemImage: "checkmark.circle.fill",
                         tint: .green
                     )
-                    .accessibilityLabel("默认服务商")
+                    .accessibilityLabel("Default provider")
                 } else {
                     Button(action: onActivate) {
                         Image(systemName: "circle")
@@ -520,8 +520,8 @@ private struct ProviderProfileListRow: View {
                         credentialStatus != .configured
                             || !profile.descriptor.supportsCurrentInferenceWire
                     )
-                    .accessibilityLabel("设为默认服务商")
-                    .help("设为默认服务商")
+                    .accessibilityLabel("Set as default provider")
+                    .help("Set as default provider")
                 }
             }
         }
@@ -542,16 +542,16 @@ private struct ProviderCredentialStatusLabel: View {
     }
 
     private var title: String {
-        guard supportsInference else { return "协议待接入" }
+        guard supportsInference else { return "Protocol Pending" }
         switch status {
         case .unknown:
-            return "检查中"
+            return "Checking"
         case .configured:
-            return "已配置"
+            return "Configured"
         case .missing:
-            return "缺少 Key"
+            return "Missing Key"
         case .originMismatch:
-            return "需更新 Key"
+            return "Key Needs Update"
         }
     }
 
