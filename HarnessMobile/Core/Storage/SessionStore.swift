@@ -910,7 +910,7 @@ actor SessionStore {
 
     private static var protectedWritingOptions: Data.WritingOptions {
 #if os(iOS)
-        [.atomic, .completeFileProtection]
+        [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
 #else
         []
 #endif
@@ -1219,7 +1219,7 @@ actor AppIntentInboxStore {
         let data = try encoder.encode(snapshot)
         try data.write(to: fileURL, options: [.atomic])
 #if os(iOS)
-        try fileManager.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: fileURL.path)
+        try fileManager.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: fileURL.path)
 #endif
     }
 }

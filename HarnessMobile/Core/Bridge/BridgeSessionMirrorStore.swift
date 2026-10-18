@@ -126,7 +126,7 @@ actor BridgeSessionMirrorStore {
         try data.write(to: fileURL, options: [.atomic])
 #if os(iOS)
         try fileManager.setAttributes(
-            [.protectionKey: FileProtectionType.complete],
+            [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
             ofItemAtPath: fileURL.path
         )
 #endif

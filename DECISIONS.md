@@ -168,6 +168,26 @@ P3：带 npm 依赖的真实 cordis 插件安装成功。
 验证：
 `HarnessMobileTests/BridgeClientPromptTests.swift` 覆盖请求路径、方法、令牌头、请求体、409/404/401 映射。真实桌面桥接下的回合、取消、前后台切换尚未在真机验收，状态保持 `VERIFY`。
 
+## D-015 · 镜像同步在锁屏期间继续（会话快照与镜像映射降为“首次解锁后可用”）
+
+状态：Accepted
+日期：2026-10-18
+取代：无（补充 D-014）
+
+背景：
+TestFlight 152 在锁屏期间的镜像后台同步中崩溃（`SIGBUS`，APFS 拒绝对 `FileProtectionType.complete` 文件 pagein）。去掉内存映射后不再崩溃，但锁屏期间读写会话快照仍报错，桌面回合的事件、问题与通知在解锁前到不了手机。用户明确要求锁屏时同步继续。
+
+决策：
+1. `SessionStore` 快照与 `BridgeSessionMirrorStore` 映射改用 `completeUntilFirstUserAuthentication`（iOS 应用的系统默认类）：首次解锁后即使再次锁屏也可读写；设备重启到首次解锁前仍不可读。轨迹日志、transcript 与附件本来就是该默认类，不变。Keychain 中的凭据与桥接令牌保护类不变。
+2. 镜像中的桌面回合（手机发起的 prompt，或跟随流报告的 `turn/start`）计入后台保活输入 `hasLiveRoot`，与本地运行同等待遇：用户在 Background 设置中开启的音频/位置保活层会在桌面回合期间维持进程，SSE 跟随与导入继续；回合结束后保活按既有规则退出。
+3. 未开启任何保活层时，iOS 仍会在后台宽限期后挂起应用；这是平台边界，不以静默方式绕过。
+
+后果：
+锁屏且已解锁过的设备上，镜像同步与桌面问题通知在回合期间持续工作；代价是会话快照在锁屏时可被已解锁后获得文件系统访问的进程读取（与系统默认一致）。文档：`SECURITY_GUIDELINES.md` 的受保护资产表按此更新。
+
+验证：
+真机：开启 Enhanced Background 或 Location keep-alive，锁屏期间从桌面发起回合，观察镜像更新与问题通知。状态 `VERIFY`。
+
 ## 新决策模板
 
 ```md

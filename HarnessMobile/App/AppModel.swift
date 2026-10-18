@@ -3858,7 +3858,7 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
         refreshBackgroundKeepAliveCoordinator()
     }
 
-    private func refreshBackgroundKeepAliveCoordinator() {
+    func refreshBackgroundKeepAliveCoordinator() {
         let isBackgrounded = appIsBackgrounded
         Task { @MainActor [weak self] in
             guard let self else { return }
@@ -3867,7 +3867,9 @@ final class AppModel: ObservableObject, SessionControlling, SettingsControlling,
             backgroundKeepAliveCoordinator.update(
                 BackgroundKeepAliveInputs(
                 isBackgrounded: isBackgrounded,
-                hasLiveRoot: liveRootCount > 0,
+                // A desktop turn followed from a mirror keeps the process alive
+                // the same way a local run does (D-015).
+                hasLiveRoot: liveRootCount > 0 || hasActiveDesktopMirrorWork,
                 enhancedAudioRequested: backgroundPreferences.isEnhancedBackgroundEnabled,
                 locationRequested: backgroundPreferences.isBackgroundLocationKeepAliveEnabled,
                 hasFiniteBackgroundLease: legacyBackgroundTaskLease.hasSystemTask,

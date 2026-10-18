@@ -227,6 +227,7 @@ extension AppModel {
             }
             desktopMirrorLiveBuffer[sessionID] = nil
             publishDesktopMirrorLive(sessionID, state)
+            refreshBackgroundKeepAliveCoordinator()
             return
         case let .delta(text):
             state.text = Self.tail(state.text + text)
@@ -254,6 +255,7 @@ extension AppModel {
             }
             desktopMirrorLiveBuffer[sessionID] = nil
             publishDesktopMirrorLive(sessionID, state)
+            refreshBackgroundKeepAliveCoordinator()
             return
         }
         desktopMirrorLiveBuffer[sessionID] = state
@@ -319,6 +321,7 @@ extension AppModel {
         turn.pendingPrompts += 1
         desktopMirrorTurns[sessionID] = turn
         errorMessage = nil
+        refreshBackgroundKeepAliveCoordinator()
 
         // The bridge aborts a desktop turn when its prompt request disconnects,
         // so keep the request alive through the short background grace period
@@ -498,6 +501,12 @@ extension AppModel {
         }
     }
 
+    /// A desktop turn is running in some mirror: either the phone sent the
+    /// prompt or the desktop started it and the follow stream reported it.
+    var hasActiveDesktopMirrorWork: Bool {
+        !desktopMirrorTurns.isEmpty || desktopMirrorLive.values.contains { $0.isTurnActive }
+    }
+
     /// Stop button: cancels the desktop turn in a mirror, the local run elsewhere.
     func cancelActiveTurn() {
         guard activeSessionIsDesktopMirror, let sessionID = activeSessionID else {
@@ -584,6 +593,7 @@ extension AppModel {
             turn.pendingPrompts -= 1
             desktopMirrorTurns[sessionID] = turn.pendingPrompts > 0 ? turn : nil
         }
+        refreshBackgroundKeepAliveCoordinator()
         guard let error else { return }
         if case BridgeClientError.cancelled = error { return }
         desktopMirrorLastError = error.localizedDescription
