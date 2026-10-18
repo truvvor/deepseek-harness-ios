@@ -455,7 +455,7 @@ actor WorkspaceStore {
         if resolvedPath.isExternalMount {
             data = try coordinatedRead(at: url)
         } else {
-            data = try Data(contentsOf: url, options: [.mappedIfSafe])
+            data = try Data(contentsOf: url, options: [])
         }
         guard let text = String(data: data, encoding: .utf8) else {
             throw WorkspaceError.notUTF8
@@ -479,7 +479,7 @@ actor WorkspaceStore {
         if resolvedPath.isExternalMount {
             return try coordinatedRead(at: url)
         }
-        return try Data(contentsOf: url, options: [.mappedIfSafe])
+        return try Data(contentsOf: url, options: [])
     }
 
     func writeText(path: String, text: String) throws {
@@ -637,7 +637,7 @@ actor WorkspaceStore {
               size <= Self.maximumFileAttachmentBytes else {
             throw WorkspaceError.fileTooLarge(Self.maximumFileAttachmentBytes)
         }
-        let data = try Data(contentsOf: externalURL, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: externalURL, options: [])
         return try stageFileAttachment(data: data, filename: externalURL.lastPathComponent)
     }
 
@@ -683,7 +683,7 @@ actor WorkspaceStore {
               ref.byteCount <= Self.maximumFileAttachmentBytes else {
             throw WorkspaceError.notAFile
         }
-        let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: url, options: [])
         _ = try FileAttachmentAdmission.admit(
             data,
             filename: ref.displayName,
@@ -858,7 +858,7 @@ actor WorkspaceStore {
         }
         return try JSONDecoder().decode(
             AgentImageAttachmentRef.self,
-            from: Data(contentsOf: url, options: [.mappedIfSafe])
+            from: Data(contentsOf: url, options: [])
         )
     }
 
@@ -877,7 +877,7 @@ actor WorkspaceStore {
         guard let size = values.fileSize, size <= maximumImageBytes else {
             throw WorkspaceError.fileTooLarge(maximumImageBytes)
         }
-        return try Data(contentsOf: url, options: [.mappedIfSafe])
+        return try Data(contentsOf: url, options: [])
     }
 
     /// Returns the deterministic provider-request variant for an immutable
@@ -904,7 +904,7 @@ actor WorkspaceStore {
             if let size = values.fileSize,
                size > 0,
                size <= Self.maximumModelRequestImageBytes {
-                return try Data(contentsOf: variantURL, options: [.mappedIfSafe])
+                return try Data(contentsOf: variantURL, options: [])
             }
         }
 
@@ -928,7 +928,7 @@ actor WorkspaceStore {
         guard let size = values.fileSize, size <= maximumImageBytes else {
             throw WorkspaceError.fileTooLarge(maximumImageBytes)
         }
-        return try Data(contentsOf: url, options: [.mappedIfSafe])
+        return try Data(contentsOf: url, options: [])
     }
 
     func hasStagedImage() -> Bool {
@@ -1199,7 +1199,7 @@ actor WorkspaceStore {
         }
         let data = resolved.isExternalMount
             ? try coordinatedRead(at: resolved.url)
-            : try Data(contentsOf: resolved.url, options: [.mappedIfSafe])
+            : try Data(contentsOf: resolved.url, options: [])
         guard data.count <= maximumBytes else {
             throw HarnessFsError(
                 code: .tooLarge,
@@ -1572,7 +1572,7 @@ actor WorkspaceStore {
 
         let data: Data
         do {
-            data = try Data(contentsOf: mountStoreURL, options: [.mappedIfSafe])
+            data = try Data(contentsOf: mountStoreURL, options: [])
         } catch {
             didLoadMounts = false
             throw WorkspaceError.mountStoreUnavailable(error.localizedDescription)
@@ -1827,7 +1827,7 @@ actor WorkspaceStore {
             error: &coordinationError
         ) { coordinatedURL in
             result = Result {
-                try Data(contentsOf: coordinatedURL, options: [.mappedIfSafe])
+                try Data(contentsOf: coordinatedURL, options: [])
             }
         }
         if let coordinationError {
@@ -1956,7 +1956,7 @@ actor WorkspaceStore {
               size <= maximumBytes else {
             return nil
         }
-        let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: url, options: [])
         guard data.count <= maximumBytes,
               let text = String(data: data, encoding: .utf8) else {
             return nil
@@ -1980,7 +1980,7 @@ actor WorkspaceStore {
               size <= maximumBytes else {
             return nil
         }
-        let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: url, options: [])
         guard data.count <= maximumBytes,
               let raw = String(data: data, encoding: .utf8),
               !raw.contains("\0") else {
@@ -2050,7 +2050,7 @@ actor WorkspaceStore {
               size <= maximumSkillBytes else {
             return nil
         }
-        let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: url, options: [])
         guard let text = String(data: data, encoding: .utf8) else { return nil }
         let workspaceRoot = root.resolvingSymlinksInPath().standardizedFileURL
         let path = String(resolved.path.dropFirst(workspaceRoot.path.count + 1))

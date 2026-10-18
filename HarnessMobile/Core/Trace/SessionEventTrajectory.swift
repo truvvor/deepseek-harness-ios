@@ -1669,7 +1669,7 @@ actor SessionEventJSONLStore {
         try flush()
         // The live actor deliberately retains only a tail. Read the lossless
         // JSONL stream when an export or forensic caller explicitly asks for it.
-        let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: fileURL, options: [])
         let recovery = try decodeLog(data)
         return recovery.events
     }
@@ -1682,7 +1682,7 @@ actor SessionEventJSONLStore {
     ) async throws -> [SessionEvent] {
         try ensureLoaded()
         try flush()
-        let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: fileURL, options: [])
         return try decodeLog(data, retaining: shouldRetain).events
     }
 
@@ -1698,7 +1698,7 @@ actor SessionEventJSONLStore {
         try flush()
         guard limit > 0 else { return [] }
         let boundary = min(sequence, nextSequence)
-        let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: fileURL, options: [])
         let matches = try decodeLog(data, retaining: { event in
             event.seq < boundary && shouldRetain(event)
         }).events
@@ -1820,7 +1820,7 @@ actor SessionEventJSONLStore {
             return
         }
         do {
-            let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
+            let data = try Data(contentsOf: fileURL, options: [])
             let recovery = try decodeLog(data)
 
             if recovery.truncateTo < UInt64(data.count) {

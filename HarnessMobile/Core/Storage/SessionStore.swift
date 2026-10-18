@@ -784,7 +784,7 @@ actor SessionStore {
             return .empty()
         }
 
-        let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: fileURL, options: [])
         let version = try decoder.decode(VersionProbe.self, from: data).version
         switch version {
         case 1:

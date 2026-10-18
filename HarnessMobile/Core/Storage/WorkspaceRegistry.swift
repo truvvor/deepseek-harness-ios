@@ -180,7 +180,7 @@ actor LocalWorkspaceRegistry {
         didLoad = true
         guard FileManager.default.fileExists(atPath: storageURL.path) else { return }
         do {
-            let data = try Data(contentsOf: storageURL, options: [.mappedIfSafe])
+            let data = try Data(contentsOf: storageURL, options: [])
             let snapshot = try JSONDecoder().decode(LocalWorkspaceRegistrySnapshot.self, from: data)
             workspaces = snapshot.workspaces
             archivedSessionIDs = Set(snapshot.archivedSessionIDs)

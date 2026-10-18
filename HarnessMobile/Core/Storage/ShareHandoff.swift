@@ -479,7 +479,7 @@ actor ShareHandoffStore {
                   values.fileSize == item.byteCount else {
                 throw ShareHandoffError.invalidEnvelope
             }
-            let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+            let data = try Data(contentsOf: url, options: [])
             guard data.count == item.byteCount else { throw ShareHandoffError.invalidEnvelope }
             result[item.id] = data
         }

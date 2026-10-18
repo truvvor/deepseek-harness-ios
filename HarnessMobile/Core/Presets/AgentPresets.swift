@@ -492,7 +492,7 @@ actor AgentPresetRegistryStore {
 
     private func readUserPresets() throws -> [AgentPresetDefinition] {
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return [] }
-        let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: fileURL, options: [])
         let snapshot = try decoder.decode(Snapshot.self, from: data)
         guard snapshot.version == Self.currentVersion else {
             throw AgentPresetError.unsupportedRegistryVersion(snapshot.version)

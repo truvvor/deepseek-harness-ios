@@ -53,7 +53,7 @@ actor MCPConfigurationStore {
 
     func load() throws -> [MCPConfiguredServer] {
         guard fileManager.fileExists(atPath: fileURL.path) else { return [] }
-        let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: fileURL, options: [])
         guard data.count <= maximumFileBytes else {
             throw MCPClientError.invalidConfiguration("MCP config file exceeds the size limit")
         }

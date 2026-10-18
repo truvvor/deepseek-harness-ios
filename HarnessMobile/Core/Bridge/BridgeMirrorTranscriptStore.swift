@@ -120,7 +120,7 @@ actor BridgeMirrorTranscriptStore {
                 throw CocoaError(.fileWriteUnknown)
             }
         }
-        let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: url, options: [])
         var offsets: [UInt64] = []
         var lineStart = 0
         for (position, byte) in data.enumerated() where byte == 0x0A {

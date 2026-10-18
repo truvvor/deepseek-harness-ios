@@ -25,7 +25,7 @@ actor NativeAgentPluginStore {
 
     func load(allowedBaseTools: Set<String>) throws -> [NativeAgentCompiledPlugin] {
         guard fileManager.fileExists(atPath: fileURL.path) else { return [] }
-        let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
+        let data = try Data(contentsOf: fileURL, options: [])
         guard data.count <= 2 * 1_024 * 1_024 else {
             throw NativeAgentPluginError.invalidCompiledPlugin("The plugin registry is too large.")
         }
